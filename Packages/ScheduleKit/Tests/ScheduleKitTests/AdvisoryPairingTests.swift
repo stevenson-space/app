@@ -3,6 +3,16 @@ import Foundation
 @testable import ScheduleKit
 
 @Suite struct AdvisoryPairingTests {
+    /// The resolved lines belonging to period 4 (full "4" or the "4A"/"4B"
+    /// halves), so a test can assert the *complete* block set and catch any
+    /// extra conflicting block, not just presence.
+    private func periodFourLines(_ timeline: DayTimeline) -> [String] {
+        TestSupport.lines(timeline).filter { line in
+            let id = line.split(separator: " ")[1]
+            return id == "4" || id == "4A" || id == "4B"
+        }
+    }
+
     @Test func advisoryHalfDerivesLunchOppositeHalf() {
         var config = UserConfig()
 
@@ -17,6 +27,15 @@ import Foundation
         config.setPairedAdvisory(basePeriod: 5, advisoryHalf: .a)
         #expect(config.advisory == SplitAssignment(basePeriod: 5, choice: .a))
         #expect(config.lunch == SplitAssignment(basePeriod: 5, choice: .b))
+
+        // Upper supported base period, both halves.
+        config.setPairedAdvisory(basePeriod: 6, advisoryHalf: .a)
+        #expect(config.advisory == SplitAssignment(basePeriod: 6, choice: .a))
+        #expect(config.lunch == SplitAssignment(basePeriod: 6, choice: .b))
+
+        config.setPairedAdvisory(basePeriod: 6, advisoryHalf: .b)
+        #expect(config.advisory == SplitAssignment(basePeriod: 6, choice: .b))
+        #expect(config.lunch == SplitAssignment(basePeriod: 6, choice: .a))
     }
 
     @Test func outOfRangeBasePeriodIsRejected() {
@@ -34,8 +53,10 @@ import Foundation
     @Test func repairingMovesBothAssignmentsTogether() {
         var config = UserConfig(lunch: SplitAssignment(basePeriod: 6, choice: .full))
         config.setPairedAdvisory(basePeriod: 5, advisoryHalf: .b)
-        // The old independent lunch is fully replaced — both live in period 5.
+        // The old independent lunch is fully replaced — both live in period 5,
+        // with lunch taking the half opposite the .b advisory.
         #expect(config.lunch?.basePeriod == 5)
+        #expect(config.lunch?.choice == .a)
         #expect(config.advisory?.basePeriod == 5)
     }
 
@@ -52,26 +73,28 @@ import Foundation
         config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a)
 
         let timeline = resolveDay(day(2026, 9, 14), inputs: TestSupport.inputs(config: config))
-        let lines = TestSupport.lines(timeline)
-        #expect(lines.contains("11:10-11:30 4A advisory Advisory"))
-        #expect(lines.contains("11:37-11:57 4B lunch Lunch"))
+        // Period 4 is exactly the advisory half then the lunch half — nothing else.
+        #expect(periodFourLines(timeline) == [
+            "11:10-11:30 4A advisory Advisory",
+            "11:37-11:57 4B lunch Lunch",
+        ])
     }
 
     @Test func advisoryIsSuppressedOnFridaysAndLunchFillsThePeriod() {
         var config = UserConfig()
         config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a) // advisory 4A ⇒ lunch 4B
 
-        // Friday, Sep 18 2026 — a standard A/B day, but advisory doesn't meet.
+        // Friday, Sep 18 2026 — a standard A/B day, but advisory doesn't meet:
+        // period 4 is one full-period lunch, with no advisory half left behind.
         let friday = resolveDay(day(2026, 9, 18), inputs: TestSupport.inputs(config: config))
-        let lines = TestSupport.lines(friday)
-        #expect(lines.contains("11:10-11:57 4 lunch Lunch"))
-        #expect(!lines.contains { $0.contains(" advisory ") })
+        #expect(periodFourLines(friday) == ["11:10-11:57 4 lunch Lunch"])
 
-        // Thursday still splits into advisory + lunch halves.
+        // Thursday still splits into exactly the advisory + lunch halves.
         let thursday = resolveDay(day(2026, 9, 17), inputs: TestSupport.inputs(config: config))
-        let thursdayLines = TestSupport.lines(thursday)
-        #expect(thursdayLines.contains("11:10-11:30 4A advisory Advisory"))
-        #expect(thursdayLines.contains("11:37-11:57 4B lunch Lunch"))
+        #expect(periodFourLines(thursday) == [
+            "11:10-11:30 4A advisory Advisory",
+            "11:37-11:57 4B lunch Lunch",
+        ])
     }
 
     @Test func pairedConfigFallsBackToFullPeriodLunchWithoutABTables() throws {
@@ -83,9 +106,8 @@ import Foundation
         let map = try TestSupport.map(#"{"Late Arrival": ["9/14/2026"]}"#)
         let timeline = resolveDay(day(2026, 9, 14),
                                   inputs: TestSupport.inputs(map: map, config: config))
-        let lines = TestSupport.lines(timeline)
-        #expect(lines.contains("12:20-12:55 4 lunch Lunch"))
-        // Lunch wins the whole period; advisory must not also claim period 4.
-        #expect(!lines.contains { $0.contains(" advisory ") })
+        // Lunch wins the whole period; period 4 is exactly one full lunch block,
+        // with no advisory half also claiming it.
+        #expect(periodFourLines(timeline) == ["12:20-12:55 4 lunch Lunch"])
     }
 }
