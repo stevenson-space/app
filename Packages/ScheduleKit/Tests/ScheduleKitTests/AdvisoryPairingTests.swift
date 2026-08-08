@@ -57,6 +57,23 @@ import Foundation
         #expect(lines.contains("11:37-11:57 4B lunch Lunch"))
     }
 
+    @Test func advisoryIsSuppressedOnFridaysAndLunchFillsThePeriod() {
+        var config = UserConfig()
+        config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a) // advisory 4A ⇒ lunch 4B
+
+        // Friday, Sep 18 2026 — a standard A/B day, but advisory doesn't meet.
+        let friday = resolveDay(day(2026, 9, 18), inputs: TestSupport.inputs(config: config))
+        let lines = TestSupport.lines(friday)
+        #expect(lines.contains("11:10-11:57 4 lunch Lunch"))
+        #expect(!lines.contains { $0.contains(" advisory ") })
+
+        // Thursday still splits into advisory + lunch halves.
+        let thursday = resolveDay(day(2026, 9, 17), inputs: TestSupport.inputs(config: config))
+        let thursdayLines = TestSupport.lines(thursday)
+        #expect(thursdayLines.contains("11:10-11:30 4A advisory Advisory"))
+        #expect(thursdayLines.contains("11:37-11:57 4B lunch Lunch"))
+    }
+
     @Test func pairedConfigFallsBackToFullPeriodLunchWithoutABTables() throws {
         // Late Arrival has no A/B subdivisions: the shared period renders as a
         // full-period lunch (lunch-wins backstop), matching the lunch spec.

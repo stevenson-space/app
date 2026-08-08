@@ -169,6 +169,8 @@ import Foundation
         let friday = day(2026, 9, 18)
         let planned = NotificationPlanner.plan(
             days: timelines(friday, 1, map: map), prefs: prefs, now: earlyMorning(friday))
+        // Guard against a vacuous pass: the scenario must actually plan alerts.
+        #expect(!planned.isEmpty)
         for notification in planned {
             #expect(NotificationPlanner.identifierPrefixes.contains {
                 notification.identifier.hasPrefix($0)

@@ -9,9 +9,9 @@ import ScheduleKit
 final class NotificationScheduler {
     static let shared = NotificationScheduler()
     private var lastPlanHash: Int?
-    /// Bumped on every `reschedule` entry. Work captured under an older value
-    /// bails at the next `await` so only the latest plan mutates the queue.
-    private var rescheduleGeneration = 0
+    /// The most recent reschedule pass. A new pass awaits this before touching
+    /// the center, so passes never interleave.
+    private var inFlight: Task<Void, Never>?
 
     func ensureAuthorization() async -> Bool {
         let center = UNUserNotificationCenter.current()
@@ -28,18 +28,32 @@ final class NotificationScheduler {
 
     func reschedule(days: [DayTimeline], prefs: NotificationPrefs, now: Date,
                     timeFormat: TimeFormatPref = .system) async {
+        // Chain onto the previous pass and run to completion before the next one
+        // begins. A generation flag alone can't fix this: an older pass suspended
+        // inside `center.add` would still commit that request *after* a newer pass
+        // cleared the queue, leaving a stale notification pending. Serializing the
+        // whole pass guarantees a newer removeAll always follows the older adds.
+        let previous = inFlight
+        let task = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self else { return }
+            await self.performReschedule(days: days, prefs: prefs, now: now, timeFormat: timeFormat)
+        }
+        inFlight = task
+        await task.value
+    }
+
+    private func performReschedule(days: [DayTimeline], prefs: NotificationPrefs, now: Date,
+                                   timeFormat: TimeFormatPref) async {
         let center = UNUserNotificationCenter.current()
-        rescheduleGeneration &+= 1
-        let generation = rescheduleGeneration
 
         guard prefs.anyEnabled else {
             await removeAllOurs(center)
-            if generation == rescheduleGeneration { lastPlanHash = nil }
+            lastPlanHash = nil
             return
         }
 
         let settings = await center.notificationSettings()
-        guard generation == rescheduleGeneration else { return }
         guard [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) else {
             return
         }
@@ -54,7 +68,6 @@ final class NotificationScheduler {
         // Full replace on change: at most 56 adds, and the hash short-circuit
         // makes the no-op path (app foregrounding with nothing changed) free.
         await removeAllOurs(center)
-        guard generation == rescheduleGeneration else { return }
 
         var allSucceeded = true
         for notification in planned {
@@ -77,8 +90,6 @@ final class NotificationScheduler {
             } catch {
                 allSucceeded = false
             }
-            // A newer plan superseded us mid-add; let it own the final state.
-            guard generation == rescheduleGeneration else { return }
         }
         // Only record the hash when the whole plan landed, so a partial failure
         // is retried on the next call rather than masked as up-to-date.

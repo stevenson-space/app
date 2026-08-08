@@ -19,6 +19,10 @@ public actor ScheduleSyncService {
 
     private let store: SharedStore
     private let session: URLSession
+    /// Bumped by `invalidateETag`. A `refresh` snapshots it at the start and
+    /// drops its response if the value changed mid-flight, so a request built
+    /// with a now-stale ETag/URL can't commit over the invalidation.
+    private var invalidationGeneration = 0
 
     public init(store: SharedStore, session: URLSession? = nil) {
         self.store = store
@@ -41,6 +45,10 @@ public actor ScheduleSyncService {
     @discardableResult
     public func refresh(force: Bool, now: Date = Date()) async -> SyncResult {
         var metadata = store.fetchMetadata
+        // Snapshot now: if an ETag invalidation lands while this request is in
+        // flight, the response reflects a stale ETag/source and must be dropped
+        // without committing (the queued forced refresh does the real work).
+        let generation = invalidationGeneration
 
         if !force, let lastAttempt = metadata.lastAttempt,
            now.timeIntervalSince(lastAttempt) < Self.throttleInterval,
@@ -57,6 +65,7 @@ public actor ScheduleSyncService {
 
         do {
             let (byteStream, response) = try await session.bytes(for: request)
+            guard generation == invalidationGeneration else { return .notModified }
             guard let http = response as? HTTPURLResponse else {
                 throw URLError(.badServerResponse)
             }
@@ -79,6 +88,7 @@ public actor ScheduleSyncService {
                 // Bound the body before materializing it: abort as soon as the
                 // stream exceeds the parser's limit instead of buffering it all.
                 let data = try await collectBody(byteStream, limit: ScheduleDatesParser.maxBytes)
+                guard generation == invalidationGeneration else { return .notModified }
                 // Validate before committing — this is the last-good guarantee.
                 _ = try ScheduleDatesParser.parse(data)
                 let changed = data != store.cachedMapData
@@ -98,6 +108,9 @@ public actor ScheduleSyncService {
                 return .failed("HTTP \(http.statusCode)")
             }
         } catch {
+            // A superseded attempt records nothing — don't stamp a failure over
+            // the invalidation.
+            guard generation == invalidationGeneration else { return .notModified }
             let message = (error as? ParserError)?.description ?? error.localizedDescription
             metadata.lastError = message
             store.fetchMetadata = metadata
@@ -106,9 +119,10 @@ public actor ScheduleSyncService {
     }
 
     /// Clears the stored conditional-request ETag from inside the actor, so the
-    /// next refresh re-downloads in full. Serialized with `refresh`, unlike a
-    /// direct store write from the outside.
+    /// next refresh re-downloads in full. Bumps the invalidation generation so an
+    /// in-flight refresh can't re-commit the ETag it's about to clear.
     public func invalidateETag() {
+        invalidationGeneration &+= 1
         var metadata = store.fetchMetadata
         metadata.etag = nil
         store.fetchMetadata = metadata

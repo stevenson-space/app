@@ -156,8 +156,13 @@ private func schoolTimeline(day: DayKey, family: BellFamily, rotation: EDRotatio
 
 /// Applies the user's lunch/advisory assignment, free periods, and custom
 /// names to a bell table for a specific day, producing concrete instants.
-func personalizedBlocks(schedule: BellSchedule, config: UserConfig,
+func personalizedBlocks(schedule: BellSchedule, config rawConfig: UserConfig,
                         day: DayKey, calendar: Calendar) -> [ResolvedBlock] {
+    // Advisory (freshman) doesn't meet on Fridays; the period it shares with
+    // lunch becomes a full-period lunch. Resolve it here so Home and the
+    // notification planner see the same shape (no phantom advisory half, no
+    // advisory-ending alert).
+    let config = fridayAdvisoryAdjusted(rawConfig, day: day, calendar: calendar)
     var resolved: [ResolvedBlock] = []
 
     for block in schedule.fullBlocks {
@@ -202,6 +207,19 @@ func personalizedBlocks(schedule: BellSchedule, config: UserConfig,
     }
 
     return resolved
+}
+
+/// Advisory doesn't meet on Fridays: drop it and expand the paired lunch to the
+/// whole shared period. Other weekdays and non-advisory configs pass through
+/// untouched. Only the resolved timeline changes — the stored config is intact.
+func fridayAdvisoryAdjusted(_ config: UserConfig, day: DayKey, calendar: Calendar) -> UserConfig {
+    // Gregorian weekday: Sunday = 1 … Friday = 6 … Saturday = 7.
+    guard let advisory = config.advisory,
+          day.weekday(calendar: calendar) == 6 else { return config }
+    var adjusted = config
+    adjusted.advisory = nil
+    adjusted.lunch = SplitAssignment(basePeriod: advisory.basePeriod, choice: .full)
+    return adjusted
 }
 
 private func halfRole(half: Half?, lunch: SplitAssignment?, advisory: SplitAssignment?,
