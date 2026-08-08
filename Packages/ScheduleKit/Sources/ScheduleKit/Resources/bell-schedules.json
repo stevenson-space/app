@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "source": "School Schedules.md — verified current for 2026-27 by the maintainer",
+  "schedules": [
+    {
+      "id": "standard",
+      "family": "standard",
+      "displayName": "Standard Schedule",
+      "fullBlocks": [
+        { "period": "1", "start": "8:30", "end": "9:21" },
+        { "period": "2", "start": "9:26", "end": "10:13" },
+        { "period": "3", "start": "10:18", "end": "11:05" },
+        { "period": "4", "start": "11:10", "end": "11:57" },
+        { "period": "5", "start": "12:02", "end": "12:49" },
+        { "period": "6", "start": "12:54", "end": "13:41" },
+        { "period": "7", "start": "13:46", "end": "14:33" },
+        { "period": "8", "start": "14:38", "end": "15:25" }
+      ],
+      "abBlocks": [
+        { "period": "1", "half": "A", "start": "8:30", "end": "8:54" },
+        { "period": "1", "half": "B", "start": "9:01", "end": "9:21" },
+        { "period": "2", "half": "A", "start": "9:26", "end": "9:46" },
+        { "period": "2", "half": "B", "start": "9:53", "end": "10:13" },
+        { "period": "3", "half": "A", "start": "10:18", "end": "10:38" },
+        { "period": "3", "half": "B", "start": "10:45", "end": "11:05" },
+        { "period": "4", "half": "A", "start": "11:10", "end": "11:30" },
+        { "period": "4", "half": "B", "start": "11:37", "end": "11:57" },
+        { "period": "5", "half": "A", "start": "12:02", "end": "12:22" },
+        { "period": "5", "half": "B", "start": "12:29", "end": "12:49" },
+        { "period": "6", "half": "A", "start": "12:54", "end": "13:14" },
+        { "period": "6", "half": "B", "start": "13:21", "end": "13:41" },
+        { "period": "7", "half": "A", "start": "13:46", "end": "14:06" },
+        { "period": "7", "half": "B", "start": "14:13", "end": "14:33" },
+        { "period": "8", "half": "A", "start": "14:38", "end": "14:58" },
+        { "period": "8", "half": "B", "start": "15:05", "end": "15:25" }
+      ]
+    },
+    {
+      "id": "lateArrival",
+      "family": "lateArrival",
+      "displayName": "Late Arrival",
+      "fullBlocks": [
+        { "period": "1", "start": "10:30", "end": "11:05" },
+        { "period": "2", "start": "11:10", "end": "11:40" },
+        { "period": "3", "start": "11:45", "end": "12:15" },
+        { "period": "4", "start": "12:20", "end": "12:55" },
+        { "period": "5", "start": "13:00", "end": "13:35" },
+        { "period": "6", "start": "13:40", "end": "14:15" },
+        { "period": "7", "start": "14:20", "end": "14:50" },
+        { "period": "8", "start": "14:55", "end": "15:25" }
+      ]
+    },
+    {
+      "id": "odyssey",
+      "family": "odyssey",
+      "displayName": "Odyssey",
+      "fullBlocks": [
+        { "period": "homeroom", "start": "10:15", "end": "10:25" },
+        { "period": "1", "start": "10:35", "end": "11:25" },
+        { "period": "2", "start": "11:35", "end": "12:25" },
+        { "period": "3", "start": "12:35", "end": "13:25" },
+        { "period": "4", "start": "13:35", "end": "14:25" },
+        { "period": "5", "start": "14:35", "end": "15:25" }
+      ]
+    },
+    {
+      "id": "activityPeriod",
+      "family": "activityPeriod",
+      "displayName": "Activity Period",
+      "fullBlocks": [
+        { "period": "1", "start": "8:30", "end": "9:15" },
+        { "period": "2", "start": "9:20", "end": "10:01" },
+        { "period": "activity", "start": "10:06", "end": "10:49" },
+        { "period": "3", "start": "10:54", "end": "11:35" },
+        { "period": "4", "start": "11:40", "end": "12:21" },
+        { "period": "5", "start": "12:26", "end": "13:07" },
+        { "period": "6", "start": "13:12", "end": "13:53" },
+        { "period": "7", "start": "13:58", "end": "14:39" },
+        { "period": "8", "start": "14:44", "end": "15:25" }
+      ],
+      "abBlocks": [
+        { "period": "1", "half": "A", "start": "8:30", "end": "8:51" },
+        { "period": "1", "half": "B", "start": "8:58", "end": "9:15" },
+        { "period": "2", "half": "A", "start": "9:20", "end": "9:37" },
+        { "period": "2", "half": "B", "start": "9:44", "end": "10:01" },
+        { "period": "3", "half": "A", "start": "10:54", "end": "11:11" },
+        { "period": "3", "half": "B", "start": "11:18", "end": "11:35" },
+        { "period": "4", "half": "A", "start": "11:40", "end": "11:57" },
+        { "period": "4", "half": "B", "start": "12:04", "end": "12:21" },
+        { "period": "5", "half": "A", "start": "12:26", "end": "12:43" },
+        { "period": "5", "half": "B", "start": "12:50", "end": "13:07" },
+        { "period": "6", "half": "A", "start": "13:12", "end": "13:29" },
+        { "period": "6", "half": "B", "start": "13:36", "end": "13:53" },
+        { "period": "7", "half": "A", "start": "13:58", "end": "14:15" },
+        { "period": "7", "half": "B", "start": "14:22", "end": "14:39" },
+        { "period": "8", "half": "A", "start": "14:44", "end": "15:01" },
+        { "period": "8", "half": "B", "start": "15:08", "end": "15:25" }
+      ]
+    },
+    {
+      "id": "pmAssembly",
+      "family": "pmAssembly",
+      "displayName": "PM Assembly",
+      "fullBlocks": [
+        { "period": "1", "start": "8:30", "end": "9:15" },
+        { "period": "2", "start": "9:20", "end": "10:01" },
+        { "period": "3", "start": "10:06", "end": "10:47" },
+        { "period": "4", "start": "10:52", "end": "11:33" },
+        { "period": "5", "start": "11:38", "end": "12:19" },
+        { "period": "6", "start": "12:24", "end": "13:05" },
+        { "period": "7", "start": "13:10", "end": "13:51" },
+        { "period": "8", "start": "13:56", "end": "14:37" },
+        { "period": "assembly", "start": "14:42", "end": "15:25" }
+      ],
+      "abBlocks": [
+        { "period": "1", "half": "A", "start": "8:30", "end": "8:51" },
+        { "period": "1", "half": "B", "start": "8:58", "end": "9:15" },
+        { "period": "2", "half": "A", "start": "9:20", "end": "9:37" },
+        { "period": "2", "half": "B", "start": "9:44", "end": "10:01" },
+        { "period": "3", "half": "A", "start": "10:06", "end": "10:23" },
+        { "period": "3", "half": "B", "start": "10:30", "end": "10:47" },
+        { "period": "4", "half": "A", "start": "10:52", "end": "11:09" },
+        { "period": "4", "half": "B", "start": "11:16", "end": "11:33" },
+        { "period": "5", "half": "A", "start": "11:38", "end": "11:55" },
+        { "period": "5", "half": "B", "start": "12:02", "end": "12:19" },
+        { "period": "6", "half": "A", "start": "12:24", "end": "12:41" },
+        { "period": "6", "half": "B", "start": "12:48", "end": "13:05" },
+        { "period": "7", "half": "A", "start": "13:10", "end": "13:27" },
+        { "period": "7", "half": "B", "start": "13:34", "end": "13:51" },
+        { "period": "8", "half": "A", "start": "13:56", "end": "14:13" },
+        { "period": "8", "half": "B", "start": "14:20", "end": "14:37" }
+      ]
+    },
+    {
+      "id": "earlyDismissal1",
+      "family": "earlyDismissal",
+      "rotation": 1,
+      "displayName": "Early Dismissal",
+      "fullBlocks": [
+        { "period": "6", "start": "8:30", "end": "9:10" },
+        { "period": "2", "start": "9:20", "end": "10:00" },
+        { "period": "3", "start": "10:10", "end": "10:50" },
+        { "period": "4", "start": "11:00", "end": "11:40" },
+        { "period": "makeup", "start": "11:40", "end": "12:30" }
+      ]
+    },
+    {
+      "id": "earlyDismissal2",
+      "family": "earlyDismissal",
+      "rotation": 2,
+      "displayName": "Early Dismissal",
+      "fullBlocks": [
+        { "period": "5", "start": "8:30", "end": "9:10" },
+        { "period": "1", "start": "9:20", "end": "10:00" },
+        { "period": "7", "start": "10:10", "end": "10:50" },
+        { "period": "8", "start": "11:00", "end": "11:40" },
+        { "period": "makeup", "start": "11:40", "end": "12:30" }
+      ]
+    },
+    {
+      "id": "summer",
+      "family": "summer",
+      "displayName": "Summer School",
+      "fullBlocks": [
+        { "period": "summer", "start": "7:45", "end": "12:50" }
+      ]
+    }
+  ]
+}
