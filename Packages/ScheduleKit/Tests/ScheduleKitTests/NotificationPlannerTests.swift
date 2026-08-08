@@ -163,9 +163,9 @@ import Foundation
         #expect(planned.count == 3)
     }
 
-    @Test func identifiersAreStableAndPrefixed() {
+    @Test func identifiersAreStableAndPrefixed() throws {
         let prefs = NotificationPrefs(blockEndEnabled: true, morningEnabled: true)
-        let map = try? TestSupport.map(#"{"Late Arrival": ["9/18/2026"]}"#)
+        let map = try TestSupport.map(#"{"Late Arrival": ["9/18/2026"]}"#)
         let friday = day(2026, 9, 18)
         let planned = NotificationPlanner.plan(
             days: timelines(friday, 1, map: map), prefs: prefs, now: earlyMorning(friday))

@@ -131,21 +131,27 @@ import Foundation
     }
 
     @Test func nonSchoolKindsPassThrough() throws {
-        #expect(momentState(at: Date(), in: resolveDay(day(2026, 9, 19), inputs: TestSupport.inputs())) == .weekend)
-        #expect(momentState(at: Date(), in: resolveDay(day(2026, 12, 23), inputs: TestSupport.inputs()))
+        #expect(momentState(at: TestSupport.at(day(2026, 9, 19), 12, 0),
+                            in: resolveDay(day(2026, 9, 19), inputs: TestSupport.inputs())) == .weekend)
+        #expect(momentState(at: TestSupport.at(day(2026, 12, 23), 12, 0),
+                            in: resolveDay(day(2026, 12, 23), inputs: TestSupport.inputs()))
                 == .breakDay(label: "Winter Break"))
-        #expect(momentState(at: Date(), in: resolveDay(day(2026, 7, 31), inputs: TestSupport.inputs())) == .outsideYear)
+        #expect(momentState(at: TestSupport.at(day(2026, 7, 31), 12, 0),
+                            in: resolveDay(day(2026, 7, 31), inputs: TestSupport.inputs())) == .outsideYear)
 
         let asyncMap = try TestSupport.map(#"{"Asynchronous": ["11/13/2026"]}"#)
-        #expect(momentState(at: Date(), in: resolveDay(day(2026, 11, 13), inputs: TestSupport.inputs(map: asyncMap)))
+        #expect(momentState(at: TestSupport.at(day(2026, 11, 13), 12, 0),
+                            in: resolveDay(day(2026, 11, 13), inputs: TestSupport.inputs(map: asyncMap)))
                 == .asynchronous)
 
         let noSchoolMap = try TestSupport.map(#"{"No School": ["11/25/2026"]}"#)
-        #expect(momentState(at: Date(), in: resolveDay(day(2026, 11, 25), inputs: TestSupport.inputs(map: noSchoolMap)))
+        #expect(momentState(at: TestSupport.at(day(2026, 11, 25), 12, 0),
+                            in: resolveDay(day(2026, 11, 25), inputs: TestSupport.inputs(map: noSchoolMap)))
                 == .noSchool)
 
         let unknownMap = try TestSupport.map(#"{"Mystery": ["10/6/2026"]}"#)
-        #expect(momentState(at: Date(), in: resolveDay(day(2026, 10, 6), inputs: TestSupport.inputs(map: unknownMap)))
+        #expect(momentState(at: TestSupport.at(day(2026, 10, 6), 12, 0),
+                            in: resolveDay(day(2026, 10, 6), inputs: TestSupport.inputs(map: unknownMap)))
                 == .unknownSchedule(name: "Mystery"))
     }
 

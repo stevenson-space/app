@@ -56,19 +56,29 @@ public actor ScheduleSyncService {
         }
 
         do {
-            let (data, response) = try await session.data(for: request)
+            let (byteStream, response) = try await session.bytes(for: request)
             guard let http = response as? HTTPURLResponse else {
                 throw URLError(.badServerResponse)
             }
 
             switch http.statusCode {
             case 304:
+                // A 304 is only meaningful if we still hold the payload it refers
+                // to; if the cache is gone, drop the ETag and refetch in full.
+                guard store.cachedMapData != nil else {
+                    metadata.etag = nil
+                    store.fetchMetadata = metadata
+                    return await refresh(force: true, now: now)
+                }
                 metadata.lastSuccess = now
                 metadata.lastError = nil
                 store.fetchMetadata = metadata
                 return .notModified
 
             case 200:
+                // Bound the body before materializing it: abort as soon as the
+                // stream exceeds the parser's limit instead of buffering it all.
+                let data = try await collectBody(byteStream, limit: ScheduleDatesParser.maxBytes)
                 // Validate before committing — this is the last-good guarantee.
                 _ = try ScheduleDatesParser.parse(data)
                 let changed = data != store.cachedMapData
@@ -93,5 +103,26 @@ public actor ScheduleSyncService {
             store.fetchMetadata = metadata
             return .failed(message)
         }
+    }
+
+    /// Clears the stored conditional-request ETag from inside the actor, so the
+    /// next refresh re-downloads in full. Serialized with `refresh`, unlike a
+    /// direct store write from the outside.
+    public func invalidateETag() {
+        var metadata = store.fetchMetadata
+        metadata.etag = nil
+        store.fetchMetadata = metadata
+    }
+
+    /// Accumulates a byte stream into `Data`, throwing `ParserError.tooLarge` the
+    /// moment it would exceed `limit` — the payload is never fully buffered if
+    /// it's oversized.
+    private func collectBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
+        var data = Data()
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count > limit { throw ParserError.tooLarge(bytes: data.count) }
+        }
+        return data
     }
 }

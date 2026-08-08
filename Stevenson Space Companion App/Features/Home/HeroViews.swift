@@ -187,7 +187,7 @@ struct AfterSchoolHero: View {
             Text("Done for today")
                 .font(.title2.bold())
             if let next {
-                NextSchoolDayCard(next: next, today: today)
+                NextSchoolDayCard(next: next, today: today, pref: pref)
             }
         }
         .frame(maxWidth: .infinity)
@@ -199,6 +199,7 @@ struct AfterSchoolHero: View {
 struct NextSchoolDayCard: View {
     let next: DayTimeline
     let today: DayKey
+    var pref: TimeFormatPref = .system
 
     var body: some View {
         let accent = ScheduleStyle.accent(for: next.family)
@@ -220,7 +221,7 @@ struct NextSchoolDayCard: View {
             }
             Spacer()
             if let firstBell = next.firstBell {
-                Text(TimeDisplay.time(firstBell, .system))
+                Text(TimeDisplay.time(firstBell, pref))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
             }

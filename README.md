@@ -6,7 +6,7 @@ days the normal times are wrong (Late Arrival, finals, assemblies, e-learning da
 
 ## Architecture
 
-```
+```text
 Packages/ScheduleKit/          All schedule logic — no UI, no clock access.
   Sources/ScheduleKit/
     Models/                    PeriodID, DayKey, Block, BellSchedule, UserConfig, DayTimeline…

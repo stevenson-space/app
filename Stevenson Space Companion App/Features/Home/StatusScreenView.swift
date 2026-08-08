@@ -40,7 +40,7 @@ struct StatusScreenView: View {
                     Text("NEXT SCHOOL DAY")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.tertiary)
-                    NextSchoolDayCard(next: next, today: model.today)
+                    NextSchoolDayCard(next: next, today: model.today, pref: model.config.timeFormat)
                 }
                 .padding(.top, 12)
             }
@@ -57,7 +57,7 @@ struct StatusScreenView: View {
                     Text("School starts in **\(days) day\(days == 1 ? "" : "s")**")
                         .font(.title3)
                 }
-                NextSchoolDayCard(next: next, today: model.today)
+                NextSchoolDayCard(next: next, today: model.today, pref: model.config.timeFormat)
             }
             .padding(.top, 12)
         } else {

@@ -5,6 +5,7 @@ public enum CatalogError: Error, CustomStringConvertible, Equatable {
     case emptySchedule(scheduleID: String)
     case invalidOrdering(scheduleID: String, detail: String)
     case invalidHalves(scheduleID: String, detail: String)
+    case invalidRotation(scheduleID: String, value: Int)
     case duplicateID(String)
 
     public var description: String {
@@ -13,6 +14,7 @@ public enum CatalogError: Error, CustomStringConvertible, Equatable {
         case .emptySchedule(let id): return "\(id): no blocks"
         case .invalidOrdering(let id, let detail): return "\(id): \(detail)"
         case .invalidHalves(let id, let detail): return "\(id): \(detail)"
+        case .invalidRotation(let id, let value): return "\(id): unsupported rotation \(value)"
         case .duplicateID(let id): return "duplicate schedule id '\(id)'"
         }
     }
@@ -34,10 +36,19 @@ public struct BellScheduleCatalog: Sendable {
         for dto in file.schedules {
             let full = try dto.fullBlocks.map { try $0.block(scheduleID: dto.id) }
             let ab = try (dto.abBlocks ?? []).map { try $0.block(scheduleID: dto.id) }
+            // A present rotation must be one we support — an unknown value (e.g.
+            // rotation 3) is bad bundled data, not a silent nil.
+            var rotation: EDRotation?
+            if let raw = dto.rotation {
+                guard let parsed = EDRotation(rawValue: raw) else {
+                    throw CatalogError.invalidRotation(scheduleID: dto.id, value: raw)
+                }
+                rotation = parsed
+            }
             schedules.append(BellSchedule(
                 id: dto.id,
                 family: dto.family,
-                rotation: dto.rotation.flatMap(EDRotation.init(rawValue:)),
+                rotation: rotation,
                 displayName: dto.displayName,
                 fullBlocks: full,
                 abBlocks: ab))

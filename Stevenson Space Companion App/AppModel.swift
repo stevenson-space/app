@@ -87,7 +87,7 @@ final class AppModel {
             catalog: catalog)
         self.todayTimeline = resolveDay(today, inputs: inputs)
 
-        self.nextSchoolDay = findNextSchoolDay(after: today)
+        self.nextSchoolDay = cachedNextSchoolDay(after: today)
         updateCurrentSpan()
 
         dayChangeObserver = NotificationCenter.default.addObserver(
@@ -141,8 +141,31 @@ final class AppModel {
         let today = self.today
         lastComputedDay = today
         todayTimeline = timeline(for: today)
-        nextSchoolDay = findNextSchoolDay(after: today)
+        nextSchoolDay = cachedNextSchoolDay(after: today)
         updateCurrentSpan()
+    }
+
+    /// The next-school-day *search* depends only on the day, the synced map, and
+    /// overrides — never on personalization — so the found `DayKey` is cached and
+    /// only the (up-to-450-day) scan is skipped. The single re-resolve keeps the
+    /// returned timeline fresh when config changes.
+    private struct NextDayCache {
+        let today: DayKey
+        let map: DayTypeMap?
+        let overrides: [DayOverride]
+        let foundDay: DayKey?
+    }
+    private var nextDayCache: NextDayCache?
+
+    private func cachedNextSchoolDay(after today: DayKey) -> DayTimeline? {
+        if let cache = nextDayCache, cache.today == today,
+           cache.map == map, cache.overrides == overrides {
+            return cache.foundDay.map { timeline(for: $0) }
+        }
+        let found = findNextSchoolDay(after: today)
+        nextDayCache = NextDayCache(today: today, map: map,
+                                    overrides: overrides, foundDay: found?.day)
+        return found
     }
 
     /// Called once per second by the hero's TimelineView. Cheap: a state
@@ -204,6 +227,11 @@ final class AppModel {
     }
 
     func setOverride(day: DayKey, type: OverrideType) {
+        // Re-selecting the same override is a no-op — skip the store write and
+        // the resolve/reschedule churn it would trigger.
+        if let existing = overrides.first(where: { $0.day == day }), existing.type == type {
+            return
+        }
         overrides.removeAll { $0.day == day }
         overrides.append(DayOverride(day: day, type: type))
         overrides.sort { $0.day < $1.day }
@@ -234,15 +262,38 @@ final class AppModel {
     }
 
     private func invalidateETagAndResync() {
-        var metadata = store.fetchMetadata
-        metadata.etag = nil
-        store.fetchMetadata = metadata
-        fetchMetadata = metadata
-        Task { await sync(force: true) }
+        Task {
+            // Clear the ETag inside the sync actor (serialized with refresh),
+            // then queue a forced resync rather than mutating the store directly.
+            await syncService.invalidateETag()
+            fetchMetadata = store.fetchMetadata
+            await sync(force: true)
+        }
     }
 
+    private var pendingSync: Task<Void, Never>?
+    private var syncGeneration = 0
+
     func sync(force: Bool) async {
-        guard !isSyncing else { return }
+        // Coalesce onto any in-flight sync. A non-forced request is satisfied by
+        // the one already running; a forced request waits its turn and then runs,
+        // so a URL/ETag change is queued instead of discarded.
+        if let inFlight = pendingSync {
+            await inFlight.value
+            if !force { return }
+        }
+        syncGeneration += 1
+        let generation = syncGeneration
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.performSync(force: force)
+        }
+        pendingSync = task
+        await task.value
+        if syncGeneration == generation { pendingSync = nil }
+    }
+
+    private func performSync(force: Bool) async {
         isSyncing = true
         defer { isSyncing = false }
 
@@ -317,8 +368,10 @@ final class AppModel {
         let days = (0..<14).map { timeline(for: today.advanced(by: $0)) }
         let prefs = self.prefs
         let now = self.now()
+        let timeFormat = config.timeFormat
         Task {
-            await NotificationScheduler.shared.reschedule(days: days, prefs: prefs, now: now)
+            await NotificationScheduler.shared.reschedule(
+                days: days, prefs: prefs, now: now, timeFormat: timeFormat)
         }
     }
 }

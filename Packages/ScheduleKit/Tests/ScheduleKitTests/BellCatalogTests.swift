@@ -93,6 +93,18 @@ import Foundation
         }
     }
 
+    @Test func rejectsUnsupportedRotation() {
+        // Early Dismissal only defines rotations 1 and 2; rotation 3 is bad data
+        // and must fail conversion rather than silently becoming a nil rotation.
+        let bad = """
+        {"schedules":[{"id":"ed3","family":"earlyDismissal","rotation":3,"displayName":"ED",
+        "fullBlocks":[{"period":"1","start":"8:30","end":"9:21"}]}]}
+        """
+        #expect(throws: CatalogError.self) {
+            _ = try BellScheduleCatalog(data: Data(bad.utf8))
+        }
+    }
+
     @Test func rejectsHalvesThatDontTileParent() {
         let bad = """
         {"schedules":[{"id":"x","family":"standard","displayName":"X",

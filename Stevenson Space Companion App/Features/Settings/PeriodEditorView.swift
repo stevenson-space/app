@@ -59,7 +59,9 @@ struct PeriodDetailView: View {
         Form {
             Section("Class") {
                 TextField("Class name (e.g. AP Biology)", text: $name)
+                    .onSubmit { save() }
                 TextField("Room", text: $room)
+                    .onSubmit { save() }
             }
             Section {
                 Toggle("Free period", isOn: $isFree)
@@ -76,9 +78,10 @@ struct PeriodDetailView: View {
             room = customization?.room ?? ""
             isFree = model.config.freePeriods.contains(number)
         }
-        .onChange(of: name) { save() }
-        .onChange(of: room) { save() }
+        // Text edits persist on commit or when the editor closes — not on every
+        // keystroke, which would fire a store write + reschedule per character.
         .onChange(of: isFree) { save() }
+        .onDisappear { save() }
     }
 
     private func save() {

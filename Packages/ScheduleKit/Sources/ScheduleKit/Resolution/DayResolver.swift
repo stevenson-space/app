@@ -206,9 +206,22 @@ func personalizedBlocks(schedule: BellSchedule, config: UserConfig,
 
 private func halfRole(half: Half?, lunch: SplitAssignment?, advisory: SplitAssignment?,
                       number: Int, config: UserConfig) -> BlockRole {
-    if let lunch, half?.rawValue == lunch.choice.rawValue { return .lunch }
-    if let advisory, half?.rawValue == advisory.choice.rawValue { return .advisory }
+    if let half {
+        if let lunch, lunch.choice.matches(half) { return .lunch }
+        if let advisory, advisory.choice.matches(half) { return .advisory }
+    }
     return config.freePeriods.contains(number) ? .free : .classPeriod
+}
+
+private extension HalfChoice {
+    /// Whether this placement occupies the given A/B half. `.full` matches
+    /// neither — it's resolved before halves are considered.
+    func matches(_ half: Half) -> Bool {
+        switch (self, half) {
+        case (.a, .a), (.b, .b): return true
+        default: return false
+        }
+    }
 }
 
 private func specialRole(_ id: PeriodID) -> BlockRole {

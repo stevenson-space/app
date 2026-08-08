@@ -50,10 +50,14 @@ struct OverrideEditorView: View {
     }
 
     private var dateRange: ClosedRange<Date> {
-        let year = SchoolYearCatalog.years.first!
-        let start = year.firstDay.date() ?? Date()
-        let end = year.lastDay.date(at: HourMinute(hour: 23, minute: 59)) ?? Date()
-        return start...end
+        guard let firstYear = SchoolYearCatalog.years.first,
+              let lastYear = SchoolYearCatalog.years.last else {
+            let now = Date()
+            return now...now
+        }
+        let start = firstYear.firstDay.date() ?? Date()
+        let end = lastYear.lastDay.date(at: HourMinute(hour: 23, minute: 59)) ?? Date()
+        return start <= end ? start...end : end...start
     }
 
     private var selectedDay: DayKey { DayKey(date: selectedDate) }

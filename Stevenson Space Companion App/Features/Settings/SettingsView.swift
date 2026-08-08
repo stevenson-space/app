@@ -171,6 +171,10 @@ struct SettingsView: View {
             if model.prefs.morningEnabled {
                 DatePicker("Alert time", selection: morningTimeBinding,
                            displayedComponents: .hourAndMinute)
+                    // Pin to Chicago so the displayed hour matches the stored
+                    // HourMinute regardless of the device's own timezone.
+                    .environment(\.calendar, SchoolTime.calendar)
+                    .environment(\.timeZone, SchoolTime.timeZone)
             }
         } header: {
             Text("Notifications")
@@ -451,7 +455,7 @@ struct DeveloperSection: View {
     }
 }
 
-/// DEBUG-only inspector proving the 64-slot budget and identifier scheme.
+/// DEBUG-only inspector proving the 56-slot budget and identifier scheme.
 struct PendingNotificationsView: View {
     @State private var items: [NotificationScheduler.PendingItem] = []
     @State private var loaded = false

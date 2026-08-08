@@ -15,7 +15,8 @@ public struct NotificationPrefs: Equatable, Sendable {
                 morningEnabled: Bool = false,
                 morningTime: HourMinute = HourMinute(hour: 7, minute: 0)) {
         self.blockEndEnabled = blockEndEnabled
-        self.blockEndLeadMinutes = blockEndLeadMinutes
+        // A negative lead would schedule an alert after the block ends; floor at 0.
+        self.blockEndLeadMinutes = max(0, blockEndLeadMinutes)
         self.morningEnabled = morningEnabled
         self.morningTime = morningTime
     }
@@ -31,7 +32,7 @@ extension NotificationPrefs: Codable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         blockEndEnabled = try c.decodeIfPresent(Bool.self, forKey: .blockEndEnabled) ?? false
-        blockEndLeadMinutes = try c.decodeIfPresent(Int.self, forKey: .blockEndLeadMinutes) ?? 5
+        blockEndLeadMinutes = max(0, try c.decodeIfPresent(Int.self, forKey: .blockEndLeadMinutes) ?? 5)
         morningEnabled = try c.decodeIfPresent(Bool.self, forKey: .morningEnabled) ?? false
         morningTime = try c.decodeIfPresent(HourMinute.self, forKey: .morningTime)
             ?? HourMinute(hour: 7, minute: 0)

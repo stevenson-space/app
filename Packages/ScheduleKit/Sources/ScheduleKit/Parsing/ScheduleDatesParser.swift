@@ -156,8 +156,12 @@ public enum ScheduleDatesParser {
     // MARK: - Date parsing
 
     static func parseSpan(_ raw: String) -> DateSpan? {
-        // Dates contain "/" only, so "-" safely separates range endpoints.
-        let parts = raw.split(separator: "-").map { $0.trimmingCharacters(in: .whitespaces) }
+        // Dates contain "/" only, so "-" safely separates range endpoints. Fold
+        // en/em dashes to the ASCII hyphen first so a "12/18–12/19" range splits.
+        let normalized = raw
+            .replacingOccurrences(of: "–", with: "-")
+            .replacingOccurrences(of: "—", with: "-")
+        let parts = normalized.split(separator: "-").map { $0.trimmingCharacters(in: .whitespaces) }
         switch parts.count {
         case 1:
             guard let day = parseDay(parts[0]) else { return nil }

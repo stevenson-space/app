@@ -182,6 +182,20 @@ final class StubURLProtocol: URLProtocol {
         #expect(store.fetchMetadata.lastError == "HTTP 500")
     }
 
+    @Test func transportErrorRecordsFailureAndKeepsCache() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        store.cachedMapData = validJSON
+        let transportError = URLError(.notConnectedToInternet)
+        StubURLProtocol.handler = { _ in throw transportError }
+
+        let result = await makeService(store).refresh(force: true)
+        #expect(result == .failed(transportError.localizedDescription))
+        #expect(store.cachedMapData == validJSON)
+        #expect(store.fetchMetadata.lastError != nil)
+        #expect(store.fetchMetadata.lastSuccess == nil)
+    }
+
     @Test func byteIdenticalContentIsNotModified() async {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }

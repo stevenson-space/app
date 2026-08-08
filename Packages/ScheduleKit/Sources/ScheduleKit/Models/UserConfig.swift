@@ -82,6 +82,9 @@ extension UserConfig {
     public var hasAdvisory: Bool { advisory != nil }
 
     public mutating func setPairedAdvisory(basePeriod: Int, advisoryHalf: Half) {
+        // Advisory/lunch only live in periods 4–6; ignore out-of-range requests
+        // rather than persisting an impossible placement.
+        guard (4...6).contains(basePeriod) else { return }
         let advisoryChoice: HalfChoice = advisoryHalf == .a ? .a : .b
         let lunchChoice: HalfChoice = advisoryHalf == .a ? .b : .a
         advisory = SplitAssignment(basePeriod: basePeriod, choice: advisoryChoice)

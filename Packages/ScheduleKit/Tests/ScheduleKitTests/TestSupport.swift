@@ -32,8 +32,10 @@ enum TestSupport {
     /// "08:30-08:54 4A lunch Lunch"
     static func lines(_ timeline: DayTimeline) -> [String] {
         let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = SchoolTime.timeZone
+        formatter.dateFormat = "HH:mm"
         return timeline.blocks.map { block in
             "\(formatter.string(from: block.start))-\(formatter.string(from: block.end)) " +
             "\(block.id) \(block.role.rawValue) \(block.displayName)"

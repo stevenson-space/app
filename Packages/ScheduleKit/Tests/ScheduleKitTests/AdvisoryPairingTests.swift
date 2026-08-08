@@ -19,6 +19,18 @@ import Foundation
         #expect(config.lunch == SplitAssignment(basePeriod: 5, choice: .b))
     }
 
+    @Test func outOfRangeBasePeriodIsRejected() {
+        var config = UserConfig()
+        // Below the 4–6 window.
+        config.setPairedAdvisory(basePeriod: 3, advisoryHalf: .a)
+        #expect(config.advisory == nil)
+        #expect(config.lunch == nil)
+        // Above the 4–6 window.
+        config.setPairedAdvisory(basePeriod: 7, advisoryHalf: .b)
+        #expect(config.advisory == nil)
+        #expect(config.lunch == nil)
+    }
+
     @Test func repairingMovesBothAssignmentsTogether() {
         var config = UserConfig(lunch: SplitAssignment(basePeriod: 6, choice: .full))
         config.setPairedAdvisory(basePeriod: 5, advisoryHalf: .b)
@@ -56,5 +68,7 @@ import Foundation
                                   inputs: TestSupport.inputs(map: map, config: config))
         let lines = TestSupport.lines(timeline)
         #expect(lines.contains("12:20-12:55 4 lunch Lunch"))
+        // Lunch wins the whole period; advisory must not also claim period 4.
+        #expect(!lines.contains { $0.contains(" advisory ") })
     }
 }

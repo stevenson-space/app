@@ -9,6 +9,9 @@ import ScheduleKit
 final class NotificationScheduler {
     static let shared = NotificationScheduler()
     private var lastPlanHash: Int?
+    /// Bumped on every `reschedule` entry. Work captured under an older value
+    /// bails at the next `await` so only the latest plan mutates the queue.
+    private var rescheduleGeneration = 0
 
     func ensureAuthorization() async -> Bool {
         let center = UNUserNotificationCenter.current()
@@ -23,21 +26,26 @@ final class NotificationScheduler {
         }
     }
 
-    func reschedule(days: [DayTimeline], prefs: NotificationPrefs, now: Date) async {
+    func reschedule(days: [DayTimeline], prefs: NotificationPrefs, now: Date,
+                    timeFormat: TimeFormatPref = .system) async {
         let center = UNUserNotificationCenter.current()
+        rescheduleGeneration &+= 1
+        let generation = rescheduleGeneration
 
         guard prefs.anyEnabled else {
             await removeAllOurs(center)
-            lastPlanHash = nil
+            if generation == rescheduleGeneration { lastPlanHash = nil }
             return
         }
 
         let settings = await center.notificationSettings()
+        guard generation == rescheduleGeneration else { return }
         guard [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) else {
             return
         }
 
-        let planned = NotificationPlanner.plan(days: days, prefs: prefs, now: now)
+        let planned = NotificationPlanner.plan(days: days, prefs: prefs, now: now,
+                                               timeFormat: timeFormat)
         var hasher = Hasher()
         hasher.combine(planned)
         let planHash = hasher.finalize()
@@ -46,6 +54,9 @@ final class NotificationScheduler {
         // Full replace on change: at most 56 adds, and the hash short-circuit
         // makes the no-op path (app foregrounding with nothing changed) free.
         await removeAllOurs(center)
+        guard generation == rescheduleGeneration else { return }
+
+        var allSucceeded = true
         for notification in planned {
             guard let fire = notification.fireDate() else { continue }
             var components = SchoolTime.calendar.dateComponents(
@@ -61,9 +72,17 @@ final class NotificationScheduler {
                 identifier: notification.identifier,
                 content: content,
                 trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))
-            try? await center.add(request)
+            do {
+                try await center.add(request)
+            } catch {
+                allSucceeded = false
+            }
+            // A newer plan superseded us mid-add; let it own the final state.
+            guard generation == rescheduleGeneration else { return }
         }
-        lastPlanHash = planHash
+        // Only record the hash when the whole plan landed, so a partial failure
+        // is retried on the next call rather than masked as up-to-date.
+        lastPlanHash = allSucceeded ? planHash : nil
     }
 
     private func removeAllOurs(_ center: UNUserNotificationCenter) async {

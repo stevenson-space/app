@@ -33,6 +33,7 @@ public enum NotificationPlanner {
     public static func plan(days: [DayTimeline],
                             prefs: NotificationPrefs,
                             now: Date,
+                            timeFormat: TimeFormatPref = .twelveHour,
                             budget: Int = defaultBudget,
                             calendar: Calendar = SchoolTime.calendar) -> [PlannedNotification] {
         guard prefs.anyEnabled else { return [] }
@@ -42,7 +43,7 @@ public enum NotificationPlanner {
         for timeline in days.sorted(by: { $0.day < $1.day }) {
             var bundle: [PlannedNotification] = []
 
-            if prefs.morningEnabled, let morning = morningAlert(for: timeline, prefs: prefs) {
+            if prefs.morningEnabled, let morning = morningAlert(for: timeline, prefs: prefs, timeFormat: timeFormat) {
                 if let fire = morning.fireDate(calendar: calendar), fire > now {
                     bundle.append(morning)
                 }
@@ -59,7 +60,7 @@ public enum NotificationPlanner {
                     let next = timeline.moments.dropFirst(index + 1).first { $0.role.isAttended }
                     let nextLine: String
                     if let next {
-                        nextLine = "Next: \(next.displayName) at \(Self.timeString(next.start))"
+                        nextLine = "Next: \(next.displayName) at \(Self.timeString(next.start, timeFormat))"
                     } else {
                         nextLine = "Last block of the day"
                     }
@@ -96,7 +97,8 @@ public enum NotificationPlanner {
     /// non-standard bell schedules and async days. Holidays, breaks, and
     /// weekends stay silent — a 7 AM "no school" alert is how apps get deleted.
     private static func morningAlert(for timeline: DayTimeline,
-                                     prefs: NotificationPrefs) -> PlannedNotification? {
+                                     prefs: NotificationPrefs,
+                                     timeFormat: TimeFormatPref) -> PlannedNotification? {
         let identifier = "morning.\(timeline.day)"
         switch timeline.kind {
         case .school where !timeline.isStandardSchedule:
@@ -106,7 +108,7 @@ public enum NotificationPlanner {
             }
             let body: String
             if let first = timeline.moments.first {
-                body = "\(first.displayName) starts at \(Self.timeString(first.start))."
+                body = "\(first.displayName) starts at \(Self.timeString(first.start, timeFormat))."
             } else {
                 body = "Check the app for today's schedule."
             }
@@ -122,11 +124,30 @@ public enum NotificationPlanner {
         }
     }
 
-    private static func timeString(_ date: Date) -> String {
+    private static func makeFormatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
+        formatter.dateFormat = format
         formatter.timeZone = SchoolTime.timeZone
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter.string(from: date)
+        return formatter
+    }
+
+    private static let twelveHourFormatter = makeFormatter("h:mm a")
+    private static let twentyFourHourFormatter = makeFormatter("H:mm")
+
+    private static func uses24Hour(_ pref: TimeFormatPref) -> Bool {
+        switch pref {
+        case .twentyFourHour: return true
+        case .twelveHour: return false
+        case .system:
+            return DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current)?
+                .contains("H") ?? false
+        }
+    }
+
+    /// Mirrors the app's `TimeDisplay.time` rule so notification bodies match
+    /// what Home shows; reuses static formatters rather than building one per call.
+    private static func timeString(_ date: Date, _ pref: TimeFormatPref) -> String {
+        (uses24Hour(pref) ? twentyFourHourFormatter : twelveHourFormatter).string(from: date)
     }
 }
