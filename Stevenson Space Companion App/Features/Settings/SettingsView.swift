@@ -90,7 +90,7 @@ struct SettingsView: View {
 
                 if let lunch = model.config.lunch {
                     LabeledContent("Lunch") {
-                        Text("\(lunch.displayName) · automatic")
+                        Text(lunch.displayName)
                     }
                 }
             } else {
