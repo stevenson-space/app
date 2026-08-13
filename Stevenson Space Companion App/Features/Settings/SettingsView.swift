@@ -235,6 +235,14 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section("Appearance") {
+            Picker("Color scheme", selection: Binding(
+                get: { model.config.appearance },
+                set: { newValue in model.updateConfig { $0.appearance = newValue } })) {
+                ForEach(AppearancePref.allCases, id: \.self) { pref in
+                    Text(pref.displayName).tag(pref)
+                }
+            }
+
             Picker("Time format", selection: Binding(
                 get: { model.config.timeFormat },
                 set: { newValue in model.updateConfig { $0.timeFormat = newValue } })) {
