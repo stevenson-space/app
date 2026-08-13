@@ -17,6 +17,7 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         var config = UserConfig(lunch: SplitAssignment(basePeriod: 5, choice: .b))
         config.freePeriods = [7]
         config.customizations["3"] = PeriodCustomization(name: "AP Bio", room: "214")
+        config.appearance = .dark
         store.userConfig = config
         #expect(store.userConfig == config)
     }
@@ -59,6 +60,7 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(config.lunch == SplitAssignment(basePeriod: 4, choice: .a))
         #expect(config.freePeriods.isEmpty)
         #expect(config.timeFormat == .system)
+        #expect(config.appearance == .system)
 
         defaults.set(Data(#"{"blockEndEnabled":true}"#.utf8), forKey: "sk.notificationPrefs")
         let prefs = store.notificationPrefs
