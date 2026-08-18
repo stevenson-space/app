@@ -14,6 +14,20 @@ public enum TimeFormatPref: String, Codable, CaseIterable, Sendable {
     }
 }
 
+public enum AppearancePref: String, Codable, CaseIterable, Sendable {
+    case system
+    case light
+    case dark
+
+    public var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+}
+
 public struct PeriodCustomization: Codable, Equatable, Sendable {
     public var name: String?
     public var room: String?
@@ -54,19 +68,22 @@ public struct UserConfig: Equatable, Sendable {
     public var customizations: [String: PeriodCustomization]
     public var hideFreePeriods: Bool
     public var timeFormat: TimeFormatPref
+    public var appearance: AppearancePref
 
     public init(lunch: SplitAssignment? = nil,
                 advisory: SplitAssignment? = nil,
                 freePeriods: Set<Int> = [],
                 customizations: [String: PeriodCustomization] = [:],
                 hideFreePeriods: Bool = false,
-                timeFormat: TimeFormatPref = .system) {
+                timeFormat: TimeFormatPref = .system,
+                appearance: AppearancePref = .system) {
         self.lunch = lunch
         self.advisory = advisory
         self.freePeriods = freePeriods
         self.customizations = customizations
         self.hideFreePeriods = hideFreePeriods
         self.timeFormat = timeFormat
+        self.appearance = appearance
     }
 
     public func customization(for id: PeriodID) -> PeriodCustomization? {
@@ -102,7 +119,7 @@ extension UserConfig {
 // fields are added.
 extension UserConfig: Codable {
     private enum CodingKeys: String, CodingKey {
-        case lunch, advisory, freePeriods, customizations, hideFreePeriods, timeFormat
+        case lunch, advisory, freePeriods, customizations, hideFreePeriods, timeFormat, appearance
     }
 
     public init(from decoder: Decoder) throws {
@@ -113,6 +130,7 @@ extension UserConfig: Codable {
         customizations = try c.decodeIfPresent([String: PeriodCustomization].self, forKey: .customizations) ?? [:]
         hideFreePeriods = try c.decodeIfPresent(Bool.self, forKey: .hideFreePeriods) ?? false
         timeFormat = try c.decodeIfPresent(TimeFormatPref.self, forKey: .timeFormat) ?? .system
+        appearance = try c.decodeIfPresent(AppearancePref.self, forKey: .appearance) ?? .system
     }
 }
 
