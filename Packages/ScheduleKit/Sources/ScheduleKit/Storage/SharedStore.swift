@@ -23,6 +23,7 @@ public final class SharedStore: @unchecked Sendable {
         static let mapURL = "sk.mapURL"
         static let lunchPromptDismissed = "sk.lunchPromptDismissed"
         static let migrated = "sk.migratedToAppGroup"
+        static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
                           notificationPrefs, mapURL, lunchPromptDismissed]
     }
@@ -39,6 +40,17 @@ public final class SharedStore: @unchecked Sendable {
         } else {
             self.init(defaults: .standard)
         }
+        retireCustomMapURLIfNeeded()
+    }
+
+    /// The in-app data-source editor (the only way to set or reset a custom
+    /// `mapURL`) was removed. Any URL it had persisted would otherwise stay
+    /// active forever with no recovery path. Drop it once so upgraded installs
+    /// return to the supported default source.
+    func retireCustomMapURLIfNeeded() {
+        guard !defaults.bool(forKey: Keys.mapURLRetired) else { return }
+        resetMapURL()
+        defaults.set(true, forKey: Keys.mapURLRetired)
     }
 
     /// Copies any pre-App-Group data from `.standard` into the suite, once.

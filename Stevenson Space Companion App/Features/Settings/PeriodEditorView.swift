@@ -65,8 +65,6 @@ struct PeriodDetailView: View {
             }
             Section {
                 Toggle("Free period", isOn: $isFree)
-            } footer: {
-                Text("Free periods aren't counted down. Back-to-back free periods merge into one block on the Home tab.")
             }
         }
         .navigationTitle("\(PeriodID.ordinal(number)) Period")

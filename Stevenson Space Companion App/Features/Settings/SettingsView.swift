@@ -90,7 +90,7 @@ struct SettingsView: View {
 
                 if let lunch = model.config.lunch {
                     LabeledContent("Lunch") {
-                        Text("\(lunch.displayName) · automatic")
+                        Text(lunch.displayName)
                     }
                 }
             } else {
@@ -129,12 +129,6 @@ struct SettingsView: View {
             }
         } header: {
             Text("Lunch & Advisory")
-        } footer: {
-            if model.config.hasAdvisory {
-                Text("Advisory and lunch split the same period: pick your advisory half and lunch automatically takes the other half. On schedules without A/B subdivisions the whole period shows as Lunch.")
-            } else {
-                Text("On days with A/B subdivisions your lunch shows during that half (e.g. 4A). On schedules without subdivisions — like Late Arrival — the whole period becomes lunch.")
-            }
         }
     }
 
@@ -182,8 +176,6 @@ struct SettingsView: View {
             if model.notificationAuthDenied {
                 Text("Notifications are turned off for this app in iOS Settings. Allow them there, then try again.")
                     .foregroundStyle(.orange)
-            } else {
-                Text("Off by default. Alerts are scheduled a few days ahead from the cached schedule; a same-morning change reaches them the next time the app opens.")
             }
         }
     }
@@ -243,6 +235,14 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section("Appearance") {
+            Picker("Color scheme", selection: Binding(
+                get: { model.config.appearance },
+                set: { newValue in model.updateConfig { $0.appearance = newValue } })) {
+                ForEach(AppearancePref.allCases, id: \.self) { pref in
+                    Text(pref.displayName).tag(pref)
+                }
+            }
+
             Picker("Time format", selection: Binding(
                 get: { model.config.timeFormat },
                 set: { newValue in model.updateConfig { $0.timeFormat = newValue } })) {
@@ -297,10 +297,6 @@ struct DataSyncSection: View {
                 }
             }
             .disabled(model.isSyncing)
-
-            NavigationLink("Data Source") {
-                DataSourceEditorView()
-            }
         } header: {
             Text("Data & Sync")
         } footer: {
@@ -311,56 +307,6 @@ struct DataSyncSection: View {
                 Text("Special-day data is shared with stevenson.space and cached for offline use.")
             }
         }
-    }
-}
-
-struct DataSourceEditorView: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
-    @State private var urlText = ""
-    @State private var validationMessage: String?
-
-    var body: some View {
-        Form {
-            Section {
-                TextField("Schedule dates URL", text: $urlText, axis: .vertical)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.footnote.monospaced())
-                Button("Save & Refresh") {
-                    save()
-                }
-                Button("Reset to Default") {
-                    model.resetMapURL()
-                    urlText = model.mapURL.absoluteString
-                    validationMessage = nil
-                }
-                .disabled(model.store.isUsingDefaultMapURL)
-            } header: {
-                Text("Remote Map")
-            } footer: {
-                if let validationMessage {
-                    Text(validationMessage).foregroundStyle(.red)
-                } else {
-                    Text("Must be an HTTPS URL returning the schedule-dates JSON. If a fetch fails or the file doesn't parse, the app keeps its last good copy.")
-                }
-            }
-        }
-        .navigationTitle("Data Source")
-        .onAppear { urlText = model.mapURL.absoluteString }
-    }
-
-    private func save() {
-        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed),
-              url.scheme?.lowercased() == "https",
-              url.host() != nil else {
-            validationMessage = "That doesn't look like a valid HTTPS URL."
-            return
-        }
-        model.setMapURL(url)
-        validationMessage = nil
-        dismiss()
     }
 }
 
