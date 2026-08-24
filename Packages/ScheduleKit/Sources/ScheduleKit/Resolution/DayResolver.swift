@@ -152,94 +152,133 @@ private func schoolTimeline(day: DayKey, family: BellFamily, rotation: EDRotatio
         moments: buildMoments(from: blocks))
 }
 
+// MARK: - Standard-day template
+
+/// The student's personalized *standard* day, independent of any real date —
+/// what the schedule editor shows and edits. Materialized on a fixed reference
+/// Monday so advisory is not Friday-collapsed; only the wall-clock components
+/// of the returned blocks are meaningful.
+public func standardTemplate(config: UserConfig,
+                             catalog: BellScheduleCatalog,
+                             calendar: Calendar = SchoolTime.calendar) -> [ResolvedBlock] {
+    guard let schedule = catalog.schedule(family: .standard, rotation: nil) else { return [] }
+    // 2001-01-01 is a Monday.
+    let referenceMonday = DayKey(year: 2001, month: 1, day: 1)
+    return personalizedBlocks(schedule: schedule, config: config,
+                              day: referenceMonday, calendar: calendar)
+}
+
 // MARK: - Personalization
 
-/// Applies the user's lunch/advisory assignment, free periods, and custom
-/// names to a bell table for a specific day, producing concrete instants.
+/// Applies the user's period plans (classes, 1½-period extensions, lunch,
+/// advisory, free halves) and custom names to a bell table for a specific day,
+/// producing concrete instants.
+///
+/// On splittable schedules, contiguous class slots sharing an anchor merge
+/// into one block (chemistry 2–3A is one continuous class; the internal bell
+/// doesn't apply to it). Schedules without A/B tables resolve one block per
+/// period with the safe-direction precedence `lunch > advisory > class > free`,
+/// and never merge — on a finals day the app can't know which slot hosts a
+/// 1½-period class's final.
 func personalizedBlocks(schedule: BellSchedule, config rawConfig: UserConfig,
                         day: DayKey, calendar: Calendar) -> [ResolvedBlock] {
-    // Advisory (freshman) doesn't meet on Fridays; the period it shares with
-    // lunch becomes a full-period lunch. Resolve it here so Home and the
-    // notification planner see the same shape (no phantom advisory half, no
-    // advisory-ending alert).
+    // Advisory (freshman) doesn't meet on Fridays; its slots become lunch, so
+    // a paired period collapses to one full-period lunch. Resolve it here so
+    // Home and the notification planner see the same shape.
     let config = fridayAdvisoryAdjusted(rawConfig, day: day, calendar: calendar)
     var resolved: [ResolvedBlock] = []
+    // Run of contiguous class slots sharing one anchor, awaiting merge.
+    var pendingRun: [(block: Block, anchor: Int)] = []
+
+    func flushRun() {
+        if let block = makeClassBlock(run: pendingRun, config: config,
+                                      day: day, calendar: calendar) {
+            resolved.append(block)
+        }
+        pendingRun = []
+    }
+
+    func appendToRun(_ block: Block, anchor: Int) {
+        if let last = pendingRun.last, last.anchor != anchor {
+            flushRun()
+        }
+        pendingRun.append((block, anchor))
+    }
+
+    func emit(_ block: Block, role: BlockRole, namingID: PeriodID? = nil) {
+        flushRun()
+        if let made = makeBlock(for: block, role: role, namingID: namingID,
+                                config: config, day: day, calendar: calendar) {
+            resolved.append(made)
+        }
+    }
 
     for block in schedule.fullBlocks {
         guard let number = block.id.periodNumber else {
-            resolved.append(contentsOf: makeBlocks(for: block, role: specialRole(block.id),
-                                                   config: config, day: day, calendar: calendar))
+            emit(block, role: specialRole(block.id))
             continue
         }
 
-        let lunchHere = config.lunch?.basePeriod == number ? config.lunch : nil
-        let advisoryHere = config.advisory?.basePeriod == number ? config.advisory : nil
-
-        // Full-period assignments (or A/B assignments on days with no A/B
-        // tables) take the whole period. Lunch wins any misconfigured tie.
+        let plan = config.plan(for: number)
         let halves = schedule.abBlocks(forPeriod: number)
-        let canSplit = halves.count == 2
 
-        if let lunch = lunchHere, lunch.choice == .full || !canSplit {
-            resolved.append(contentsOf: makeBlocks(for: block, role: .lunch,
-                                                   config: config, day: day, calendar: calendar))
-            continue
-        }
-        if let advisory = advisoryHere, lunchHere == nil, advisory.choice == .full || !canSplit {
-            resolved.append(contentsOf: makeBlocks(for: block, role: .advisory,
-                                                   config: config, day: day, calendar: calendar))
-            continue
-        }
-
-        if canSplit, lunchHere != nil || advisoryHere != nil {
-            for halfBlock in halves {
-                let role = halfRole(half: halfBlock.half, lunch: lunchHere,
-                                    advisory: advisoryHere, number: number, config: config)
-                resolved.append(contentsOf: makeBlocks(for: halfBlock, role: role,
-                                                       config: config, day: day, calendar: calendar))
+        guard halves.count == 2 else {
+            // No A/B tables: one block, precedence lunch > advisory > class > free.
+            if plan.a == .lunch || plan.b == .lunch {
+                emit(block, role: .lunch)
+            } else if plan.a == .advisory || plan.b == .advisory {
+                emit(block, role: .advisory)
+            } else if let anchor = plan.a.classAnchor ?? plan.b.classAnchor {
+                emit(block, role: .classPeriod, namingID: .period(anchor))
+            } else {
+                emit(block, role: .free)
             }
             continue
         }
 
-        let role: BlockRole = config.freePeriods.contains(number) ? .free : .classPeriod
-        resolved.append(contentsOf: makeBlocks(for: block, role: role,
-                                               config: config, day: day, calendar: calendar))
+        if plan.isUniform {
+            // Both halves agree: the whole period is one thing, at the full
+            // block's times (which already span the internal gap).
+            switch plan.a {
+            case .classSlot(let anchor): appendToRun(block, anchor: anchor)
+            case .lunch: emit(block, role: .lunch)
+            case .advisory: emit(block, role: .advisory)
+            case .free: emit(block, role: .free)
+            }
+            continue
+        }
+
+        for halfBlock in halves {
+            guard let half = halfBlock.half else { continue }
+            switch plan.slot(half) {
+            case .classSlot(let anchor): appendToRun(halfBlock, anchor: anchor)
+            case .lunch: emit(halfBlock, role: .lunch)
+            case .advisory: emit(halfBlock, role: .advisory)
+            case .free: emit(halfBlock, role: .free)
+            }
+        }
     }
 
+    flushRun()
     return resolved
 }
 
-/// Advisory doesn't meet on Fridays: drop it and expand the paired lunch to the
-/// whole shared period. Other weekdays and non-advisory configs pass through
-/// untouched. Only the resolved timeline changes — the stored config is intact.
+/// Advisory doesn't meet on Fridays: every advisory slot becomes lunch, so the
+/// paired half-lunch expands to the whole shared period. Other weekdays and
+/// non-advisory configs pass through untouched. Only the resolved timeline
+/// changes — the stored config is intact.
 func fridayAdvisoryAdjusted(_ config: UserConfig, day: DayKey, calendar: Calendar) -> UserConfig {
     // Gregorian weekday: Sunday = 1 … Friday = 6 … Saturday = 7.
-    guard let advisory = config.advisory,
-          day.weekday(calendar: calendar) == 6 else { return config }
+    guard day.weekday(calendar: calendar) == 6 else { return config }
     var adjusted = config
-    adjusted.advisory = nil
-    adjusted.lunch = SplitAssignment(basePeriod: advisory.basePeriod, choice: .full)
+    for period in UserConfig.periodRange {
+        var plan = adjusted.plan(for: period)
+        var changed = false
+        if plan.a == .advisory { plan.a = .lunch; changed = true }
+        if plan.b == .advisory { plan.b = .lunch; changed = true }
+        if changed { adjusted.setPlan(plan, for: period) }
+    }
     return adjusted
-}
-
-private func halfRole(half: Half?, lunch: SplitAssignment?, advisory: SplitAssignment?,
-                      number: Int, config: UserConfig) -> BlockRole {
-    if let half {
-        if let lunch, lunch.choice.matches(half) { return .lunch }
-        if let advisory, advisory.choice.matches(half) { return .advisory }
-    }
-    return config.freePeriods.contains(number) ? .free : .classPeriod
-}
-
-private extension HalfChoice {
-    /// Whether this placement occupies the given A/B half. `.full` matches
-    /// neither — it's resolved before halves are considered.
-    func matches(_ half: Half) -> Bool {
-        switch (self, half) {
-        case (.a, .a), (.b, .b): return true
-        default: return false
-        }
-    }
 }
 
 private func specialRole(_ id: PeriodID) -> BlockRole {
@@ -253,13 +292,52 @@ private func specialRole(_ id: PeriodID) -> BlockRole {
     }
 }
 
-private func makeBlocks(for block: Block, role: BlockRole, config: UserConfig,
-                        day: DayKey, calendar: Calendar) -> [ResolvedBlock] {
+/// The display id of one bell-table row ("4", "4A").
+private func rowID(_ block: Block) -> String {
+    block.id.storageKey + (block.half?.rawValue ?? "")
+}
+
+/// One or more contiguous class rows sharing an anchor → a single block. A
+/// one-row run reproduces the legacy shape exactly (id "4" or "4B"); a longer
+/// run spans from the first row's start to the last row's end, absorbing the
+/// internal passing gaps the student sits through.
+private func makeClassBlock(run: [(block: Block, anchor: Int)], config: UserConfig,
+                            day: DayKey, calendar: Calendar) -> ResolvedBlock? {
+    guard let first = run.first, let last = run.last,
+          let start = day.date(at: first.block.start, calendar: calendar),
+          let end = day.date(at: last.block.end, calendar: calendar),
+          start < end else { return nil }
+
+    let anchorID = PeriodID.period(first.anchor)
+    let customization = config.customization(for: anchorID)
+    let id = run.map { rowID($0.block) }.joined(separator: "+")
+    let spanLabel: String?
+    let half: Half?
+    if run.count == 1 {
+        spanLabel = first.block.half.map { _ in rowID(first.block) }
+        half = first.block.half
+    } else {
+        spanLabel = "\(rowID(first.block))–\(rowID(last.block))"
+        half = nil
+    }
+
+    return ResolvedBlock(
+        id: id, periodID: anchorID, half: half, role: .classPeriod,
+        displayName: customization?.name?.nilIfEmpty ?? anchorID.defaultDisplayName,
+        room: customization?.room?.nilIfEmpty,
+        spanLabel: spanLabel, start: start, end: end)
+}
+
+/// A single non-class row. `namingID` overrides which period's customization
+/// names the block (a class period on a non-splittable day is named after the
+/// class's anchor, not its own number).
+private func makeBlock(for block: Block, role: BlockRole, namingID: PeriodID? = nil,
+                       config: UserConfig, day: DayKey, calendar: Calendar) -> ResolvedBlock? {
     guard let start = day.date(at: block.start, calendar: calendar),
           let end = day.date(at: block.end, calendar: calendar),
-          start < end else { return [] }
+          start < end else { return nil }
 
-    let customization = config.customization(for: block.id)
+    let customization = config.customization(for: namingID ?? block.id)
     let displayName: String
     let room: String?
     switch role {
@@ -270,16 +348,21 @@ private func makeBlocks(for block: Block, role: BlockRole, config: UserConfig,
         displayName = "Advisory"
         room = nil
     case .free:
-        displayName = customization?.name?.nilIfEmpty ?? "Free Period"
+        // Free time is anonymous. A stored name belongs to the period's class
+        // (kept for when the period becomes a class again) and never leaks
+        // onto the free block.
+        displayName = "Free Period"
         room = nil
     default:
-        displayName = customization?.name?.nilIfEmpty ?? block.id.defaultDisplayName
+        displayName = customization?.name?.nilIfEmpty ?? (namingID ?? block.id).defaultDisplayName
         room = customization?.room?.nilIfEmpty
     }
 
-    let id = block.id.storageKey + (block.half?.rawValue ?? "")
-    return [ResolvedBlock(id: id, periodID: block.id, half: block.half, role: role,
-                          displayName: displayName, room: room, start: start, end: end)]
+    return ResolvedBlock(id: rowID(block), periodID: block.id,
+                         customizationID: namingID, half: block.half,
+                         role: role, displayName: displayName, room: room,
+                         spanLabel: block.half.map { _ in rowID(block) },
+                         start: start, end: end)
 }
 
 // MARK: - Moment building

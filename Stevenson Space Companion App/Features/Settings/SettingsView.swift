@@ -8,7 +8,6 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 myScheduleSection
-                middaySection
                 notificationsSection
                 overrideSection
                 DataSyncSection()
@@ -25,115 +24,20 @@ struct SettingsView: View {
     // MARK: - My schedule
 
     private var myScheduleSection: some View {
-        Section("My Schedule") {
+        Section {
             NavigationLink {
                 PeriodEditorListView()
             } label: {
-                Label("Periods & Classes", systemImage: "book")
+                Label("My Schedule", systemImage: "book")
             }
             Toggle("Hide free periods in the list", isOn: Binding(
                 get: { model.config.hideFreePeriods },
                 set: { newValue in model.updateConfig { $0.hideFreePeriods = newValue } }))
-        }
-    }
-
-    // MARK: - Lunch & Advisory
-
-    /// One combined section. Advisory (freshmen only) is never placed
-    /// independently: choosing an advisory half automatically puts lunch in
-    /// the other half of the same period — advisory 4A ⇒ lunch 4B.
-    private var middaySection: some View {
-        Section {
-            Toggle("I have Advisory (freshmen)", isOn: Binding(
-                get: { model.config.hasAdvisory },
-                set: { hasAdvisory in
-                    model.updateConfig { config in
-                        if hasAdvisory {
-                            // Seed from the existing lunch choice where possible:
-                            // keep the lunch half, advisory takes the other.
-                            let base = config.lunch?.basePeriod
-                            let period = (base.map { (4...6).contains($0) } == true) ? base! : 4
-                            let advisoryHalf: Half = config.lunch?.choice == .a ? .b : .a
-                            config.setPairedAdvisory(basePeriod: period, advisoryHalf: advisoryHalf)
-                        } else {
-                            config.clearAdvisory()
-                        }
-                    }
-                }))
-
-            if model.config.hasAdvisory {
-                Picker("Advisory period", selection: Binding(
-                    get: { model.config.advisory?.basePeriod ?? 4 },
-                    set: { newPeriod in
-                        model.updateConfig { config in
-                            config.setPairedAdvisory(basePeriod: newPeriod,
-                                                     advisoryHalf: advisoryHalf(of: config))
-                        }
-                    })) {
-                    ForEach([4, 5, 6], id: \.self) { period in
-                        Text("Period \(period)").tag(period)
-                    }
-                }
-
-                Picker("Advisory half", selection: Binding(
-                    get: { advisoryHalf(of: model.config) },
-                    set: { newHalf in
-                        model.updateConfig { config in
-                            config.setPairedAdvisory(
-                                basePeriod: config.advisory?.basePeriod ?? 4,
-                                advisoryHalf: newHalf)
-                        }
-                    })) {
-                    Text("A (first half)").tag(Half.a)
-                    Text("B (second half)").tag(Half.b)
-                }
-
-                if let lunch = model.config.lunch {
-                    LabeledContent("Lunch") {
-                        Text(lunch.displayName)
-                    }
-                }
-            } else {
-                Picker("Lunch period", selection: Binding(
-                    get: { model.config.lunch?.basePeriod },
-                    set: { newValue in
-                        model.updateConfig { config in
-                            if let newValue {
-                                let choice = config.lunch?.choice ?? .a
-                                config.lunch = SplitAssignment(basePeriod: newValue, choice: choice)
-                            } else {
-                                config.lunch = nil
-                            }
-                        }
-                    })) {
-                    Text("Not set").tag(Int?.none)
-                    ForEach([4, 5, 6], id: \.self) { period in
-                        Text("Period \(period)").tag(Int?.some(period))
-                    }
-                }
-
-                if model.config.lunch != nil {
-                    Picker("Lunch wave", selection: Binding(
-                        get: { model.config.lunch?.choice ?? .a },
-                        set: { newValue in
-                            model.updateConfig { config in
-                                config.lunch?.choice = newValue
-                            }
-                        })) {
-                        ForEach(HalfChoice.allCases, id: \.self) { choice in
-                            Text(choice.displayName).tag(choice)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-            }
         } header: {
-            Text("Lunch & Advisory")
+            Text("My Schedule")
+        } footer: {
+            Text("Classes, 1½-period labs, lunch, advisory, and free periods all live there — tap any card to change it.")
         }
-    }
-
-    private func advisoryHalf(of config: UserConfig) -> Half {
-        config.advisory?.choice == .b ? .b : .a
     }
 
     // MARK: - Notifications
