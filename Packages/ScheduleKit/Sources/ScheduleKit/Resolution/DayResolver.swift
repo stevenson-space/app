@@ -358,7 +358,8 @@ private func makeBlock(for block: Block, role: BlockRole, namingID: PeriodID? = 
         room = customization?.room?.nilIfEmpty
     }
 
-    return ResolvedBlock(id: rowID(block), periodID: block.id, half: block.half,
+    return ResolvedBlock(id: rowID(block), periodID: block.id,
+                         customizationID: namingID, half: block.half,
                          role: role, displayName: displayName, room: room,
                          spanLabel: block.half.map { _ in rowID(block) },
                          start: start, end: end)

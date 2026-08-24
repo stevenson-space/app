@@ -176,6 +176,10 @@ import Foundation
         let period3 = t.blocks.first { $0.id == "3" }
         #expect(period3?.displayName == "AP Chemistry")
         #expect(period3?.role == .classPeriod)
+        // Physical identity stays period 3 for passing-state logic, while
+        // customization (including the user-selected emoji) follows anchor 2.
+        #expect(period3?.periodID == .period(3))
+        #expect(period3?.customizationID == .period(2))
         let period2 = t.blocks.first { $0.id == "2" }
         #expect(period2?.displayName == "AP Chemistry")
     }

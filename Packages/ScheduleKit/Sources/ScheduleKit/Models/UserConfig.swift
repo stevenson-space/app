@@ -285,6 +285,9 @@ public struct UserConfig: Equatable, Sendable {
         set {
             let current = freePeriods
             for period in newValue.subtracting(current) {
+                // If this period anchors a 1½-period class, freeing the
+                // anchor must also remove its continuation next door.
+                retractClassClaims(anchor: period)
                 setPlan(PeriodPlan(a: .free, b: .free), for: period)
             }
             for period in current.subtracting(newValue) {

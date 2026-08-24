@@ -64,7 +64,7 @@ enum ScheduleStyle {
     /// use their role defaults.
     static func emoji(for block: ResolvedBlock, config: UserConfig) -> String {
         if block.role == .classPeriod,
-           let custom = config.customization(for: block.periodID)?.emoji?.nilIfBlank {
+           let custom = config.customization(for: block.customizationID)?.emoji?.nilIfBlank {
             return custom
         }
         return emoji(for: block.role, name: block.displayName)
