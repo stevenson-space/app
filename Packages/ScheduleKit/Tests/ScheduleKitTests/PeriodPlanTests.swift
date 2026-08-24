@@ -188,6 +188,17 @@ import Foundation
         #expect(config.periodPlans.isEmpty)
     }
 
+    @Test func freePeriodsSetterRetractsExtendedClassClaims() {
+        var config = UserConfig()
+        config.setClassLength(anchor: 4, .extendsForward)
+
+        config.freePeriods.insert(4)
+
+        #expect(config.plan(for: 4) == PeriodPlan(a: .free, b: .free))
+        #expect(config.plan(for: 5) == PeriodPlan(a: .free, b: .free))
+        #expect(config.classLength(anchor: 4) == .standard)
+    }
+
     // MARK: - Class extension helpers
 
     @Test func extendingAClassPaintsTheNextPeriodsFirstHalf() {

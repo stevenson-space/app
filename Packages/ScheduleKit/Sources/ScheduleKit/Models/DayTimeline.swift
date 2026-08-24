@@ -21,9 +21,13 @@ public struct ResolvedBlock: Identifiable, Hashable, Sendable {
     /// Stable within the day, e.g. "4", "4A", "2+3A", "makeup". Notification
     /// identifiers reuse it.
     public let id: String
-    /// Identity for customization/rotation purposes; a merged 1½-period class
-    /// carries its anchor period.
+    /// Underlying period identity used by the state machine for passing-period
+    /// classification. A merged 1½-period class carries its anchor period.
     public let periodID: PeriodID
+    /// Identity whose name, room, and emoji customization applies. This can
+    /// differ from `periodID` when a non-splittable schedule materializes a
+    /// continuation class in an adjacent physical period.
+    public let customizationID: PeriodID
     public let half: Half?
     public let role: BlockRole
     public let displayName: String
@@ -34,11 +38,13 @@ public struct ResolvedBlock: Identifiable, Hashable, Sendable {
     public let start: Date
     public let end: Date
 
-    public init(id: String, periodID: PeriodID, half: Half?, role: BlockRole,
+    public init(id: String, periodID: PeriodID, customizationID: PeriodID? = nil,
+                half: Half?, role: BlockRole,
                 displayName: String, room: String?, spanLabel: String? = nil,
                 start: Date, end: Date) {
         self.id = id
         self.periodID = periodID
+        self.customizationID = customizationID ?? periodID
         self.half = half
         self.role = role
         self.displayName = displayName
