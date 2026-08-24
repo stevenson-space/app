@@ -18,24 +18,38 @@ public enum BlockRole: String, Codable, Hashable, Sendable {
 /// One concrete personalized block on a specific day, with materialized instants.
 /// Intervals are half-open: [start, end).
 public struct ResolvedBlock: Identifiable, Hashable, Sendable {
-    /// Stable within the day, e.g. "4", "4A", "makeup". Notification identifiers reuse it.
+    /// Stable within the day, e.g. "4", "4A", "2+3A", "makeup". Notification
+    /// identifiers reuse it.
     public let id: String
+    /// Underlying period identity used by the state machine for passing-period
+    /// classification. A merged 1½-period class carries its anchor period.
     public let periodID: PeriodID
+    /// Identity whose name, room, and emoji customization applies. This can
+    /// differ from `periodID` when a non-splittable schedule materializes a
+    /// continuation class in an adjacent physical period.
+    public let customizationID: PeriodID
     public let half: Half?
     public let role: BlockRole
     public let displayName: String
     public let room: String?
+    /// UI capsule text: nil for a plain full period, "4A" for a half, and a
+    /// range like "2–3A" for a merged 1½-period class.
+    public let spanLabel: String?
     public let start: Date
     public let end: Date
 
-    public init(id: String, periodID: PeriodID, half: Half?, role: BlockRole,
-                displayName: String, room: String?, start: Date, end: Date) {
+    public init(id: String, periodID: PeriodID, customizationID: PeriodID? = nil,
+                half: Half?, role: BlockRole,
+                displayName: String, room: String?, spanLabel: String? = nil,
+                start: Date, end: Date) {
         self.id = id
         self.periodID = periodID
+        self.customizationID = customizationID ?? periodID
         self.half = half
         self.role = role
         self.displayName = displayName
         self.room = room
+        self.spanLabel = spanLabel
         self.start = start
         self.end = end
     }

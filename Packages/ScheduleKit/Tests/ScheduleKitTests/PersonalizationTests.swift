@@ -114,12 +114,14 @@ import Foundation
         #expect(lines.contains("13:46-14:33 7 free Free Period"))
     }
 
-    @Test func customNameAppliesToFreePeriodToo() {
+    @Test func freePeriodsIgnoreStoredClassNames() {
+        // A stored name belongs to the period's class (kept for when it
+        // returns); free time itself is always anonymous.
         let config = UserConfig(
             freePeriods: [7],
-            customizations: ["7": PeriodCustomization(name: "Study Hall")])
+            customizations: ["7": PeriodCustomization(name: "AP Chemistry")])
         let lines = TestSupport.lines(timeline(config))
-        #expect(lines.contains("13:46-14:33 7 free Study Hall"))
+        #expect(lines.contains("13:46-14:33 7 free Free Period"))
     }
 
     @Test func consecutiveFreePeriodsMergeIntoOneMoment() {

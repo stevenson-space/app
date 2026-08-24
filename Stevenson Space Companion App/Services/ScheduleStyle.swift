@@ -56,4 +56,65 @@ enum ScheduleStyle {
         case .summerSchool: return "sun.max.fill"
         }
     }
+
+    // MARK: - Card emoji
+
+    /// The emoji shown on a block's card. A stored emoji belongs to a class
+    /// (keyed by its anchor period); lunch, advisory, and free time always
+    /// use their role defaults.
+    static func emoji(for block: ResolvedBlock, config: UserConfig) -> String {
+        if block.role == .classPeriod,
+           let custom = config.customization(for: block.customizationID)?.emoji?.nilIfBlank {
+            return custom
+        }
+        return emoji(for: block.role, name: block.displayName)
+    }
+
+    static func emoji(for role: BlockRole, name: String?) -> String {
+        switch role {
+        case .lunch: return "🍔"
+        case .advisory: return "🧑‍🏫"
+        case .free: return "🥳"
+        case .homeroom: return "🏠"
+        case .activity: return "🎯"
+        case .assembly: return "📣"
+        case .makeup: return "✏️"
+        case .summerSchool: return "☀️"
+        case .classPeriod: return subjectEmoji(name)
+        }
+    }
+
+    /// Best-effort subject guess from the class name; 📚 when nothing matches.
+    static func subjectEmoji(_ name: String?) -> String {
+        guard let name = name?.lowercased() else { return "📚" }
+        let words = name.split(whereSeparator: { !$0.isLetter })
+        // Short keywords match whole words ("art" must not fire inside
+        // "earth"); longer ones and phrases match anywhere ("precalculus").
+        func matches(_ keyword: String) -> Bool {
+            switch keyword.count {
+            case ...2: return words.contains { String($0) == keyword }
+            case 3: return words.contains { $0.hasPrefix(keyword) }
+            default: return name.contains(keyword)
+            }
+        }
+        let map: [(keywords: [String], emoji: String)] = [
+            (["physics"], "⚛️"),
+            (["computer", "programming", "software", "comp sci"], "💻"),
+            (["chem"], "🧪"),
+            (["bio", "anatomy"], "🧬"),
+            (["statistic"], "📊"),
+            (["calc", "math", "algebra", "geometry"], "📐"),
+            (["gov", "history", "econ", "civic"], "🏛️"),
+            (["engineer", "robotic"], "⚙️"),
+            (["spanish", "french", "german", "chinese", "japanese", "latin", "language"], "🌍"),
+            (["art", "design", "photo"], "🎨"),
+            (["music", "band", "orchestra", "choir"], "🎵"),
+            (["gym", "wellness", "fitness", "physical ed", "pe"], "🏃"),
+            (["english", "literature", "writing", "comp"], "📚"),
+        ]
+        for entry in map where entry.keywords.contains(where: matches) {
+            return entry.emoji
+        }
+        return "📚"
+    }
 }
