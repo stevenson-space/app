@@ -54,6 +54,16 @@ enum TimeDisplay {
         return "\(twelveHourShort.string(from: start)) – \(twelveHourShort.string(from: end))"
     }
 
+    /// "In 14h 9m" / "In 12m" / "Now" — the upcoming-block chip.
+    static func untilChip(_ seconds: TimeInterval) -> String {
+        let total = max(Int(seconds), 0)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        if hours > 0 { return "In \(hours)h \(minutes)m" }
+        if minutes > 0 { return "In \(minutes)m" }
+        return "Now"
+    }
+
     /// "42:07" under an hour, "1:02:33" above.
     static func countdown(_ seconds: TimeInterval) -> String {
         let total = max(Int(seconds.rounded(.down)), 0)
