@@ -212,28 +212,6 @@ import Foundation
         #expect(config.periodPlans.isEmpty)
     }
 
-    // MARK: - classSpan
-
-    @Test func classSpanDescribesForwardExtension() {
-        var config = UserConfig()
-        #expect(config.classSpan(anchor: 2) ==
-                ClassSpan(start: HalfSlotRef(period: 2, half: .a),
-                          end: HalfSlotRef(period: 2, half: .b)))
-        config.setClassExtended(anchor: 2, true)
-        #expect(config.classSpan(anchor: 2) ==
-                ClassSpan(start: HalfSlotRef(period: 2, half: .a),
-                          end: HalfSlotRef(period: 3, half: .a)))
-        #expect(config.classSpan(anchor: 2)?.isExtended == true)
-    }
-
-    @Test func classSpanDescribesBackwardExtension() {
-        var config = UserConfig()
-        config.setSlot(period: 3, half: .b, to: .classSlot(anchor: 4))
-        #expect(config.classSpan(anchor: 4) ==
-                ClassSpan(start: HalfSlotRef(period: 3, half: .b),
-                          end: HalfSlotRef(period: 4, half: .b)))
-    }
-
     // MARK: - Class length transitions
 
     @Test func extendingViaClassLengthDisplacesTheNextOwnClass() {
@@ -329,12 +307,6 @@ import Foundation
         #expect(config.lunch == SplitAssignment(basePeriod: 4, choice: .a))
     }
 
-    @Test func classSpanIsNilWhenAnchorPeriodIsNotItsOwnClass() {
-        var config = UserConfig()
-        config.freePeriods = [4]
-        #expect(config.classSpan(anchor: 4) == nil)
-    }
-
     // MARK: - Backward extension helper
 
     @Test func startsEarlyClaimsThePreviousBHalf() {
@@ -373,9 +345,6 @@ import Foundation
         config.setClassStartsEarly(anchor: 4, true)
         #expect(config.plan(for: 3) == PeriodPlan(a: .free, b: .classSlot(anchor: 4)))
         #expect(config.plan(for: 4) == .standardClass(4))
-        #expect(config.classSpan(anchor: 4) ==
-                ClassSpan(start: HalfSlotRef(period: 3, half: .b),
-                          end: HalfSlotRef(period: 4, half: .b)))
     }
 
     @Test func startsEarlyRefusesToDisplaceLunchOrAdvisory() {

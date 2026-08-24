@@ -60,6 +60,38 @@ import Foundation
         #expect(config.advisory?.basePeriod == 5)
     }
 
+    @Test func pairingOverAnExtendedClassRetractsItsClaim() {
+        // Advisory+lunch replacing a 1½-period class must not leave the class's
+        // extension claim dangling in the next period — that would render a
+        // phantom continuation of a class that no longer exists.
+        var config = UserConfig()
+        config.setClassLength(anchor: 5, .extendsForward) // class 5 runs 5 + 6A
+        config.setPairedAdvisory(basePeriod: 5, advisoryHalf: .a)
+        #expect(config.plan(for: 5) == PeriodPlan(a: .advisory, b: .lunch))
+        #expect(config.plan(for: 6) == PeriodPlan(a: .free, b: .free))
+        #expect(config.classLength(anchor: 5) == .standard)
+    }
+
+    @Test func movingLunchElsewhereDissolvesThePairing() {
+        var config = UserConfig()
+        config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a)
+        // Lunch moves to another period: the advisory half must not stay
+        // stranded, and the fully vacated pair period reverts to its class.
+        config.lunch = SplitAssignment(basePeriod: 5, choice: .full)
+        #expect(config.advisory == nil)
+        #expect(config.plan(for: 4) == .standardClass(4))
+        #expect(config.lunch == SplitAssignment(basePeriod: 5, choice: .full))
+    }
+
+    @Test func repairingToANewPeriodRestoresTheOldPeriodsClass() {
+        var config = UserConfig()
+        config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a)
+        config.setPairedAdvisory(basePeriod: 5, advisoryHalf: .a)
+        #expect(config.plan(for: 4) == .standardClass(4))
+        #expect(config.advisory == SplitAssignment(basePeriod: 5, choice: .a))
+        #expect(config.lunch == SplitAssignment(basePeriod: 5, choice: .b))
+    }
+
     @Test func clearingAdvisoryKeepsTheDerivedLunch() {
         var config = UserConfig()
         config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a)
