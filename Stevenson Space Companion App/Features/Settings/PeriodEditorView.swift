@@ -368,6 +368,46 @@ struct BlockEditSheet: View {
             }
         }
 
+        // Lunch and advisory can swap sides: picking a half for the tapped
+        // block moves the paired occupant (or a free half) to the opposite
+        // side. Hidden when the other half belongs to a class.
+        let canPickHalf = (current == .lunch && (otherSlot == .advisory || otherSlot == .free))
+            || (current == .advisory && otherSlot == .lunch)
+        if canPickHalf {
+            Section {
+                Picker(current == .advisory ? "Advisory half" : "Lunch half", selection: Binding(
+                    get: { half },
+                    set: { (newHalf: Half) in
+                        guard newHalf != half else { return }
+                        model.updateConfig { config in
+                            if current == .advisory {
+                                config.setPairedAdvisory(basePeriod: period,
+                                                         advisoryHalf: newHalf)
+                            } else if otherSlot == .advisory {
+                                config.setPairedAdvisory(basePeriod: period,
+                                                         advisoryHalf: newHalf == .a ? .b : .a)
+                            } else {
+                                config.lunch = SplitAssignment(basePeriod: period,
+                                                               choice: newHalf == .a ? .a : .b)
+                            }
+                        }
+                        // The block moved: this sheet describes a position,
+                        // not the block — close it so the swap is visible.
+                        dismiss()
+                    })) {
+                    Text("A (first half)").tag(Half.a)
+                    Text("B (second half)").tag(Half.b)
+                }
+                .pickerStyle(.menu)
+            } footer: {
+                if current == .advisory {
+                    Text("Lunch takes the other half.")
+                } else if otherSlot == .advisory {
+                    Text("Advisory takes the other half.")
+                }
+            }
+        }
+
         // Freshman advisory rides on the lunch half: it claims the other half
         // of the same period. Shown for every lunch half in 4–6 so it's
         // discoverable, but disabled while that half belongs to a class.
