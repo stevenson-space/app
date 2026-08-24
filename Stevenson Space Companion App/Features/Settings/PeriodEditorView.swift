@@ -120,7 +120,7 @@ struct BlockEditSheet: View {
                         classFields
                         lengthSection
                     case .lunch:
-                        if (4...6).contains(number) {
+                        if UserConfig.advisoryPeriods.contains(number) {
                             advisorySection
                         }
                     case .free:
@@ -351,6 +351,11 @@ struct BlockEditSheet: View {
                             config.lunch = SplitAssignment(basePeriod: period, choice: choice)
                         } else {
                             config.setSlot(period: period, half: half, to: newValue)
+                            // Advisory never exists without lunch: freeing the
+                            // paired lunch half frees the advisory half too.
+                            if current == .lunch, otherSlot == .advisory {
+                                config.setSlot(period: period, half: otherHalf, to: .free)
+                            }
                         }
                     }
                 })) {
@@ -411,7 +416,7 @@ struct BlockEditSheet: View {
         // Freshman advisory rides on the lunch half: it claims the other half
         // of the same period. Shown for every lunch half in 4–6 so it's
         // discoverable, but disabled while that half belongs to a class.
-        if current == .lunch, (4...6).contains(period) {
+        if current == .lunch, UserConfig.advisoryPeriods.contains(period) {
             let canToggle = otherSlot == .free || otherSlot == .advisory
             Section {
                 Toggle("I have Advisory (freshmen)", isOn: Binding(

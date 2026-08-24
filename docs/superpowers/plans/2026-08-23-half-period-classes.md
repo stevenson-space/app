@@ -1,8 +1,8 @@
 # One-and-a-half-period classes Implementation Plan
 
-> **Status: executed 2026-08-23** (inline, same session). All tasks complete: 142/142 package tests pass, app builds, feature verified end-to-end in the iPhone 17 simulator (editor flow → merged Home timeline). Work left uncommitted for review.
+> **Status: executed 2026-08-23** (inline, same session). All tasks complete: 142/142 package tests pass, app builds, feature verified end-to-end in the iPhone 17 simulator (editor flow → merged Home timeline). Per the session rule the work was left uncommitted for review; it was later committed as c97849c.
 >
-> **v2 same day:** per user feedback the UI tasks (4–6) were superseded by the card-based redesign in the spec's v2 section — shared `ScheduleCardRow`, editor-as-card-list with tap sheets, Settings midday section removed, emoji support. Engine tasks (1–3) unchanged; suite now 153 tests, all green; re-verified visually in the simulator.
+> **v2 same day:** per user feedback the UI tasks (4–6) were superseded by the card-based redesign in the spec's v2 section — shared `ScheduleCardRow`, editor-as-card-list with tap sheets, Settings midday section removed, emoji support. Engine tasks (1–3) unchanged; suite now 153 tests, all green; re-verified visually in the simulator. Tasks 4–6 below are annotated accordingly: their v1 steps were executed, then their output was replaced, so their descriptions no longer match shipped code.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -34,10 +34,10 @@
   - `enum HalfSlotAssignment: Equatable, Hashable, Codable, Sendable { case classSlot(anchor: Int), lunch, advisory, free }` with `var classAnchor: Int?`; encodes as single string `"class:2"`, `"lunch"`, `"advisory"`, `"free"`; unknown strings **throw** on decode (UserConfig catches and falls back to legacy fields).
   - `struct PeriodPlan: Equatable, Hashable, Codable, Sendable { var a, b: HalfSlotAssignment }` with `static func standardClass(_ n: Int) -> PeriodPlan`, `var isUniform: Bool`, `func slot(_ half: Half) -> HalfSlotAssignment`, `mutating func setSlot(_ half: Half, _ new: HalfSlotAssignment)`, `func isStandardClass(for n: Int) -> Bool`.
 
-- [ ] **Step 1: Write failing tests** — codable round-trip for every case, string forms, unknown-string decode throws, `standardClass`/`isUniform`/`isStandardClass` behavior.
-- [ ] **Step 2: Run to verify failure** (`swift test --package-path Packages/ScheduleKit --filter PeriodPlanTests`) — compile error: types not defined.
-- [ ] **Step 3: Implement `PeriodPlan.swift`.**
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 1: Write failing tests** — codable round-trip for every case, string forms, unknown-string decode throws, `standardClass`/`isUniform`/`isStandardClass` behavior.
+- [x] **Step 2: Run to verify failure** (`swift test --package-path Packages/ScheduleKit --filter PeriodPlanTests`) — compile error: types not defined.
+- [x] **Step 3: Implement `PeriodPlan.swift`.**
+- [x] **Step 4: Run to verify pass.**
 
 ### Task 2: `UserConfig` grid storage, migration, derived accessors
 
@@ -54,15 +54,15 @@
   - `var freePeriods: Set<Int> { get set }` — derived: periods whose plan is uniform `.free`; setter diff-applies (insert ⇒ uniform free; remove ⇒ `.standardClass`).
   - `mutating func setSlot(period: Int, half: Half, to: HalfSlotAssignment)` — primitive painter.
   - `mutating func setClassExtended(anchor: Int, _ extended: Bool)` — `extended` ⇒ `plans[anchor+1].a = .classSlot(anchor: anchor)`; retract ⇒ restore `.classSlot(anchor: anchor+1)` only if currently pointing at `anchor`. Guard `1...7`.
-  - `func classSpan(anchor: Int) -> (start: (period: Int, half: Half), end: (period: Int, half: Half))?` — nil when the anchor period doesn't hold its own class; else walks `anchor-1`’s B and `anchor+1`’s A for matching anchors (used by editor + row summaries).
+  - `func classSpan(anchor: Int) -> (start: (period: Int, half: Half), end: (period: Int, half: Half))?` — nil when the anchor period doesn't hold its own class; else walks `anchor-1`’s B and `anchor+1`’s A for matching anchors (used by editor + row summaries). *(Later removed in review cleanup: the v2 card editor uses `classLength(anchor:)` instead, leaving `classSpan` with no production caller.)*
   - `setPairedAdvisory` / `clearAdvisory` keep exact signatures/semantics, rewritten over the grid.
   - Memberwise init keeps its signature, building the grid (order: freePeriods → advisory → lunch, so lunch wins legacy same-half conflicts).
   - Codable: decode `periodPlans` when present & parseable (per spec: on *any* failure fall back to legacy-field derivation); encode `periodPlans` **and** derived `lunch`/`advisory`/`freePeriods`.
 
-- [ ] **Step 1: Write failing tests** — legacy-blob JSON decodes to expected grid (lunch A / advisory pair / freePeriods / full lunch / same-half conflict); encode writes both representations (decode encoded blob with legacy-only reader); derived accessor get/set behaviors incl. lunch move clearing old slots; `setClassExtended` paint/retract; `classSpan` forward/backward/none; paired-advisory invariants already covered by existing suite.
-- [ ] **Step 2: Verify failure.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run `PeriodPlanTests` + `AdvisoryPairingTests` + `StorageAndSyncTests` — all pass.**
+- [x] **Step 1: Write failing tests** — legacy-blob JSON decodes to expected grid (lunch A / advisory pair / freePeriods / full lunch / same-half conflict); encode writes both representations (decode encoded blob with legacy-only reader); derived accessor get/set behaviors incl. lunch move clearing old slots; `setClassExtended` paint/retract; ~~`classSpan` forward/backward/none~~ *(written as planned, then removed with `classSpan` in review cleanup)*; paired-advisory invariants already covered by existing suite.
+- [x] **Step 2: Verify failure.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run `PeriodPlanTests` + `AdvisoryPairingTests` + `StorageAndSyncTests` — all pass.**
 
 ### Task 3: Resolver merge pass + `spanLabel`
 
@@ -77,22 +77,26 @@
 
 Resolution algorithm (splittable schedules): per numbered period emit either one full-period entry (uniform plan) or two half entries (mixed), tagging each with `(role, anchor?)`; Friday maps `.advisory` slots → `.lunch` first. Then merge consecutive `role == .classPeriod` entries with equal anchors. Non-splittable schedules: one block per period, precedence `lunch > advisory > class > free`, class name from the first class slot's anchor, **no merging**.
 
-- [ ] **Step 1: Write failing tests** — forward merge times/id/label/name/room; backward merge (`3B+4` anchored 4); leftover-half lunch and free both orders; back-to-back 1½ classes; Late Arrival & Early Dismissal fallbacks (no merge, anchored names); Friday grid advisory; `momentState` inside merged class at internal bell = `.inBlock`; NotificationPlanner emits single end alert for merged class.
-- [ ] **Step 2: Verify failure.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Full package suite passes (parity gate).**
+- [x] **Step 1: Write failing tests** — forward merge times/id/label/name/room; backward merge (`3B+4` anchored 4); leftover-half lunch and free both orders; back-to-back 1½ classes; Late Arrival & Early Dismissal fallbacks (no merge, anchored names); Friday grid advisory; `momentState` inside merged class at internal bell = `.inBlock`; NotificationPlanner emits single end alert for merged class.
+- [x] **Step 2: Verify failure.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Full package suite passes (parity gate).**
 
-### Task 4: Timeline row uses `spanLabel`
+### Task 4: Timeline row uses `spanLabel` *(superseded by v2)*
+
+> **Superseded by v2:** executed as written, then replaced the same day — `DayTimelineListView` was rebuilt on the shared `ScheduleCardRow` (`Features/Home/ScheduleCardRow.swift`), which renders `spanLabel` on each card. The v1 description below no longer matches shipped code.
 
 **Files:**
 - Modify: `Stevenson Space Companion App/Features/Home/DayTimelineListView.swift:69-76`
 
 `BlockRow` capsule condition becomes `if let label = block.spanLabel` rendering `Text(label)` (was `block.periodID.storageKey + half.rawValue`).
 
-- [ ] **Step 1: Edit view.**
-- [ ] **Step 2: App builds** (`xcodebuild … build`).
+- [x] **Step 1: Edit view.** *(v1; output replaced by v2 card row)*
+- [x] **Step 2: App builds** (`xcodebuild … build`).
 
-### Task 5: Period editor redesign
+### Task 5: Period editor redesign *(superseded by v2)*
+
+> **Superseded by v2:** the layout/split editor below shipped in v1, then was replaced the same day by the card-based editor — `PeriodEditorView` is now a card list of `ScheduleCardRow`s with tap-to-edit sheets (Class/Lunch/Free, name/room/emoji fields, Length menu incl. 1½ periods in either direction; freshman advisory rides the lunch sheet as a paired toggle). See the spec's v2 section for the shipped design.
 
 **Files:**
 - Rewrite: `Stevenson Space Companion App/Features/Settings/PeriodEditorView.swift`
@@ -108,21 +112,23 @@ Design (per spec):
   - Split per-half pickers: Half A → [Continues (N−1) class (iff `plan(N−1).b == .classSlot(N−1)`)] | Lunch | Advisory (periods 4–6) | Free. Half B → [Start of (N+1) class (iff `plan(N+1).a == .classSlot(N+1)`)] | Lunch | Advisory (4–6) | Free. Advisory selection auto-sets other half to Lunch (and clears lunch elsewhere) via `setPairedAdvisory`.
   - Name/room fields always visible when any half of this period or its span belongs to a class anchored here.
 
-- [ ] **Step 1: Rewrite editor.**
-- [ ] **Step 2: App builds; manual reasoning pass over each state transition.**
+- [x] **Step 1: Rewrite editor.** *(v1; output replaced by v2 card editor)*
+- [x] **Step 2: App builds; manual reasoning pass over each state transition.**
 
-### Task 6: Settings midday section as a grid view + footer
+### Task 6: Settings midday section as a grid view + footer *(superseded by v2)*
+
+> **Superseded by v2:** rather than reworking the midday section, v2 removed it from Settings entirely — the card editor (grid) is the single source of truth, and Settings keeps only a pointer line to Periods & Classes.
 
 **Files:**
 - Modify: `Stevenson Space Companion App/Features/Settings/SettingsView.swift:40-133`
 
 Pickers already write through `config.lunch` / `setPairedAdvisory` — they now hit the derived setters (verify semantics: changing lunch period keeps wave; clearing sets nil). Add footer: "Have a class that runs 1½ periods? Set its length in Periods & Classes — lunch and the leftover half live there too." Show a read-only line when lunch was set from the grid into a shape the quick pickers can't express (defensive: pickers cover all `SplitAssignment` shapes, so only needed if advisory unpaired — skip).
 
-- [ ] **Step 1: Edit section + footer.**
-- [ ] **Step 2: App builds.**
+- [x] **Step 1: Edit section + footer.** *(v1; section removed outright in v2)*
+- [x] **Step 2: App builds.**
 
 ### Task 7: Verification gate
 
-- [ ] `swift test --package-path Packages/ScheduleKit` — all green.
-- [ ] `xcodebuild -scheme "Stevenson Space Companion App" -destination 'generic/platform=iOS Simulator' build` — succeeds.
-- [ ] Re-read spec; confirm each requirement maps to shipped code; update spec if implementation diverged.
+- [x] `swift test --package-path Packages/ScheduleKit` — all green (153 at v2; suite has since grown).
+- [x] `xcodebuild -scheme "Stevenson Space Companion App" -destination 'generic/platform=iOS Simulator' build` — succeeds.
+- [x] Re-read spec; confirm each requirement maps to shipped code; update spec if implementation diverged (spec's v2 section documents the shipped UI).

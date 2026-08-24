@@ -87,6 +87,16 @@ enum ScheduleStyle {
     /// Best-effort subject guess from the class name; 📚 when nothing matches.
     static func subjectEmoji(_ name: String?) -> String {
         guard let name = name?.lowercased() else { return "📚" }
+        let words = name.split(whereSeparator: { !$0.isLetter })
+        // Short keywords match whole words ("art" must not fire inside
+        // "earth"); longer ones and phrases match anywhere ("precalculus").
+        func matches(_ keyword: String) -> Bool {
+            switch keyword.count {
+            case ...2: return words.contains { String($0) == keyword }
+            case 3: return words.contains { $0.hasPrefix(keyword) }
+            default: return name.contains(keyword)
+            }
+        }
         let map: [(keywords: [String], emoji: String)] = [
             (["physics"], "⚛️"),
             (["computer", "programming", "software", "comp sci"], "💻"),
@@ -99,10 +109,10 @@ enum ScheduleStyle {
             (["spanish", "french", "german", "chinese", "japanese", "latin", "language"], "🌍"),
             (["art", "design", "photo"], "🎨"),
             (["music", "band", "orchestra", "choir"], "🎵"),
-            (["gym", "wellness", "fitness", "physical ed", "pe "], "🏃"),
+            (["gym", "wellness", "fitness", "physical ed", "pe"], "🏃"),
             (["english", "literature", "writing", "comp"], "📚"),
         ]
-        for entry in map where entry.keywords.contains(where: { name.contains($0) }) {
+        for entry in map where entry.keywords.contains(where: matches) {
             return entry.emoji
         }
         return "📚"

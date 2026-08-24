@@ -62,33 +62,10 @@ public struct SplitAssignment: Codable, Equatable, Hashable, Sendable {
     }
 }
 
-/// One half-slot on the numbered-period grid.
-public struct HalfSlotRef: Equatable, Hashable, Sendable {
-    public var period: Int
-    public var half: Half
-
-    public init(period: Int, half: Half) {
-        self.period = period
-        self.half = half
-    }
-}
-
-/// The contiguous half-slots a class occupies, from its first to its last.
-public struct ClassSpan: Equatable, Hashable, Sendable {
-    public var start: HalfSlotRef
-    public var end: HalfSlotRef
-
-    public init(start: HalfSlotRef, end: HalfSlotRef) {
-        self.start = start
-        self.end = end
-    }
-
-    /// True for a 1½-period class that spills into a neighboring period.
-    public var isExtended: Bool { start.period != end.period }
-}
-
 public struct UserConfig: Equatable, Sendable {
     public static let periodRange = 1...8
+    /// The periods a lunch wave (and thus advisory) can occupy.
+    public static let advisoryPeriods = 4...6
 
     /// The single source of truth for the student's day: what each half of
     /// each numbered period holds. Sparse — a missing entry means a
@@ -287,27 +264,6 @@ public struct UserConfig: Equatable, Sendable {
         }
     }
 
-    /// The contiguous slots occupied by the class anchored at `anchor`, or nil
-    /// when that period holds no slot of its own class.
-    public func classSpan(anchor: Int) -> ClassSpan? {
-        guard Self.periodRange.contains(anchor) else { return nil }
-        let own = plan(for: anchor)
-        let ownSlot = HalfSlotAssignment.classSlot(anchor: anchor)
-        guard own.a == ownSlot || own.b == ownSlot else { return nil }
-
-        var start = HalfSlotRef(period: anchor, half: own.a == ownSlot ? .a : .b)
-        var end = HalfSlotRef(period: anchor, half: own.b == ownSlot ? .b : .a)
-        if start.half == .a, anchor > Self.periodRange.lowerBound,
-           plan(for: anchor - 1).b == ownSlot {
-            start = HalfSlotRef(period: anchor - 1, half: .b)
-        }
-        if end.half == .b, anchor < Self.periodRange.upperBound,
-           plan(for: anchor + 1).a == ownSlot {
-            end = HalfSlotRef(period: anchor + 1, half: .a)
-        }
-        return ClassSpan(start: start, end: end)
-    }
-
     // MARK: - Derived legacy views (read and write the grid)
 
     public var lunch: SplitAssignment? {
@@ -354,11 +310,20 @@ public struct UserConfig: Equatable, Sendable {
     /// its slots — overwriting whatever held them. A vacated full period
     /// becomes the period's class again; a vacated half becomes free, unless
     /// the other half already holds the period's own class (then the full
-    /// class is restored rather than leaving a phantom half).
+    /// class is restored rather than leaving a phantom half). Lunch leaving
+    /// an advisory pairing dissolves the advisory too — advisory never exists
+    /// without lunch in the other half — so the fully vacated period also
+    /// reverts to its class.
     private mutating func paint(role: HalfSlotAssignment, to new: SplitAssignment?) {
         for period in Self.periodRange {
             var plan = plan(for: period)
             if plan.a == role && plan.b == role {
+                setPlan(.standardClass(period), for: period)
+                continue
+            }
+            if role == .lunch,
+               plan.a == role || plan.b == role,
+               plan.a == .advisory || plan.b == .advisory {
                 setPlan(.standardClass(period), for: period)
                 continue
             }
@@ -386,6 +351,13 @@ public struct UserConfig: Equatable, Sendable {
             plan.b = role
         }
         setPlan(plan, for: new.basePeriod)
+        // The claimed slots may have held the period's own class; once no own
+        // slot remains, any 1½-period claims that class held next door are
+        // stale and would render as phantom continuations.
+        let own = HalfSlotAssignment.classSlot(anchor: new.basePeriod)
+        if plan.a != own && plan.b != own {
+            retractClassClaims(anchor: new.basePeriod)
+        }
     }
 }
 
@@ -394,16 +366,16 @@ extension UserConfig {
     /// half of one of the lunch periods (4–6), and lunch automatically takes
     /// the other half of the same period. Advisory 4A ⇒ lunch 4B, advisory
     /// 5B ⇒ lunch 5A, and so on. This is the only way advisory gets set.
-    public var hasAdvisory: Bool { advisory != nil }
-
     public mutating func setPairedAdvisory(basePeriod: Int, advisoryHalf: Half) {
         // Advisory/lunch only live in periods 4–6; ignore out-of-range requests
         // rather than persisting an impossible placement.
-        guard (4...6).contains(basePeriod) else { return }
-        advisory = SplitAssignment(basePeriod: basePeriod,
-                                   choice: advisoryHalf == .a ? .a : .b)
+        guard Self.advisoryPeriods.contains(basePeriod) else { return }
+        // Lunch repaints first: moving it dissolves any old pairing (reverting
+        // that period to its class); advisory then claims its half.
         lunch = SplitAssignment(basePeriod: basePeriod,
                                 choice: advisoryHalf == .a ? .b : .a)
+        advisory = SplitAssignment(basePeriod: basePeriod,
+                                   choice: advisoryHalf == .a ? .a : .b)
     }
 
     /// Turning advisory off keeps the derived lunch half as a plain lunch
