@@ -39,6 +39,7 @@ public enum NotificationPlanner {
                             calendar: Calendar = SchoolTime.calendar) -> [PlannedNotification] {
         guard prefs.anyEnabled else { return [] }
 
+        let scheduleBudget = max(0, min(budget, Self.defaultBudget))
         var result: [PlannedNotification] = []
         var exhaustedBudget = false
 
@@ -64,10 +65,11 @@ public enum NotificationPlanner {
                     let body: String
                     if let next {
                         title = "Next: \(next.displayName)"
+                        let startTime = Self.timeString(next.start, timeFormat)
                         if let room = next.room {
-                            body = "Room \(room)"
+                            body = "Room \(room) · Starts at \(startTime)"
                         } else {
-                            body = "Starts at \(Self.timeString(next.start, timeFormat))"
+                            body = "Starts at \(startTime)"
                         }
                     } else {
                         // Zero lead means "at the bell" — phrase it as such.
@@ -91,21 +93,22 @@ public enum NotificationPlanner {
             }
 
             guard !bundle.isEmpty else { continue }
-            if result.count + bundle.count > budget {
+            if result.count + bundle.count > scheduleBudget {
                 exhaustedBudget = true
                 if result.isEmpty {
-                    result.append(contentsOf: bundle.prefix(budget))
+                    result.append(contentsOf: bundle.prefix(scheduleBudget))
                 }
                 break
             }
             result.append(contentsOf: bundle)
         }
 
-        if exhaustedBudget, let finalCoveredDay = result.last?.day {
+        if exhaustedBudget, let finalCoveredDay = result.last?.day,
+           let firstCoveredAlert = result.first(where: { $0.day == finalCoveredDay }) {
             let reminder = PlannedNotification(
                 identifier: "refresh.\(finalCoveredDay)",
                 day: finalCoveredDay,
-                time: HourMinute(hour: 7, minute: 0),
+                time: prefs.morningEnabled ? prefs.morningTime : firstCoveredAlert.time,
                 title: "Refresh your class notifications",
                 body: "Open the app to keep receiving class reminders.")
             if let fire = reminder.fireDate(calendar: calendar), fire > now {
