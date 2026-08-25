@@ -15,7 +15,7 @@ Packages/ScheduleKit/          All schedule logic — no UI, no clock access.
     Resolution/                resolveDay(...) priority chain + momentState(at:)
     Sync/                      ETag fetch with last-good cache semantics
     Storage/                   App-Group-ready SharedStore (UserDefaults suite)
-    Notifications/             Pure NotificationPlanner (56-slot budget)
+    Notifications/             Pure NotificationPlanner (56 alerts + 1 refresh reminder)
   Tests/ScheduleKitTests/      The quality gate — run with `swift test`
 Stevenson Space Companion App/ SwiftUI app target: Home, Settings, system glue
 ```
