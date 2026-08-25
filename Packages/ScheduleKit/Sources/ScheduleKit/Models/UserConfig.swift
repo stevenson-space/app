@@ -74,7 +74,6 @@ public struct UserConfig: Equatable, Sendable {
     /// Keyed by `PeriodID.storageKey` of a class's *anchor* — identity, never
     /// position, so names survive finals reordering and 1½-period spans.
     public var customizations: [String: PeriodCustomization]
-    public var hideFreePeriods: Bool
     public var timeFormat: TimeFormatPref
     public var appearance: AppearancePref
 
@@ -83,14 +82,12 @@ public struct UserConfig: Equatable, Sendable {
     /// `Equatable` means what it says.
     public init(periodPlans: [Int: PeriodPlan],
                 customizations: [String: PeriodCustomization] = [:],
-                hideFreePeriods: Bool = false,
                 timeFormat: TimeFormatPref = .system,
                 appearance: AppearancePref = .system) {
         self.periodPlans = periodPlans.filter {
             Self.periodRange.contains($0.key) && !$0.value.isStandardClass(for: $0.key)
         }
         self.customizations = customizations
-        self.hideFreePeriods = hideFreePeriods
         self.timeFormat = timeFormat
         self.appearance = appearance
     }
@@ -102,12 +99,10 @@ public struct UserConfig: Equatable, Sendable {
                 advisory: SplitAssignment? = nil,
                 freePeriods: Set<Int> = [],
                 customizations: [String: PeriodCustomization] = [:],
-                hideFreePeriods: Bool = false,
                 timeFormat: TimeFormatPref = .system,
                 appearance: AppearancePref = .system) {
         self.init(periodPlans: [:], customizations: customizations,
-                  hideFreePeriods: hideFreePeriods, timeFormat: timeFormat,
-                  appearance: appearance)
+                  timeFormat: timeFormat, appearance: appearance)
         self.freePeriods = freePeriods
         self.advisory = advisory
         self.lunch = lunch
@@ -394,7 +389,7 @@ extension UserConfig {
 // legacy fields, which every version keeps writing as a downgrade mirror.
 extension UserConfig: Codable {
     private enum CodingKeys: String, CodingKey {
-        case lunch, advisory, freePeriods, customizations, hideFreePeriods,
+        case lunch, advisory, freePeriods, customizations,
              timeFormat, appearance, periodPlans
     }
 
@@ -402,7 +397,6 @@ extension UserConfig: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let customizations = try c.decodeIfPresent(
             [String: PeriodCustomization].self, forKey: .customizations) ?? [:]
-        let hideFreePeriods = try c.decodeIfPresent(Bool.self, forKey: .hideFreePeriods) ?? false
         let timeFormat = try c.decodeIfPresent(TimeFormatPref.self, forKey: .timeFormat) ?? .system
         let appearance = try c.decodeIfPresent(AppearancePref.self, forKey: .appearance) ?? .system
 
@@ -413,14 +407,13 @@ extension UserConfig: Codable {
                 raw.compactMap { key, value in Int(key).map { ($0, value) } },
                 uniquingKeysWith: { first, _ in first })
             self.init(periodPlans: plans, customizations: customizations,
-                      hideFreePeriods: hideFreePeriods, timeFormat: timeFormat,
-                      appearance: appearance)
+                      timeFormat: timeFormat, appearance: appearance)
         } else {
             self.init(
                 lunch: try c.decodeIfPresent(SplitAssignment.self, forKey: .lunch),
                 advisory: try c.decodeIfPresent(SplitAssignment.self, forKey: .advisory),
                 freePeriods: try c.decodeIfPresent(Set<Int>.self, forKey: .freePeriods) ?? [],
-                customizations: customizations, hideFreePeriods: hideFreePeriods,
+                customizations: customizations,
                 timeFormat: timeFormat, appearance: appearance)
         }
     }
@@ -434,7 +427,6 @@ extension UserConfig: Codable {
         try c.encodeIfPresent(advisory, forKey: .advisory)
         try c.encode(freePeriods, forKey: .freePeriods)
         try c.encode(customizations, forKey: .customizations)
-        try c.encode(hideFreePeriods, forKey: .hideFreePeriods)
         try c.encode(timeFormat, forKey: .timeFormat)
         try c.encode(appearance, forKey: .appearance)
     }

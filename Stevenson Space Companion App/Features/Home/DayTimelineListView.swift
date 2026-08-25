@@ -12,9 +12,7 @@ struct DayTimelineListView: View {
         let _ = model.currentSpanID
         let config = model.config
         let pref = config.timeFormat
-        let blocks = config.hideFreePeriods
-            ? timeline.blocks.filter { $0.role != .free }
-            : timeline.blocks
+        let blocks = timeline.blocks
 
         // Per-minute ticks keep the "In 1h 12m" chip honest between boundaries.
         TimelineView(.periodic(from: .now, by: 60)) { context in
