@@ -103,6 +103,7 @@ struct BlockEditSheet: View {
     @State private var name = ""
     @State private var room = ""
     @State private var emoji = ""
+    @State private var showingEmojiPicker = false
     @State private var loaded = false
 
     private var number: Int { target.period }
@@ -134,6 +135,11 @@ struct BlockEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showingEmojiPicker) {
+                ClassEmojiPicker(selection: $emoji,
+                                 automaticEmoji: ScheduleStyle.subjectEmoji(name))
+                    .presentationDetents([.medium, .large])
             }
         }
         .onAppear {
@@ -204,19 +210,22 @@ struct BlockEditSheet: View {
     private var classFields: some View {
         Section {
             HStack(spacing: 12) {
-                TextField(ScheduleStyle.subjectEmoji(name), text: $emoji)
-                    .frame(width: 44)
-                    .multilineTextAlignment(.center)
-                    .font(.title3)
-                    .onChange(of: emoji) {
-                        // Keep just the most recent symbol typed.
-                        emoji = String(emoji.suffix(1))
-                    }
+                Button {
+                    showingEmojiPicker = true
+                } label: {
+                    Text(emoji.nilIfBlank ?? ScheduleStyle.subjectEmoji(name))
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Choose class emoji")
+                .accessibilityValue(emoji.isEmpty ? "Automatic" : emoji)
                 TextField("Class name (e.g. AP Biology)", text: $name)
             }
             TextField("Room", text: $room)
         } footer: {
-            Text("The emoji is your card's icon — leave it empty for an automatic one.")
+            Text("Tap the emoji to choose your card's icon or use an automatic one.")
         }
     }
 
@@ -477,6 +486,120 @@ struct BlockEditSheet: View {
                 config.customizations[key] = customization
             }
         }
+    }
+}
+
+private struct ClassEmojiPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selection: String
+    let automaticEmoji: String
+
+    private let columns = [GridItem(.adaptive(minimum: 44), spacing: 10)]
+
+    private static let categories: [(title: String, emoji: [String])] = [
+        ("Business & Careers", [
+            "💼", "💰", "📈", "⚖️", "🚗", "🛠️", "🏗️", "💇", "🚒"
+        ]),
+        ("Math & Science", [
+            "📐", "📊", "⚛️", "🧪", "🧬", "🔬", "🔭", "🌱", "🌋", "🫀", "🧠"
+        ]),
+        ("Computers & Engineering", [
+            "💻", "⚙️", "⚡", "📱", "🎮", "🔐", "🖨️", "🥽"
+        ]),
+        ("English, Languages & History", [
+            "📚", "📝", "📰", "🌍", "🗣️", "📜", "🏛️"
+        ]),
+        ("Art, Music & Theatre", [
+            "🎨", "🖌️", "🏺", "💎", "📷", "🎬", "🎭", "🩰", "🎵", "🎹", "🎸", "🎻", "🎺", "🎤"
+        ]),
+        ("Food, Fashion & Family", [
+            "🍳", "🥗", "🧵", "🧸", "🏠", "🧑‍🏫", "🍔"
+        ]),
+        ("PE, Health & Outdoors", [
+            "🏃", "🏋️", "🏊", "🧘", "🧗", "🩺", "☀️"
+        ]),
+        ("School & Support", [
+            "✏️", "🎓", "🎯", "📣", "🥳", "🤝"
+        ])
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    automaticOption
+
+                    ForEach(Self.categories, id: \.title) { category in
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(category.title)
+                                .font(.headline)
+
+                            LazyVGrid(columns: columns, spacing: 10) {
+                                ForEach(category.emoji, id: \.self) { emoji in
+                                    Button {
+                                        selection = emoji
+                                        dismiss()
+                                    } label: {
+                                        Text(emoji)
+                                            .font(.title2)
+                                            .frame(maxWidth: .infinity, minHeight: 44)
+                                            .background {
+                                                if selection == emoji {
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .fill(Color.accentColor.opacity(0.16))
+                                                }
+                                            }
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Choose \(emoji)")
+                                    .accessibilityAddTraits(selection == emoji ? .isSelected : [])
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .navigationTitle("Choose an Emoji")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var automaticOption: some View {
+        Button {
+            selection = ""
+            dismiss()
+        } label: {
+            HStack(spacing: 12) {
+                Text(automaticEmoji)
+                    .font(.title2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Automatic")
+                        .font(.headline)
+                    Text("Matches your class name")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if selection.isEmpty {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+            .padding(14)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selection.isEmpty ? .isSelected : [])
     }
 }
 
