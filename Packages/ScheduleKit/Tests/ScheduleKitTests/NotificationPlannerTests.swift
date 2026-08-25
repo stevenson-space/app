@@ -59,7 +59,21 @@ import Foundation
             days: timelines(monday, 1, config: config), prefs: prefs, now: earlyMorning(monday))
 
         #expect(planned.first?.title == "Next: AP Biology")
-        #expect(planned.first?.body == "Room 214")
+        #expect(planned.first?.body == "Room 214 · Starts at 9:26 AM")
+    }
+
+    @Test func upcomingClassAfterFreePeriodsShowsRoomAndPreferredStartTime() {
+        let config = UserConfig(freePeriods: [2, 3], customizations: [
+            "4": PeriodCustomization(name: "AP Biology", room: "214"),
+        ])
+        let prefs = NotificationPrefs(blockEndEnabled: true, blockEndLeadMinutes: 5)
+        let monday = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(monday, 1, config: config), prefs: prefs,
+            now: earlyMorning(monday), timeFormat: .twentyFourHour)
+
+        #expect(planned.first?.title == "Next: AP Biology")
+        #expect(planned.first?.body == "Room 214 · Starts at 11:10")
     }
 
     @Test func upcomingClassWithoutRoomShowsStartTimeInPreferredFormat() {
@@ -211,7 +225,7 @@ import Foundation
         #expect(!coveredDays.contains(day(2026, 9, 23)))
     }
 
-    @Test func budgetLimitSchedulesRefreshReminderOnFinalCoveredMorning() throws {
+    @Test func budgetLimitSchedulesRefreshReminderOnFinalCoveredSchoolDay() throws {
         let prefs = NotificationPrefs(blockEndEnabled: true)
         let start = day(2026, 9, 14)
         let planned = NotificationPlanner.plan(
@@ -222,7 +236,7 @@ import Foundation
         #expect(reminders.count == 1)
         #expect(reminder.identifier == "refresh.2026-09-22")
         #expect(reminder.day == day(2026, 9, 22))
-        #expect(reminder.time == HourMinute(hour: 7, minute: 0))
+        #expect(reminder.time == HourMinute(hour: 9, minute: 16))
         #expect(reminder.title == "Refresh your class notifications")
         #expect(reminder.body == "Open the app to keep receiving class reminders.")
 
@@ -230,6 +244,38 @@ import Foundation
             $0.identifier.hasPrefix("end.") && $0.day == reminder.day
         }
         #expect(remainingAlerts.count == 8)
+    }
+
+    @Test func refreshReminderUsesConfiguredMorningTimeWhenMorningAlertsAreEnabled() throws {
+        let prefs = NotificationPrefs(blockEndEnabled: true, morningEnabled: true,
+                                      morningTime: HourMinute(hour: 7, minute: 45))
+        let start = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(start, 14), prefs: prefs, now: earlyMorning(start))
+
+        let reminder = try #require(planned.first { $0.identifier.hasPrefix("refresh.") })
+        #expect(reminder.time == HourMinute(hour: 7, minute: 45))
+    }
+
+    @Test func customBudgetCannotExceedDefaultScheduleAlertBudget() {
+        let prefs = NotificationPrefs(blockEndEnabled: true)
+        let start = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(start, 14), prefs: prefs, now: earlyMorning(start), budget: 64)
+
+        #expect(planned.filter { $0.identifier.hasPrefix("end.") }.count
+                == NotificationPlanner.defaultBudget)
+        #expect(planned.filter { $0.identifier.hasPrefix("refresh.") }.count == 1)
+        #expect(planned.count == NotificationPlanner.defaultBudget + 1)
+    }
+
+    @Test func negativeBudgetPlansNoNotifications() {
+        let prefs = NotificationPrefs(blockEndEnabled: true)
+        let monday = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(monday, 1), prefs: prefs, now: earlyMorning(monday), budget: -1)
+
+        #expect(planned.isEmpty)
     }
 
     @Test func refreshReminderIsOmittedWhenAllNotificationsFit() {
@@ -252,14 +298,27 @@ import Foundation
         #expect(planned.contains { $0.identifier == "refresh.2026-09-14" })
     }
 
-    @Test func refreshReminderIsOmittedAfterItsMorningHasPassed() {
+    @Test func refreshReminderUsesSchoolHoursWhenMorningAlertsAreDisabled() throws {
         let prefs = NotificationPrefs(blockEndEnabled: true)
         let monday = day(2026, 9, 14)
         let planned = NotificationPlanner.plan(
             days: timelines(monday, 1), prefs: prefs,
             now: TestSupport.at(monday, 8, 0), budget: 3)
 
-        #expect(planned.count == 3)
+        #expect(planned.count == 4)
+        let reminder = try #require(planned.first { $0.identifier.hasPrefix("refresh.") })
+        #expect(reminder.time == HourMinute(hour: 9, minute: 16))
+    }
+
+    @Test func refreshReminderIsOmittedAfterConfiguredMorningTimeHasPassed() {
+        let prefs = NotificationPrefs(blockEndEnabled: true, morningEnabled: true,
+                                      morningTime: HourMinute(hour: 7, minute: 45))
+        let monday = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(monday, 1), prefs: prefs,
+            now: TestSupport.at(monday, 8, 0), budget: 3)
+
+        #expect(planned.filter { $0.identifier.hasPrefix("end.") }.count == 3)
         #expect(!planned.contains { $0.identifier.hasPrefix("refresh.") })
     }
 
