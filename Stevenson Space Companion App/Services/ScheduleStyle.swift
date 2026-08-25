@@ -86,34 +86,127 @@ enum ScheduleStyle {
 
     /// Best-effort subject guess from the class name; 📚 when nothing matches.
     static func subjectEmoji(_ name: String?) -> String {
-        guard let name = name?.lowercased() else { return "📚" }
-        let words = name.split(whereSeparator: { !$0.isLetter })
-        // Short keywords match whole words ("art" must not fire inside
-        // "earth"); longer ones and phrases match anywhere ("precalculus").
-        func matches(_ keyword: String) -> Bool {
-            switch keyword.count {
-            case ...2: return words.contains { String($0) == keyword }
-            case 3: return words.contains { $0.hasPrefix(keyword) }
-            default: return name.contains(keyword)
+        guard let name else { return "📚" }
+        let words = name.lowercased()
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+            .map(String.init)
+        let condensedName = words.joined()
+
+        typealias SubjectRule = (
+            emoji: String,
+            prefixes: [String],
+            abbreviations: [String],
+            phrases: [String]
+        )
+
+        func containsPhrase(_ phrase: String) -> Bool {
+            let phraseWords = phrase.split(separator: " ").map(String.init)
+            guard !phraseWords.isEmpty, phraseWords.count <= words.count else {
+                return false
+            }
+
+            return (0...(words.count - phraseWords.count)).contains { start in
+                words[start..<(start + phraseWords.count)].elementsEqual(phraseWords)
             }
         }
-        let map: [(keywords: [String], emoji: String)] = [
-            (["physics"], "⚛️"),
-            (["computer", "programming", "software", "comp sci"], "💻"),
-            (["chem"], "🧪"),
-            (["bio", "anatomy"], "🧬"),
-            (["statistic"], "📊"),
-            (["calc", "math", "algebra", "geometry"], "📐"),
-            (["gov", "history", "econ", "civic"], "🏛️"),
-            (["engineer", "robotic"], "⚙️"),
-            (["spanish", "french", "german", "chinese", "japanese", "latin", "language"], "🌍"),
-            (["art", "design", "photo"], "🎨"),
-            (["music", "band", "orchestra", "choir"], "🎵"),
-            (["gym", "wellness", "fitness", "physical ed", "pe"], "🏃"),
-            (["english", "literature", "writing", "comp"], "📚"),
+
+        // Put specific courses before broader subjects so, for example,
+        // "Game Programming" beats computer science and "Art History"
+        // beats history. Abbreviations only match complete words.
+        let rules: [SubjectRule] = [
+            ("📊", ["statistic"], ["stat", "stats", "apstat", "apstats"],
+             ["data science", "data sci"]),
+            ("🔐", ["cybersecurity", "cyber"], ["cybersec"], []),
+            ("📱", ["mobile"], [], ["app development"]),
+            ("🎮", ["game", "gaming"], [], []),
+            ("🥽", ["virtualization"], ["vr"], ["virtual reality"]),
+            ("🖨️", ["print", "publication"], [], []),
+            ("🏗️", ["architect", "construction"], ["arch"], ["civil engineering"]),
+            ("⚡", ["electrical"], ["ee"], []),
+            ("🚗", ["automotive", "driver", "collision"], ["auto"], []),
+            ("🛠️", ["weld", "fabricat", "repair"], [], []),
+            ("💇", ["cosmetolog"], ["cosmo"], []),
+            ("🚒", ["firefight"], [], ["fire fighting"]),
+            ("🏊", ["swim", "pool", "lifeguard"], [], []),
+            ("🏃", ["fitness", "wellness", "gym"], ["pe"],
+             ["physical education", "physical ed", "phys ed", "p e"]),
+            ("🩺", ["health", "medic", "nurs"], ["ems", "cna"], []),
+            ("🫀", ["anatom", "physiolog"], [],
+             ["anatomy and physiology", "human growth"]),
+            ("🌱", ["environment", "horticultur"], ["apes", "env", "enviro", "hort"], []),
+            ("🌋", ["earth", "geolog"], [], []),
+            ("🔭", ["astronom"], ["astro"], []),
+            ("🔬", ["research"], ["stem"],
+             ["physical science", "physical sci", "phys science", "phys sci"]),
+            ("⚛️", ["physics"], ["phys", "apphys", "apphysics"], []),
+            ("🧪", ["chem"], ["apchem"], []),
+            ("🧬", ["bio"], ["apbio"], []),
+            ("🧵", ["fashion", "clothing", "textil"], [], []),
+            ("🥗", ["nutrition"], [], []),
+            ("🍳", ["culinar", "gourmet", "food"], [], []),
+            ("🧸", ["childhood", "child"], [],
+             ["early education", "young children"]),
+            ("🏠", ["interior"], [],
+             ["life by design", "life skills", "independent living", "preparing for life"]),
+            ("💰", ["account", "financ", "invest"], ["acct"], []),
+            ("📈", ["econom", "macroeconom", "microeconom"],
+             ["econ", "macro", "micro", "apecon", "apmacro", "apmicro"], []),
+            ("⚖️", ["law", "legal", "crimin", "justice"], ["csi"], []),
+            ("💼", ["business", "entrepren", "market"], ["biz"], []),
+            ("🧠", ["psycholog", "psych"], ["appsych"], []),
+            ("📐", ["calculus", "precalculus", "precalc", "algebra", "geometr",
+                     "math", "multivariable", "trig"],
+             ["calc", "alg", "geom", "apcalc"], ["linear algebra"]),
+            ("⚙️", ["engineer", "robot", "manufactur"], ["pltw"], []),
+            ("💻", ["computer", "program", "software", "web"],
+             ["cs", "csa", "csp", "apcs", "apcsa", "apcsp", "cset", "cs1", "cs2"],
+             ["comp sci", "c s"]),
+            ("📷", ["photo"], [], []),
+            ("🏺", ["ceramic", "sculpt"], [], []),
+            ("💎", ["jewel", "metals"], [], []),
+            ("🎬", ["video", "film", "animation", "multimedia"], [],
+             ["motion graphics", "visual effects", "media analysis"]),
+            ("🎭", ["theat", "acting", "drama", "entertainment"], [], []),
+            ("🎹", ["piano"], [], []),
+            ("🎸", ["guitar"], [], []),
+            ("🎻", ["orchestra"], [], []),
+            ("🎺", ["band", "symphonic", "wind"], [], []),
+            ("🎤", ["choir", "chorus", "singer", "broadcast"], [], ["public speaking"]),
+            ("🎵", ["music"], [], []),
+            ("🩰", ["dance", "ballet", "jazz"], [], ["technical skills"]),
+            ("📰", ["journal"], [], ["current events"]),
+            ("🖌️", ["drawing", "painting"], [], []),
+            ("🎨", ["art", "design", "illustrat"], [], ["mixed media"]),
+            ("📜", ["mytholog", "folklore", "religion", "philosoph"], [], []),
+            ("🏛️", ["govern", "gov", "histor", "civic", "politic"],
+             ["apush", "apwh", "apeuro", "apgov", "ush", "whap"],
+             ["american studies"]),
+            ("🌍", ["spanish", "french", "german", "hebrew", "mandarin", "chinese",
+                     "japanese", "japan", "korean", "korea", "italian", "italy",
+                     "france", "spain", "latin", "geograph", "multilingual"],
+             ["span", "fr", "ger", "heb", "mand", "aphug", "hug"],
+             ["world language", "global relations", "human geography"]),
+            ("🧗", ["adventure"], [], []),
+            ("🤝", ["sociolog", "mentor", "leadership"], ["soc"], []),
+            ("🧑‍🏫", ["teach"], [], []),
+            ("🎓", ["preparatory"], ["act", "sat"], ["college prep", "keys to success"]),
+            ("📝", ["writing", "essay"], [], []),
+            ("📚", ["english", "literat", "literacy", "reading", "composition", "oracy"],
+             ["eng", "ela", "eld", "lang", "lit", "comp", "aplang", "aplit"], [])
         ]
-        for entry in map where entry.keywords.contains(where: matches) {
-            return entry.emoji
+
+        for rule in rules {
+            let matchesPrefix = rule.prefixes.contains { prefix in
+                words.contains { $0.hasPrefix(prefix) }
+            }
+            let matchesAbbreviation = rule.abbreviations.contains { abbreviation in
+                words.contains(abbreviation) || condensedName == abbreviation
+            }
+            let matchesPhrase = rule.phrases.contains(where: containsPhrase)
+
+            if matchesPrefix || matchesAbbreviation || matchesPhrase {
+                return rule.emoji
+            }
         }
         return "📚"
     }
