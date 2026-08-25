@@ -21,13 +21,14 @@ public struct PlannedNotification: Equatable, Hashable, Sendable {
 /// Identifier scheme (stable, prefix-enumerable):
 ///   `end.<yyyy-mm-dd>.<blockID>` — block-end heads-up
 ///   `morning.<yyyy-mm-dd>`       — non-standard-day morning alert
+///   `refresh.<yyyy-mm-dd>`       — reminder to replenish a truncated queue
 ///
-/// Budgeting: iOS holds at most 64 pending local notifications; we cap at 56
-/// and pack whole days chronologically — a day's alerts are all-or-nothing so
-/// coverage never silently ends mid-day (except day one, which is always
-/// included even if it must be truncated).
+/// Budgeting: iOS holds at most 64 pending local notifications; we cap schedule
+/// alerts at 56 and reserve one additional slot for a refresh reminder. Whole
+/// days are packed chronologically so coverage never silently ends mid-day
+/// (except day one, which is always included even if it must be truncated).
 public enum NotificationPlanner {
-    public static let identifierPrefixes = ["end.", "morning."]
+    public static let identifierPrefixes = ["end.", "morning.", "refresh."]
     public static let defaultBudget = 56
 
     public static func plan(days: [DayTimeline],
@@ -39,6 +40,7 @@ public enum NotificationPlanner {
         guard prefs.anyEnabled else { return [] }
 
         var result: [PlannedNotification] = []
+        var exhaustedBudget = false
 
         for timeline in days.sorted(by: { $0.day < $1.day }) {
             var bundle: [PlannedNotification] = []
@@ -90,12 +92,25 @@ public enum NotificationPlanner {
 
             guard !bundle.isEmpty else { continue }
             if result.count + bundle.count > budget {
+                exhaustedBudget = true
                 if result.isEmpty {
                     result.append(contentsOf: bundle.prefix(budget))
                 }
                 break
             }
             result.append(contentsOf: bundle)
+        }
+
+        if exhaustedBudget, let finalCoveredDay = result.last?.day {
+            let reminder = PlannedNotification(
+                identifier: "refresh.\(finalCoveredDay)",
+                day: finalCoveredDay,
+                time: HourMinute(hour: 7, minute: 0),
+                title: "Refresh your class notifications",
+                body: "Open the app to keep receiving class reminders.")
+            if let fire = reminder.fireDate(calendar: calendar), fire > now {
+                result.append(reminder)
+            }
         }
 
         return result

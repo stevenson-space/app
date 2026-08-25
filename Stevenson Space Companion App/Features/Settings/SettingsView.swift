@@ -302,14 +302,14 @@ struct DeveloperSection: View {
     }
 }
 
-/// DEBUG-only inspector proving the 56-slot budget and identifier scheme.
+/// DEBUG-only inspector proving the schedule budget and reserved refresh slot.
 struct PendingNotificationsView: View {
     @State private var items: [NotificationScheduler.PendingItem] = []
     @State private var loaded = false
 
     var body: some View {
         List {
-            Section("\(items.count) pending (budget 56 of 64)") {
+            Section("\(items.count) pending (budget 57 of 64)") {
                 if items.isEmpty && loaded {
                     Text("Queue is empty.")
                         .foregroundStyle(.secondary)
