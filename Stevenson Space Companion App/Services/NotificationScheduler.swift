@@ -65,8 +65,8 @@ final class NotificationScheduler {
         let planHash = hasher.finalize()
         guard planHash != lastPlanHash else { return }
 
-        // Full replace on change: at most 56 adds, and the hash short-circuit
-        // makes the no-op path (app foregrounding with nothing changed) free.
+        // Full replace on change: at most 56 schedule alerts plus one refresh
+        // reminder; the hash short-circuit makes unchanged foregrounding free.
         await removeAllOurs(center)
 
         var allSucceeded = true

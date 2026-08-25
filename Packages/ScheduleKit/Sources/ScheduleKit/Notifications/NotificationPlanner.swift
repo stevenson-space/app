@@ -21,13 +21,14 @@ public struct PlannedNotification: Equatable, Hashable, Sendable {
 /// Identifier scheme (stable, prefix-enumerable):
 ///   `end.<yyyy-mm-dd>.<blockID>` — block-end heads-up
 ///   `morning.<yyyy-mm-dd>`       — non-standard-day morning alert
+///   `refresh.<yyyy-mm-dd>`       — reminder to replenish a truncated queue
 ///
-/// Budgeting: iOS holds at most 64 pending local notifications; we cap at 56
-/// and pack whole days chronologically — a day's alerts are all-or-nothing so
-/// coverage never silently ends mid-day (except day one, which is always
-/// included even if it must be truncated).
+/// Budgeting: iOS holds at most 64 pending local notifications; we cap schedule
+/// alerts at 56 and reserve one additional slot for a refresh reminder. Whole
+/// days are packed chronologically so coverage never silently ends mid-day
+/// (except day one, which is always included even if it must be truncated).
 public enum NotificationPlanner {
-    public static let identifierPrefixes = ["end.", "morning."]
+    public static let identifierPrefixes = ["end.", "morning.", "refresh."]
     public static let defaultBudget = 56
 
     public static func plan(days: [DayTimeline],
@@ -38,7 +39,9 @@ public enum NotificationPlanner {
                             calendar: Calendar = SchoolTime.calendar) -> [PlannedNotification] {
         guard prefs.anyEnabled else { return [] }
 
+        let scheduleBudget = max(0, min(budget, Self.defaultBudget))
         var result: [PlannedNotification] = []
+        var exhaustedBudget = false
 
         for timeline in days.sorted(by: { $0.day < $1.day }) {
             var bundle: [PlannedNotification] = []
@@ -58,38 +61,59 @@ public enum NotificationPlanner {
                     guard fire > now else { continue }
 
                     let next = timeline.moments.dropFirst(index + 1).first { $0.role.isAttended }
-                    let nextLine: String
+                    let title: String
+                    let body: String
                     if let next {
-                        nextLine = "Next: \(next.displayName) at \(Self.timeString(next.start, timeFormat))"
-                    } else if timeline.moments.last?.role == .free {
-                        nextLine = "You're free for the rest of the day"
+                        title = "Next: \(next.displayName)"
+                        let startTime = Self.timeString(next.start, timeFormat)
+                        if let room = next.room {
+                            body = "Room \(room) · Starts at \(startTime)"
+                        } else {
+                            body = "Starts at \(startTime)"
+                        }
                     } else {
-                        nextLine = "Last block of the day"
+                        // Zero lead means "at the bell" — phrase it as such.
+                        title = prefs.blockEndLeadMinutes == 0
+                            ? "\(span.displayName) is over"
+                            : "\(span.displayName) ends in \(prefs.blockEndLeadMinutes) min"
+                        body = timeline.moments.last?.role == .free
+                            ? "You're free for the rest of the day"
+                            : "Last block of the day"
                     }
                     let fireComponents = calendar.dateComponents(
                         [.hour, .minute], from: fire)
-                    // Zero lead means "at the bell" — phrase it as such.
-                    let title = prefs.blockEndLeadMinutes == 0
-                        ? "\(span.displayName) is over"
-                        : "\(span.displayName) ends in \(prefs.blockEndLeadMinutes) min"
                     bundle.append(PlannedNotification(
                         identifier: "end.\(timeline.day).\(span.id)",
                         day: timeline.day,
                         time: HourMinute(hour: fireComponents.hour ?? 0,
                                          minute: fireComponents.minute ?? 0),
                         title: title,
-                        body: nextLine))
+                        body: body))
                 }
             }
 
             guard !bundle.isEmpty else { continue }
-            if result.count + bundle.count > budget {
+            if result.count + bundle.count > scheduleBudget {
+                exhaustedBudget = true
                 if result.isEmpty {
-                    result.append(contentsOf: bundle.prefix(budget))
+                    result.append(contentsOf: bundle.prefix(scheduleBudget))
                 }
                 break
             }
             result.append(contentsOf: bundle)
+        }
+
+        if exhaustedBudget, let finalCoveredDay = result.last?.day,
+           let firstCoveredAlert = result.first(where: { $0.day == finalCoveredDay }) {
+            let reminder = PlannedNotification(
+                identifier: "refresh.\(finalCoveredDay)",
+                day: finalCoveredDay,
+                time: prefs.morningEnabled ? prefs.morningTime : firstCoveredAlert.time,
+                title: "Refresh your class notifications",
+                body: "Open the app to keep receiving class reminders.")
+            if let fire = reminder.fireDate(calendar: calendar), fire > now {
+                result.append(reminder)
+            }
         }
 
         return result
