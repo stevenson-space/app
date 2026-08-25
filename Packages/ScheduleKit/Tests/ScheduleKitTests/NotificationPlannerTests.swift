@@ -58,6 +58,30 @@ import Foundation
         #expect(!planned.contains { $0.identifier.contains(".6") || $0.identifier.contains(".7") })
     }
 
+    @Test func finalFreePeriodIsCalledOutAfterTheLastClass() {
+        let config = UserConfig(freePeriods: [8])
+        let prefs = NotificationPrefs(blockEndEnabled: true)
+        let monday = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(monday, 1, config: config), prefs: prefs, now: earlyMorning(monday))
+
+        #expect(planned.count == 7)
+        #expect(planned.last?.identifier == "end.2026-09-14.7")
+        #expect(planned.last?.body == "You're free for the rest of the day")
+    }
+
+    @Test func consecutiveFinalFreePeriodsAreCalledOutAfterTheLastClass() {
+        let config = UserConfig(freePeriods: [7, 8])
+        let prefs = NotificationPrefs(blockEndEnabled: true)
+        let monday = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(monday, 1, config: config), prefs: prefs, now: earlyMorning(monday))
+
+        #expect(planned.count == 6)
+        #expect(planned.last?.identifier == "end.2026-09-14.6")
+        #expect(planned.last?.body == "You're free for the rest of the day")
+    }
+
     @Test func lunchGetsAnAlertToo() {
         let config = UserConfig(lunch: SplitAssignment(basePeriod: 4, choice: .a))
         let prefs = NotificationPrefs(blockEndEnabled: true, blockEndLeadMinutes: 5)
