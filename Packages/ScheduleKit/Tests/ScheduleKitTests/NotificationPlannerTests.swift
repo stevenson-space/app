@@ -37,8 +37,9 @@ import Foundation
         #expect(planned.first?.identifier == "end.2026-09-14.1")
         // Period 1 ends 9:21; lead 5 → fires 9:16.
         #expect(planned.first?.time == HourMinute(hour: 9, minute: 16))
-        #expect(planned.first?.title == "1st Period ends in 5 min")
-        #expect(planned.first?.body == "Next: 2nd Period at 9:26 AM")
+        #expect(planned.first?.title == "Next: 2nd Period")
+        #expect(planned.first?.body == "Starts at 9:26 AM")
+        #expect(planned.last?.title == "8th Period ends in 5 min")
         #expect(planned.last?.body == "Last block of the day")
         // No morning alert on a standard day even with morning enabled.
         let withMorning = NotificationPlanner.plan(
@@ -46,6 +47,33 @@ import Foundation
             prefs: NotificationPrefs(blockEndEnabled: true, morningEnabled: true),
             now: earlyMorning(monday))
         #expect(!withMorning.contains { $0.identifier.hasPrefix("morning.") })
+    }
+
+    @Test func upcomingClassUsesCustomNameAndRoom() {
+        let config = UserConfig(customizations: [
+            "2": PeriodCustomization(name: "AP Biology", room: "214"),
+        ])
+        let prefs = NotificationPrefs(blockEndEnabled: true, blockEndLeadMinutes: 5)
+        let monday = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(monday, 1, config: config), prefs: prefs, now: earlyMorning(monday))
+
+        #expect(planned.first?.title == "Next: AP Biology")
+        #expect(planned.first?.body == "Room 214")
+    }
+
+    @Test func upcomingClassWithoutRoomShowsStartTimeInPreferredFormat() {
+        let config = UserConfig(customizations: [
+            "2": PeriodCustomization(name: "AP Biology"),
+        ])
+        let prefs = NotificationPrefs(blockEndEnabled: true, blockEndLeadMinutes: 5)
+        let monday = day(2026, 9, 14)
+        let planned = NotificationPlanner.plan(
+            days: timelines(monday, 1, config: config), prefs: prefs,
+            now: earlyMorning(monday), timeFormat: .twentyFourHour)
+
+        #expect(planned.first?.title == "Next: AP Biology")
+        #expect(planned.first?.body == "Starts at 9:26")
     }
 
     @Test func freePeriodsAndMergedSpansAreSkipped() {
@@ -91,7 +119,8 @@ import Foundation
 
         let lunch = planned.first { $0.identifier == "end.2026-09-14.4A" }
         #expect(lunch != nil)
-        #expect(lunch?.title == "Lunch ends in 5 min")
+        #expect(lunch?.title == "Next: 4th Period")
+        #expect(lunch?.body == "Starts at 11:37 AM")
         // 9 alerts: 7 whole periods + both halves of period 4.
         #expect(planned.count == 9)
     }
@@ -148,8 +177,9 @@ import Foundation
         #expect(planned.count == 8)
         // Period 1 ends 9:21; zero lead fires at 9:21 sharp.
         #expect(planned.first?.time == HourMinute(hour: 9, minute: 21))
-        #expect(planned.first?.title == "1st Period is over")
-        #expect(planned.first?.body == "Next: 2nd Period at 9:26 AM")
+        #expect(planned.first?.title == "Next: 2nd Period")
+        #expect(planned.first?.body == "Starts at 9:26 AM")
+        #expect(planned.last?.title == "8th Period is over")
     }
 
     @Test func pastFiresAreDropped() {

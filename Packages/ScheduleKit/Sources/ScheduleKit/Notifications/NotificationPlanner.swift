@@ -58,27 +58,33 @@ public enum NotificationPlanner {
                     guard fire > now else { continue }
 
                     let next = timeline.moments.dropFirst(index + 1).first { $0.role.isAttended }
-                    let nextLine: String
+                    let title: String
+                    let body: String
                     if let next {
-                        nextLine = "Next: \(next.displayName) at \(Self.timeString(next.start, timeFormat))"
-                    } else if timeline.moments.last?.role == .free {
-                        nextLine = "You're free for the rest of the day"
+                        title = "Next: \(next.displayName)"
+                        if let room = next.room {
+                            body = "Room \(room)"
+                        } else {
+                            body = "Starts at \(Self.timeString(next.start, timeFormat))"
+                        }
                     } else {
-                        nextLine = "Last block of the day"
+                        // Zero lead means "at the bell" — phrase it as such.
+                        title = prefs.blockEndLeadMinutes == 0
+                            ? "\(span.displayName) is over"
+                            : "\(span.displayName) ends in \(prefs.blockEndLeadMinutes) min"
+                        body = timeline.moments.last?.role == .free
+                            ? "You're free for the rest of the day"
+                            : "Last block of the day"
                     }
                     let fireComponents = calendar.dateComponents(
                         [.hour, .minute], from: fire)
-                    // Zero lead means "at the bell" — phrase it as such.
-                    let title = prefs.blockEndLeadMinutes == 0
-                        ? "\(span.displayName) is over"
-                        : "\(span.displayName) ends in \(prefs.blockEndLeadMinutes) min"
                     bundle.append(PlannedNotification(
                         identifier: "end.\(timeline.day).\(span.id)",
                         day: timeline.day,
                         time: HourMinute(hour: fireComponents.hour ?? 0,
                                          minute: fireComponents.minute ?? 0),
                         title: title,
-                        body: nextLine))
+                        body: body))
                 }
             }
 
