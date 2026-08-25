@@ -82,6 +82,15 @@ import Foundation
         #expect(config.freePeriods == [7])
     }
 
+    @Test func legacyHiddenFreePeriodsPreferenceIsDiscarded() throws {
+        let config = try decode(#"{"freePeriods":[8],"hideFreePeriods":true}"#)
+        #expect(config.freePeriods == [8])
+
+        let data = try JSONEncoder().encode(config)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["hideFreePeriods"] == nil)
+    }
+
     @Test func legacyAdvisoryPairMigrates() throws {
         let config = try decode(
             #"{"advisory":{"basePeriod":4,"choice":"A"},"lunch":{"basePeriod":4,"choice":"B"}}"#)

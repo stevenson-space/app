@@ -30,9 +30,6 @@ struct SettingsView: View {
             } label: {
                 Label("My Schedule", systemImage: "book")
             }
-            Toggle("Hide free periods in the list", isOn: Binding(
-                get: { model.config.hideFreePeriods },
-                set: { newValue in model.updateConfig { $0.hideFreePeriods = newValue } }))
         } header: {
             Text("My Schedule")
         } footer: {
