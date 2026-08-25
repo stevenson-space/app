@@ -97,6 +97,8 @@ struct HeroSection: View {
                 if let next {
                     nextLine(icon: "arrow.right", text:
                         "Next: \(next.displayName)\(roomSuffix(next)) at \(TimeDisplay.time(next.start, pref))")
+                } else if current.role == .free {
+                    nextLine(icon: "checkmark", text: "You're free for the rest of the day")
                 } else {
                     nextLine(icon: "checkmark", text: "Last block of the day")
                 }

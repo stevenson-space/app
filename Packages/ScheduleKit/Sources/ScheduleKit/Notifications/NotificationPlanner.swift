@@ -61,6 +61,8 @@ public enum NotificationPlanner {
                     let nextLine: String
                     if let next {
                         nextLine = "Next: \(next.displayName) at \(Self.timeString(next.start, timeFormat))"
+                    } else if timeline.moments.last?.role == .free {
+                        nextLine = "You're free for the rest of the day"
                     } else {
                         nextLine = "Last block of the day"
                     }
