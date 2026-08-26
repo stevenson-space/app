@@ -3,23 +3,38 @@ import ScheduleKit
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @State private var scheduleScrollOffset: CGFloat = 0
+
+    private var timerCompactProgress: CGFloat {
+        min(max(scheduleScrollOffset / 120, 0), 1)
+    }
 
     var body: some View {
         Group {
             if model.todayTimeline.isSchoolDay {
-                ScrollView {
+                VStack(spacing: 0) {
                     VStack(spacing: 22) {
                         HomeHeaderView()
-                        HeroSection()
+                        HeroSection(compactProgress: timerCompactProgress)
                             .padding(.top, 6)
                         if model.shouldShowLunchPrompt {
                             LunchPromptCard()
                         }
-                        DayTimelineListView()
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 24)
+
+                    ScrollView {
+                        DayTimelineListView()
+                            .padding(.horizontal, 16)
+                            .padding(.top, 22)
+                            .padding(.bottom, 24)
+                    }
+                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                        max(geometry.contentOffset.y + geometry.contentInsets.top, 0)
+                    } action: { _, newOffset in
+                        scheduleScrollOffset = newOffset
+                    }
                 }
             } else {
                 ScrollView {

@@ -29,6 +29,21 @@ struct CountdownDial: View {
     let offset: TimeInterval
     let label: String
     var sublabel: String?
+    var compactProgress: CGFloat = 0
+
+    @ScaledMetric(relativeTo: .callout) private var expandedLabelSize: CGFloat = 17
+    @ScaledMetric(relativeTo: .callout) private var compactLabelSize: CGFloat = 14
+
+    private var progress: CGFloat {
+        min(max(compactProgress, 0), 1)
+    }
+
+    private var dialSize: CGFloat { 270 - (94 * progress) }
+    private var ringWidth: CGFloat { 16 - (6 * progress) }
+    private var countdownSize: CGFloat { 50 - (14 * progress) }
+    private var labelSize: CGFloat {
+        expandedLabelSize - ((expandedLabelSize - compactLabelSize) * progress)
+    }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0)) { context in
@@ -39,27 +54,27 @@ struct CountdownDial: View {
 
             ZStack {
                 Circle()
-                    .stroke(tint.opacity(0.15), lineWidth: 16)
+                    .stroke(tint.opacity(0.15), lineWidth: ringWidth)
                 Circle()
                     .trim(from: 0, to: fraction)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                    .stroke(tint, style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                VStack(spacing: 6) {
+                VStack(spacing: 6 - (2 * progress)) {
                     Text(TimeDisplay.countdown(remaining))
-                        .font(.system(size: 50, weight: .bold, design: .rounded))
+                        .font(.system(size: countdownSize, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText(countsDown: true))
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
-                        .padding(.horizontal, 30)
+                        .padding(.horizontal, 30 - (14 * progress))
                     Text(label)
-                        .font(.callout)
+                        .font(.system(size: labelSize))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 34)
+                        .padding(.horizontal, 34 - (20 * progress))
                 }
             }
-            .frame(width: 270, height: 270)
+            .frame(width: dialSize, height: dialSize)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(label)")
         }
@@ -70,30 +85,37 @@ struct CountdownDial: View {
 /// different layout, not just a different color.
 struct HeroSection: View {
     @Environment(AppModel.self) private var model
+    let compactProgress: CGFloat
+
+    private var spacing: CGFloat {
+        14 - (6 * min(max(compactProgress, 0), 1))
+    }
 
     var body: some View {
         let pref = model.config.timeFormat
         switch model.currentState {
         case .beforeSchool(let first):
-            VStack(spacing: 14) {
+            VStack(spacing: spacing) {
                 CountdownDial(
                     start: first.start.addingTimeInterval(-3600),
                     end: first.start,
                     tint: .blue,
                     offset: model.displayOffset,
-                    label: "until school starts")
+                    label: "until school starts",
+                    compactProgress: compactProgress)
                 nextLine(icon: "sunrise", text:
                     "\(first.displayName) starts at \(TimeDisplay.time(first.start, pref))")
             }
 
         case .inBlock(let current, let next):
-            VStack(spacing: 14) {
+            VStack(spacing: spacing) {
                 CountdownDial(
                     start: current.start,
                     end: current.end,
                     tint: ScheduleStyle.tint(for: current.role),
                     offset: model.displayOffset,
-                    label: heroLabel(for: current, pref: pref))
+                    label: heroLabel(for: current, pref: pref),
+                    compactProgress: compactProgress)
                 if let next {
                     nextLine(icon: "arrow.right", text:
                         "Next: \(next.displayName)\(roomSuffix(next)) at \(TimeDisplay.time(next.start, pref))")
@@ -105,7 +127,12 @@ struct HeroSection: View {
             }
 
         case .passing(_, let to, let kind):
-            PassingHero(to: to, kind: kind, offset: model.displayOffset, pref: pref)
+            PassingHero(
+                to: to,
+                kind: kind,
+                offset: model.displayOffset,
+                pref: pref,
+                compactProgress: compactProgress)
 
         case .afterSchool:
             AfterSchoolHero(next: model.nextSchoolDay, today: model.today, pref: pref)
@@ -149,23 +176,32 @@ struct PassingHero: View {
     let kind: PassingKind
     let offset: TimeInterval
     let pref: TimeFormatPref
+    let compactProgress: CGFloat
+
+    private var progress: CGFloat {
+        min(max(compactProgress, 0), 1)
+    }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 10 - (3 * progress)) {
             Label(kind == .intraPeriod ? "Switching Halves" : "Passing Period",
                   systemImage: "figure.walk")
                 .font(.headline)
                 .foregroundStyle(.orange)
                 .textCase(.uppercase)
 
-            TickingCountdown(target: to.start, offset: offset, size: 46, tint: .orange)
+            TickingCountdown(
+                target: to.start,
+                offset: offset,
+                size: 46 - (12 * progress),
+                tint: .orange)
 
             Text("\(to.displayName)\(to.room.map { " · Rm \($0)" } ?? "") starts at \(TimeDisplay.time(to.start, pref))")
                 .font(.callout)
                 .foregroundStyle(.primary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
+        .padding(.vertical, 28 - (14 * progress))
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.orange.opacity(0.12))
