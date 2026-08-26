@@ -21,11 +21,10 @@ public final class SharedStore: @unchecked Sendable {
         static let fetchMetadata = "sk.fetchMetadata"
         static let notificationPrefs = "sk.notificationPrefs"
         static let mapURL = "sk.mapURL"
-        static let lunchPromptDismissed = "sk.lunchPromptDismissed"
         static let migrated = "sk.migratedToAppGroup"
         static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
-                          notificationPrefs, mapURL, lunchPromptDismissed]
+                          notificationPrefs, mapURL]
     }
 
     /// Test injection point.
@@ -112,11 +111,6 @@ public final class SharedStore: @unchecked Sendable {
 
     public func resetMapURL() {
         defaults.removeObject(forKey: Keys.mapURL)
-    }
-
-    public var lunchPromptDismissed: Bool {
-        get { defaults.bool(forKey: Keys.lunchPromptDismissed) }
-        set { defaults.set(newValue, forKey: Keys.lunchPromptDismissed) }
     }
 
     // MARK: - Codable plumbing

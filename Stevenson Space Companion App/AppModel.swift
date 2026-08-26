@@ -323,24 +323,6 @@ final class AppModel {
         return now().timeIntervalSince(lastSuccess) > 7 * 24 * 3600
     }
 
-    // MARK: - Lunch prompt card
-
-    var lunchPromptDismissed: Bool { store.lunchPromptDismissed }
-
-    func dismissLunchPrompt() {
-        store.lunchPromptDismissed = true
-        lunchPromptVersion += 1
-    }
-
-    /// Bumped so views observing the prompt state re-render (the flag itself
-    /// lives in UserDefaults, outside Observation).
-    private var lunchPromptVersion = 0
-
-    var shouldShowLunchPrompt: Bool {
-        _ = lunchPromptVersion
-        return config.lunch == nil && !store.lunchPromptDismissed
-    }
-
     // MARK: - Notifications
 
     private(set) var notificationAuthDenied = false
