@@ -12,9 +12,6 @@ struct HomeView: View {
                         HomeHeaderView()
                         HeroSection()
                             .padding(.top, 6)
-                        if model.shouldShowLunchPrompt {
-                            LunchPromptCard()
-                        }
                         DayTimelineListView()
                     }
                     .padding(.horizontal, 16)
@@ -36,47 +33,6 @@ struct HomeView: View {
             }
         }
         #endif
-    }
-}
-
-/// One-time nudge: lunch selection is what makes midday times correct, which
-/// is exactly when students check their phones.
-struct LunchPromptCard: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "fork.knife.circle.fill")
-                .font(.title2)
-                .foregroundStyle(.green)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Set your lunch period")
-                    .font(.subheadline.weight(.semibold))
-                Text("Midday times depend on your lunch wave.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button("Set Up") {
-                model.selectedTab = .settings
-            }
-            .font(.subheadline.weight(.semibold))
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
-            Button {
-                model.dismissLunchPrompt()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.green.opacity(0.1))
-        )
     }
 }
 
