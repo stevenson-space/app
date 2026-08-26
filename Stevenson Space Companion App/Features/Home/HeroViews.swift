@@ -31,6 +31,9 @@ struct CountdownDial: View {
     var sublabel: String?
     var compactProgress: CGFloat = 0
 
+    @ScaledMetric(relativeTo: .callout) private var expandedLabelSize: CGFloat = 17
+    @ScaledMetric(relativeTo: .callout) private var compactLabelSize: CGFloat = 14
+
     private var progress: CGFloat {
         min(max(compactProgress, 0), 1)
     }
@@ -38,7 +41,9 @@ struct CountdownDial: View {
     private var dialSize: CGFloat { 270 - (94 * progress) }
     private var ringWidth: CGFloat { 16 - (6 * progress) }
     private var countdownSize: CGFloat { 50 - (14 * progress) }
-    private var labelSize: CGFloat { 17 - (3 * progress) }
+    private var labelSize: CGFloat {
+        expandedLabelSize - ((expandedLabelSize - compactLabelSize) * progress)
+    }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0)) { context in
