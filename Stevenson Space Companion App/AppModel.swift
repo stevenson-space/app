@@ -32,6 +32,10 @@ final class AppModel {
     // MARK: Derived
 
     private(set) var todayTimeline: DayTimeline
+    /// Stored so SwiftUI observes boundary changes driven by the heartbeat.
+    /// Computing this on demand would only track `todayTimeline`, which does
+    /// not change when the clock crosses from passing into the next block.
+    private(set) var currentState: MomentState
     /// The next upcoming school (or async) day — powers "done for today",
     /// weekend, and break screens.
     private(set) var nextSchoolDay: DayTimeline?
@@ -85,10 +89,12 @@ final class AppModel {
             overrides: Dictionary(overrides.map { ($0.day, $0) }, uniquingKeysWith: { _, last in last }),
             config: config,
             catalog: catalog)
-        self.todayTimeline = resolveDay(today, inputs: inputs)
+        let todayTimeline = resolveDay(today, inputs: inputs)
+        self.todayTimeline = todayTimeline
+        self.currentState = momentState(at: Date(), in: todayTimeline)
 
         self.nextSchoolDay = cachedNextSchoolDay(after: today)
-        updateCurrentSpan()
+        updateCurrentState()
 
         dayChangeObserver = NotificationCenter.default.addObserver(
             forName: .NSCalendarDayChanged, object: nil, queue: nil
@@ -133,16 +139,12 @@ final class AppModel {
         resolveDay(day, inputs: resolverInputs)
     }
 
-    var currentState: MomentState {
-        momentState(at: now(), in: todayTimeline)
-    }
-
     func refreshDerived() {
         let today = self.today
         lastComputedDay = today
         todayTimeline = timeline(for: today)
         nextSchoolDay = cachedNextSchoolDay(after: today)
-        updateCurrentSpan()
+        updateCurrentState()
     }
 
     /// The next-school-day *search* depends only on the day, the synced map, and
@@ -168,20 +170,25 @@ final class AppModel {
         return found
     }
 
-    /// Called once per second by the hero's TimelineView. Cheap: a state
-    /// lookup plus two guarded writes — Observation only fans out when a value
-    /// actually changes (block boundary or midnight rollover).
+    /// Called once per second by the app heartbeat. Cheap: a state lookup plus
+    /// guarded writes — Observation only fans out when a value actually changes
+    /// (block boundary or midnight rollover).
     func tick() {
         if today != lastComputedDay {
             refreshDerived()
             return
         }
-        updateCurrentSpan()
+        updateCurrentState()
     }
 
-    private func updateCurrentSpan() {
+    private func updateCurrentState() {
+        let state = momentState(at: now(), in: todayTimeline)
+        if state != currentState {
+            currentState = state
+        }
+
         let id: String?
-        switch currentState {
+        switch state {
         case .inBlock(let current, _): id = current.id
         case .passing(let from, _, _): id = "passing-\(from.id)"
         case .beforeSchool: id = "before"
