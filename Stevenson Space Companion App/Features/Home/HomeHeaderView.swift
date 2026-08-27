@@ -7,7 +7,7 @@ struct HomeHeaderView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let timeline = model.todayTimeline
+        let timeline = model.homeTimeline
         let isStandard = timeline.isStandardSchedule
 
         VStack(alignment: .leading, spacing: 8) {
@@ -49,7 +49,7 @@ struct HomeHeaderView: View {
     }
 
     @ViewBuilder private var badges: some View {
-        let timeline = model.todayTimeline
+        let timeline = model.homeTimeline
         HStack(spacing: 8) {
             if timeline.provenance == .override {
                 badge("Manual override", icon: "pencil", tint: .blue)

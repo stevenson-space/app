@@ -30,8 +30,12 @@ public struct ResolverInputs: Sendable {
 /// 4. Bundled break range → break
 /// 5. Weekend
 /// 6. In-session weekday → Standard, by design (not a guess)
+///
+/// `viewMode` changes only how schedules with A/B tables are materialized. A
+/// schedule without half-period data resolves identically in either mode.
 public func resolveDay(_ day: DayKey,
                        inputs: ResolverInputs,
+                       viewMode: ScheduleViewMode = .fullPeriods,
                        calendar: Calendar = SchoolTime.calendar) -> DayTimeline {
     let year = inputs.years.first { $0.contains(day) }
     let labeledDay = year?.labeledDays[day]
@@ -43,7 +47,8 @@ public func resolveDay(_ day: DayKey,
             let uncertain = family == .earlyDismissal && rotation == nil
             return schoolTimeline(day: day, family: family, rotation: rotation,
                                   provenance: .override, rotationUncertain: uncertain,
-                                  labeledDay: labeledDay, inputs: inputs, calendar: calendar)
+                                  labeledDay: labeledDay, inputs: inputs,
+                                  viewMode: viewMode, calendar: calendar)
         case .noSchool:
             return bareTimeline(day: day, kind: .noSchool, label: "No School",
                                 note: labeledDay, provenance: .override)
@@ -64,7 +69,8 @@ public func resolveDay(_ day: DayKey,
             }
             return schoolTimeline(day: day, family: family, rotation: rotation,
                                   provenance: .remoteMap, rotationUncertain: uncertain,
-                                  labeledDay: labeledDay, inputs: inputs, calendar: calendar)
+                                  labeledDay: labeledDay, inputs: inputs,
+                                  viewMode: viewMode, calendar: calendar)
         case .noSchool:
             return bareTimeline(day: day, kind: .noSchool, label: "No School",
                                 note: labeledDay, provenance: .remoteMap)
@@ -98,7 +104,8 @@ public func resolveDay(_ day: DayKey,
     // 6. Unlisted in-session weekday: Standard by design.
     return schoolTimeline(day: day, family: .standard, rotation: nil,
                           provenance: .defaultStandard, rotationUncertain: false,
-                          labeledDay: labeledDay, inputs: inputs, calendar: calendar)
+                          labeledDay: labeledDay, inputs: inputs,
+                          viewMode: viewMode, calendar: calendar)
 }
 
 /// Finals rotation from a date's position in its map span, counting school
@@ -128,6 +135,7 @@ private func bareTimeline(day: DayKey, kind: DayKind, label: String,
 private func schoolTimeline(day: DayKey, family: BellFamily, rotation: EDRotation?,
                             provenance: Provenance, rotationUncertain: Bool,
                             labeledDay: String?, inputs: ResolverInputs,
+                            viewMode: ScheduleViewMode,
                             calendar: Calendar) -> DayTimeline {
     guard let schedule = inputs.catalog.schedule(family: family, rotation: rotation) else {
         // A bell family with no bundled table is a data bug; degrade honestly.
@@ -136,7 +144,7 @@ private func schoolTimeline(day: DayKey, family: BellFamily, rotation: EDRotatio
     }
 
     let blocks = personalizedBlocks(schedule: schedule, config: inputs.config,
-                                    day: day, calendar: calendar)
+                                    day: day, viewMode: viewMode, calendar: calendar)
     let notes = [labeledDay, schedule.rotation?.shortName].compactMap(\.self)
 
     return DayTimeline(
@@ -165,7 +173,8 @@ public func standardTemplate(config: UserConfig,
     // 2001-01-01 is a Monday.
     let referenceMonday = DayKey(year: 2001, month: 1, day: 1)
     return personalizedBlocks(schedule: schedule, config: config,
-                              day: referenceMonday, calendar: calendar)
+                              day: referenceMonday, viewMode: .fullPeriods,
+                              calendar: calendar)
 }
 
 // MARK: - Personalization
@@ -179,9 +188,11 @@ public func standardTemplate(config: UserConfig,
 /// doesn't apply to it). Schedules without A/B tables resolve one block per
 /// period with the safe-direction precedence `lunch > advisory > class > free`,
 /// and never merge — on a finals day the app can't know which slot hosts a
-/// 1½-period class's final.
+/// 1½-period class's final. Half-period view instead emits every A/B row as a
+/// distinct block so Home can show and count down to each available bell.
 func personalizedBlocks(schedule: BellSchedule, config rawConfig: UserConfig,
-                        day: DayKey, calendar: Calendar) -> [ResolvedBlock] {
+                        day: DayKey, viewMode: ScheduleViewMode = .fullPeriods,
+                        calendar: Calendar) -> [ResolvedBlock] {
     // Advisory (freshman) doesn't meet on Fridays; its slots become lunch, so
     // a paired period collapses to one full-period lunch. Resolve it here so
     // Home and the notification planner see the same shape.
@@ -236,7 +247,7 @@ func personalizedBlocks(schedule: BellSchedule, config rawConfig: UserConfig,
             continue
         }
 
-        if plan.isUniform {
+        if plan.isUniform && viewMode == .fullPeriods {
             // Both halves agree: the whole period is one thing, at the full
             // block's times (which already span the internal gap).
             switch plan.a {
@@ -251,7 +262,12 @@ func personalizedBlocks(schedule: BellSchedule, config rawConfig: UserConfig,
         for halfBlock in halves {
             guard let half = halfBlock.half else { continue }
             switch plan.slot(half) {
-            case .classSlot(let anchor): appendToRun(halfBlock, anchor: anchor)
+            case .classSlot(let anchor):
+                if viewMode == .halfPeriods {
+                    emit(halfBlock, role: .classPeriod, namingID: .period(anchor))
+                } else {
+                    appendToRun(halfBlock, anchor: anchor)
+                }
             case .lunch: emit(halfBlock, role: .lunch)
             case .advisory: emit(halfBlock, role: .advisory)
             case .free: emit(halfBlock, role: .free)
