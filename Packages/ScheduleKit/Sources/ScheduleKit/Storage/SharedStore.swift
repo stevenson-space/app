@@ -20,11 +20,12 @@ public final class SharedStore: @unchecked Sendable {
         static let mapData = "sk.mapData"
         static let fetchMetadata = "sk.fetchMetadata"
         static let notificationPrefs = "sk.notificationPrefs"
+        static let homeScheduleViewMode = "sk.homeScheduleViewMode"
         static let mapURL = "sk.mapURL"
         static let migrated = "sk.migratedToAppGroup"
         static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
-                          notificationPrefs, mapURL]
+                          notificationPrefs, homeScheduleViewMode, mapURL]
     }
 
     /// Test injection point.
@@ -94,6 +95,16 @@ public final class SharedStore: @unchecked Sendable {
     public var notificationPrefs: NotificationPrefs {
         get { decode(NotificationPrefs.self, key: Keys.notificationPrefs) ?? NotificationPrefs() }
         set { encode(newValue, key: Keys.notificationPrefs) }
+    }
+
+    public var homeScheduleViewMode: ScheduleViewMode {
+        get {
+            guard let raw = defaults.string(forKey: Keys.homeScheduleViewMode) else {
+                return .fullPeriods
+            }
+            return ScheduleViewMode(rawValue: raw) ?? .fullPeriods
+        }
+        set { defaults.set(newValue.rawValue, forKey: Keys.homeScheduleViewMode) }
     }
 
     /// The remote map URL — user-editable in Settings, resettable to default.

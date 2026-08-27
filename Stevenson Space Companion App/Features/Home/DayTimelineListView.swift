@@ -7,7 +7,7 @@ struct DayTimelineListView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let timeline = model.todayTimeline
+        let timeline = model.homeTimeline
         // Reading currentSpanID re-renders this list exactly at boundaries.
         let _ = model.currentSpanID
         let config = model.config

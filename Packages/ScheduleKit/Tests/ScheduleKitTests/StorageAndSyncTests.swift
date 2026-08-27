@@ -77,6 +77,15 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(store.cachedMapData == nil)
         #expect(store.fetchMetadata == FetchMetadata())
         #expect(!store.notificationPrefs.anyEnabled)
+        #expect(store.homeScheduleViewMode == .fullPeriods)
+    }
+
+    @Test func homeScheduleViewModeRoundTrips() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        store.homeScheduleViewMode = .halfPeriods
+        #expect(store.homeScheduleViewMode == .halfPeriods)
     }
 }
 

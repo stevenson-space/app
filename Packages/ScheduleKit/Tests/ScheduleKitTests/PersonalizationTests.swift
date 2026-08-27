@@ -22,6 +22,55 @@ import Foundation
         #expect(lines.contains("08:30-09:21 1 classPeriod 1st Period"))
     }
 
+    @Test func halfPeriodViewExpandsEveryAvailableABPeriod() {
+        let full = resolveDay(monday, inputs: TestSupport.inputs(), viewMode: .fullPeriods)
+        let half = resolveDay(monday, inputs: TestSupport.inputs(), viewMode: .halfPeriods)
+
+        #expect(full.blocks.map(\.id) == (1...8).map(String.init))
+        #expect(half.blocks.map(\.id) == (1...8).flatMap { ["\($0)A", "\($0)B"] })
+        #expect(half.blocks.allSatisfy { $0.half != nil })
+        #expect(half.blocks.first?.start == full.blocks.first?.start)
+        #expect(half.blocks.last?.end == full.blocks.last?.end)
+    }
+
+    @Test func halfPeriodViewPreservesPersonalizedAssignments() {
+        let config = UserConfig(lunch: SplitAssignment(basePeriod: 4, choice: .a))
+        let half = resolveDay(
+            monday,
+            inputs: TestSupport.inputs(config: config),
+            viewMode: .halfPeriods)
+
+        #expect(half.blocks.first { $0.id == "4A" }?.role == .lunch)
+        #expect(half.blocks.first { $0.id == "4B" }?.role == .classPeriod)
+    }
+
+    @Test func halfPeriodViewExpandsExtendedClassesWithoutLosingTheirIdentity() {
+        var config = UserConfig(customizations: [
+            "2": PeriodCustomization(name: "AP Chemistry", room: "118")
+        ])
+        config.setClassExtended(anchor: 2, true)
+        let half = resolveDay(
+            monday,
+            inputs: TestSupport.inputs(config: config),
+            viewMode: .halfPeriods)
+
+        let chemistryBlocks = half.blocks.filter { ["2A", "2B", "3A"].contains($0.id) }
+        #expect(chemistryBlocks.map(\.displayName) == Array(repeating: "AP Chemistry", count: 3))
+        #expect(chemistryBlocks.map(\.room) == Array(repeating: "118", count: 3))
+        #expect(chemistryBlocks.allSatisfy { $0.customizationID == .period(2) })
+    }
+
+    @Test func halfPeriodViewFallsBackWhenScheduleHasNoABTable() throws {
+        let map = try TestSupport.map(#"{"Late Arrival": ["9/14/2026"]}"#)
+        let half = resolveDay(
+            monday,
+            inputs: TestSupport.inputs(map: map),
+            viewMode: .halfPeriods)
+
+        #expect(half.family == .lateArrival)
+        #expect(half.blocks.allSatisfy { $0.half == nil })
+    }
+
     @Test func lunch4BOnStandardFlipsTheHalves() {
         let config = UserConfig(lunch: SplitAssignment(basePeriod: 4, choice: .b))
         let lines = TestSupport.lines(timeline(config))

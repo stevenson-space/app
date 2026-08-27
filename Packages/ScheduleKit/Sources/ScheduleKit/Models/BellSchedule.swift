@@ -1,5 +1,20 @@
 import Foundation
 
+/// How a splittable bell schedule is presented on Home. Full-period mode
+/// keeps uniform periods together while preserving real mixed assignments;
+/// half-period mode expands every available A/B subdivision.
+public enum ScheduleViewMode: String, Codable, CaseIterable, Hashable, Sendable {
+    case fullPeriods
+    case halfPeriods
+
+    public var displayName: String {
+        switch self {
+        case .fullPeriods: return "Full periods"
+        case .halfPeriods: return "Half periods"
+        }
+    }
+}
+
 /// One timed block in a bell table (times are wall-clock; interval is half-open
 /// [start, end) when materialized).
 public struct Block: Hashable, Codable, Sendable {
@@ -69,7 +84,8 @@ public struct BellSchedule: Hashable, Sendable {
     /// The day's spine, in the order the day runs.
     public let fullBlocks: [Block]
     /// A/B subdivision rows (only Standard, Activity Period, PM Assembly).
-    /// Used solely to render the user's lunch/advisory period.
+    /// Used for personalized split assignments and the optional half-period
+    /// Home view.
     public let abBlocks: [Block]
 
     public var hasABVariants: Bool { !abBlocks.isEmpty }

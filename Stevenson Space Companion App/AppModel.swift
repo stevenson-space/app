@@ -29,9 +29,17 @@ final class AppModel {
     private(set) var fetchMetadata: FetchMetadata
     private(set) var isSyncing = false
 
+    // MARK: Home presentation
+
+    private(set) var homeScheduleViewMode: ScheduleViewMode
+
     // MARK: Derived
 
     private(set) var todayTimeline: DayTimeline
+    /// Today's timeline rendered at the user's chosen Home granularity. This
+    /// stays separate from `todayTimeline` so notification planning always
+    /// uses the canonical resolution.
+    private(set) var homeTimeline: DayTimeline
     /// The next upcoming school (or async) day — powers "done for today",
     /// weekend, and break screens.
     private(set) var nextSchoolDay: DayTimeline?
@@ -77,6 +85,8 @@ final class AppModel {
         self.map = map
         self.prefs = store.notificationPrefs
         self.fetchMetadata = store.fetchMetadata
+        let homeScheduleViewMode = store.homeScheduleViewMode
+        self.homeScheduleViewMode = homeScheduleViewMode
 
         let today = DayKey(date: Date())
         self.lastComputedDay = today
@@ -85,7 +95,12 @@ final class AppModel {
             overrides: Dictionary(overrides.map { ($0.day, $0) }, uniquingKeysWith: { _, last in last }),
             config: config,
             catalog: catalog)
-        self.todayTimeline = resolveDay(today, inputs: inputs)
+        let todayTimeline = resolveDay(today, inputs: inputs)
+        self.todayTimeline = todayTimeline
+        self.homeTimeline = resolveDay(
+            today,
+            inputs: inputs,
+            viewMode: homeScheduleViewMode)
 
         self.nextSchoolDay = cachedNextSchoolDay(after: today)
         updateCurrentSpan()
@@ -133,14 +148,37 @@ final class AppModel {
         resolveDay(day, inputs: resolverInputs)
     }
 
+    private func timeline(for day: DayKey, viewMode: ScheduleViewMode) -> DayTimeline {
+        resolveDay(day, inputs: resolverInputs, viewMode: viewMode)
+    }
+
+    var isHalfPeriodViewAvailable: Bool {
+        guard let family = todayTimeline.family,
+              let schedule = catalog.schedule(
+                family: family,
+                rotation: todayTimeline.rotation) else {
+            return false
+        }
+        return schedule.hasABVariants
+    }
+
+    func setHomeScheduleViewMode(_ viewMode: ScheduleViewMode) {
+        guard viewMode != homeScheduleViewMode else { return }
+        homeScheduleViewMode = viewMode
+        store.homeScheduleViewMode = viewMode
+        homeTimeline = timeline(for: today, viewMode: viewMode)
+        updateCurrentSpan()
+    }
+
     var currentState: MomentState {
-        momentState(at: now(), in: todayTimeline)
+        momentState(at: now(), in: homeTimeline)
     }
 
     func refreshDerived() {
         let today = self.today
         lastComputedDay = today
         todayTimeline = timeline(for: today)
+        homeTimeline = timeline(for: today, viewMode: homeScheduleViewMode)
         nextSchoolDay = cachedNextSchoolDay(after: today)
         updateCurrentSpan()
     }
