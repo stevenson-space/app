@@ -70,9 +70,22 @@ struct CountdownDial: View {
 /// different layout, not just a different color.
 struct HeroSection: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let pref = model.config.timeFormat
+
+        ZStack {
+            heroContent(pref: pref)
+                .id(model.currentSpanID)
+                .transition(heroTransition)
+        }
+        .frame(maxWidth: .infinity)
+        .animation(heroAnimation, value: model.currentSpanID)
+    }
+
+    @ViewBuilder
+    private func heroContent(pref: TimeFormatPref) -> some View {
         switch model.currentState {
         case .beforeSchool(let first):
             VStack(spacing: 14) {
@@ -115,6 +128,27 @@ struct HeroSection: View {
             // to full-screen status views.
             EmptyView()
         }
+    }
+
+    private var heroTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+
+        return .asymmetric(
+            insertion: .opacity
+                .combined(with: .scale(scale: 0.94))
+                .combined(with: .offset(y: 18)),
+            removal: .opacity
+                .combined(with: .scale(scale: 1.03))
+                .combined(with: .offset(y: -10))
+        )
+    }
+
+    private var heroAnimation: Animation {
+        reduceMotion
+            ? .easeInOut(duration: 0.18)
+            : .spring(response: 0.52, dampingFraction: 0.8)
     }
 
     private func heroLabel(for span: ResolvedSpan, pref: TimeFormatPref) -> String {
