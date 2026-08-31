@@ -10,6 +10,9 @@ struct RootView: View {
             Tab("Home", systemImage: "clock", value: RootTab.home) {
                 HomeView()
             }
+            Tab("Lunch", systemImage: "fork.knife", value: RootTab.lunch) {
+                LunchMenuView()
+            }
             Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
                 SettingsView()
             }

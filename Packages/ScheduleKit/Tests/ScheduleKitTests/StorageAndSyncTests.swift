@@ -76,6 +76,8 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(store.overrides.isEmpty)
         #expect(store.cachedMapData == nil)
         #expect(store.fetchMetadata == FetchMetadata())
+        #expect(store.cachedLunchMenuData == nil)
+        #expect(store.lunchFetchMetadata == FetchMetadata())
         #expect(!store.notificationPrefs.anyEnabled)
     }
 }
