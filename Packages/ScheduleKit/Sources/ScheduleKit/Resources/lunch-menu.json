@@ -1,0 +1,76 @@
+{
+  "validFrom": "2026-08-11",
+  "validTo": "2027-05-31",
+  "semesterSwitch": "2027-01-01",
+  "offset": 0,
+  "stations": {
+    "comfort": {
+      "cadence": "daily",
+      "data": [
+        ["Cheese Tortellini", "Chicken Shawarma with Pita", "Beef Meatloaf", "Baked Mostaccioli", "BBQ Pulled Chicken Sandwich"],
+        ["BBQ Pulled Chicken Sandwich", "Moroccan Chickpea Stew with Naan", "Chicken Tetrazini", "Turkey Sloppy Joe", "Roasted Italian Chicken Thigh"],
+        ["Eggplant Parmesan", "Three Cheese Penne", "Falafel Sandwich", "Fried Chicken", "Baked Turkey Meatloaf with Chipotle BBQ Sauce"],
+        ["Spicy Whole Wheat Spaghetti", "Swedish Meatballs with Egg Noodles", "Cheese Enchilada Casserole", "Tuna Noodle Casserole", "Baked Battered Cod"]
+      ]
+    },
+    "mindful": {
+      "cadence": "daily",
+      "data": [
+        ["Lemon Garlic Baked Chicken", "Gyro Sandwich with Pita", "Roast Turkey Breast", "Chicken Tinga", "Southwest Beef Macaroni"],
+        ["Jerk Chicken", "Butter Chicken", "Tortilla Crusted Tilapia", "Dijon Chicken", "Baked Herb Cod"],
+        ["Baked Chicken Parmesan", "Biryani Chicken", "Gyro Sandwich with Pita", "Chopped Steak with Onion Gravy", "Cajun Shrimp Pasta"],
+        ["Chicken Marsala", "Chicken Tikka Masala", "Chipotle Orange Chicken", "Adobo Roasted Turkey Breast", "Chicken Vesuvio"]
+      ]
+    },
+    "sides": {
+      "cadence": "daily",
+      "data": [
+        [
+          ["Roasted Carrots", "Roasted Red Potatoes"],
+          ["Simple Green Salad", "Lemon Rice with Tzatziki Sauce"],
+          ["Corn on the Cob", "Mashed Potatoes"],
+          ["Azteca Corn", "Mexican Rice"],
+          ["Roasted Vegetables", "Fried Potato Wedges"]
+        ],
+        [
+          ["Roasted Brussels Sprouts", "Scalloped Potatoes"],
+          ["Roasted Carrots", "Cilantro Lime Rice"],
+          ["Roasted Zucchini", "Herbed Orzo"],
+          ["Broccoli & Carrots", "Mashed Potatoes"],
+          ["Roasted Vegetables", "Rice Pilaf"]
+        ],
+        [
+          ["Roasted Broccolini", "Pasta"],
+          ["Lemon Pepper Green Beans", "Yellow Rice"],
+          ["Cucumber Salad with Tzatiki Sauce", "Lemon Rice"],
+          ["Roasted Asparagus", "Scalloped Potatoes"],
+          ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"]
+        ],
+        [
+          ["Lemon Pepper Green Beans", "Italian Roasted Red Potatoes"],
+          ["Roasted Zucchini", "Lime Cilantro Rice"],
+          ["Roasted Broccolini", "Rice Pilaf"],
+          ["Roasted Corn", "Cauliflower"],
+          ["Roasted Vegetables", "Roasted Potato Wedges"]
+        ]
+      ]
+    },
+    "soup": {
+      "cadence": "weekly",
+      "data": [
+        ["Smokey Poblano", "Chicken Noodle"],
+        ["Tomato Basil Bisque", "Broccoli Cheddar"],
+        ["Lasagna Soup", "Cream of Potato"],
+        ["Street Corn Soup", "Chicken Gumbo"]
+      ]
+    },
+    "international": {
+      "cadence": "weekly",
+      "data": ["Asian Bowl", "Pasta Bowl", "Burrito Bowl", "Macaroni and Cheese Bowl"]
+    }
+  },
+  "special": [
+    ["Poké Bowl", "Tacos", "Wings", "Nachos", "Sushi"],
+    ["Poké Bowl", "Tacos", "Wings", "Chilli", "Sushi"]
+  ]
+}
