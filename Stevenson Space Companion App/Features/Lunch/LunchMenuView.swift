@@ -110,7 +110,11 @@ struct LunchMenuView: View {
 }
 
 private struct WeekPicker: View {
-    private let accent = Color.green
+    private let accent = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.24, green: 0.59, blue: 0.33, alpha: 1)
+            : UIColor(red: 0.09, green: 0.48, blue: 0.21, alpha: 1)
+    })
 
     let weekdays: [DayKey]
     let selectedDay: DayKey
