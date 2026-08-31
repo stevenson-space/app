@@ -11,6 +11,8 @@ public final class SharedStore: @unchecked Sendable {
     public static let appGroupID = "group.shankar.Stevenson-Space-Companion-App"
     public static let defaultMapURL = URL(
         string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json")!
+    public static let defaultLunchMenuURL = URL(
+        string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-menu.json")!
 
     private let defaults: UserDefaults
 
@@ -21,10 +23,13 @@ public final class SharedStore: @unchecked Sendable {
         static let fetchMetadata = "sk.fetchMetadata"
         static let notificationPrefs = "sk.notificationPrefs"
         static let mapURL = "sk.mapURL"
+        static let lunchMenuData = "sk.lunchMenuData"
+        static let lunchFetchMetadata = "sk.lunchFetchMetadata"
         static let migrated = "sk.migratedToAppGroup"
         static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
-                          notificationPrefs, mapURL]
+                          notificationPrefs, mapURL, lunchMenuData,
+                          lunchFetchMetadata]
     }
 
     /// Test injection point.
@@ -89,6 +94,17 @@ public final class SharedStore: @unchecked Sendable {
     public var fetchMetadata: FetchMetadata {
         get { decode(FetchMetadata.self, key: Keys.fetchMetadata) ?? FetchMetadata() }
         set { encode(newValue, key: Keys.fetchMetadata) }
+    }
+
+    /// Raw bytes of the last successfully validated lunch manifest.
+    public var cachedLunchMenuData: Data? {
+        get { defaults.data(forKey: Keys.lunchMenuData) }
+        set { defaults.set(newValue, forKey: Keys.lunchMenuData) }
+    }
+
+    public var lunchFetchMetadata: FetchMetadata {
+        get { decode(FetchMetadata.self, key: Keys.lunchFetchMetadata) ?? FetchMetadata() }
+        set { encode(newValue, key: Keys.lunchFetchMetadata) }
     }
 
     public var notificationPrefs: NotificationPrefs {

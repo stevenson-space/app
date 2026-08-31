@@ -8,6 +8,7 @@ import ScheduleKit
 /// math lives in ScheduleKit; this type only orchestrates.
 enum RootTab: Hashable {
     case home
+    case lunch
     case settings
 }
 
@@ -19,6 +20,7 @@ final class AppModel {
     let store: SharedStore
     let catalog: BellScheduleCatalog
     private let syncService: ScheduleSyncService
+    private let lunchSyncService: LunchMenuSyncService
 
     // MARK: Resolver inputs (every write goes through `store`)
 
@@ -28,6 +30,9 @@ final class AppModel {
     private(set) var map: DayTypeMap?
     private(set) var fetchMetadata: FetchMetadata
     private(set) var isSyncing = false
+    private(set) var lunchMenu: LunchMenu?
+    private(set) var lunchFetchMetadata: FetchMetadata
+    private(set) var isLunchSyncing = false
 
     // MARK: Derived
 
@@ -70,19 +75,36 @@ final class AppModel {
             fatalError("Bundled bell schedules failed to load: \(error)")
         }
         self.syncService = ScheduleSyncService(store: store)
+        self.lunchSyncService = LunchMenuSyncService(store: store)
 
         // @Observable rewrites stored properties into computed accessors, so
         // work with locals until everything is assigned.
+        let today = DayKey(date: Date())
         let config = store.userConfig
         let overrides = store.overrides
         let map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
+        let cachedLunchMenu = store.cachedLunchMenuData.flatMap { try? LunchMenuParser.parse($0) }
+        let bundledLunchMenu = try? LunchMenuParser.loadBundled()
+        let lunchMenu: LunchMenu?
+        if let cachedLunchMenu,
+           cachedLunchMenu.validFrom <= today, today <= cachedLunchMenu.validTo {
+            lunchMenu = cachedLunchMenu
+        } else if let bundledLunchMenu,
+                  bundledLunchMenu.validFrom <= today, today <= bundledLunchMenu.validTo {
+            lunchMenu = bundledLunchMenu
+        } else {
+            lunchMenu = [cachedLunchMenu, bundledLunchMenu]
+                .compactMap { $0 }
+                .max { $0.validTo < $1.validTo }
+        }
         self.config = config
         self.overrides = overrides
         self.map = map
         self.prefs = store.notificationPrefs
         self.fetchMetadata = store.fetchMetadata
+        self.lunchMenu = lunchMenu
+        self.lunchFetchMetadata = store.lunchFetchMetadata
 
-        let today = DayKey(date: Date())
         self.lastComputedDay = today
         let inputs = ResolverInputs(
             map: map,
@@ -137,6 +159,27 @@ final class AppModel {
 
     func timeline(for day: DayKey) -> DayTimeline {
         resolveDay(day, inputs: resolverInputs)
+    }
+
+    /// Lunch follows the website's policy: only regular school days, never
+    /// weekends, breaks, or the Summer bell schedule.
+    func lunchMenu(for day: DayKey) -> LunchMenuDay? {
+        let timeline = timeline(for: day)
+        guard timeline.isSchoolDay, timeline.family != .summer else { return nil }
+        return lunchMenu?.menu(for: day)
+    }
+
+    /// The tab opens on today when lunch is served, otherwise the next day for
+    /// which both the school calendar and lunch manifest have data.
+    func preferredLunchDay(startingAt day: DayKey) -> DayKey {
+        guard let menu = lunchMenu, day <= menu.validTo else { return day }
+
+        var candidate = max(day, menu.validFrom)
+        while candidate <= menu.validTo {
+            if lunchMenu(for: candidate) != nil { return candidate }
+            candidate = candidate.advanced(by: 1)
+        }
+        return day
     }
 
     func refreshDerived() {
@@ -314,6 +357,45 @@ final class AppModel {
         }
     }
 
+    private var pendingLunchSync: Task<Void, Never>?
+    private var lunchSyncGeneration = 0
+
+    func syncLunch(force: Bool) async {
+        if let inFlight = pendingLunchSync, !force {
+            await inFlight.value
+            return
+        }
+
+        // Forced refreshes reserve a successor before awaiting the current
+        // task. Concurrent callers therefore build one serial chain instead of
+        // resuming together and starting overlapping requests.
+        let predecessor = pendingLunchSync
+        lunchSyncGeneration += 1
+        let generation = lunchSyncGeneration
+        isLunchSyncing = true
+        let task = Task { @MainActor [weak self] in
+            if let predecessor {
+                await predecessor.value
+            }
+            guard let self else { return }
+            await self.performLunchSync(force: force)
+        }
+        pendingLunchSync = task
+        await task.value
+        if lunchSyncGeneration == generation {
+            pendingLunchSync = nil
+            isLunchSyncing = false
+        }
+    }
+
+    private func performLunchSync(force: Bool) async {
+        let result = await lunchSyncService.refresh(force: force, now: Date())
+        lunchFetchMetadata = store.lunchFetchMetadata
+        if result == .updated, let cached = store.cachedLunchMenuData {
+            lunchMenu = try? LunchMenuParser.parse(cached)
+        }
+    }
+
     func handleScenePhase(_ phase: ScenePhase) {
         guard phase == .active else { return }
         if today != lastComputedDay {
@@ -321,6 +403,7 @@ final class AppModel {
         }
         rescheduleNotifications()
         Task { await sync(force: false) }
+        Task { await syncLunch(force: false) }
     }
 
     /// Data is stale enough to mention only when a sync hasn't succeeded for a
