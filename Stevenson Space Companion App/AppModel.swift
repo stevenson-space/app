@@ -9,6 +9,7 @@ import ScheduleKit
 enum RootTab: Hashable {
     case home
     case lunch
+    case studentID
     case settings
 }
 
@@ -16,8 +17,10 @@ enum RootTab: Hashable {
 @MainActor
 final class AppModel {
     var selectedTab: RootTab = .home
+    let intentRouter: AppIntentRouter = .shared
 
     let store: SharedStore
+    let studentIDStore: StudentIDStore
     let catalog: BellScheduleCatalog
     private let syncService: ScheduleSyncService
     private let lunchSyncService: LunchMenuSyncService
@@ -33,6 +36,11 @@ final class AppModel {
     private(set) var lunchMenu: LunchMenu?
     private(set) var lunchFetchMetadata: FetchMetadata
     private(set) var isLunchSyncing = false
+    private(set) var studentIDProfile: StudentIDProfile?
+    /// A failed read is non-fatal: the ID tab can still offer setup or a
+    /// retry. The typed error lets that UI explain the recovery action without
+    /// exposing filesystem details.
+    private(set) var studentIDLoadError: StudentIDStoreError?
 
     // MARK: Derived
 
@@ -65,8 +73,10 @@ final class AppModel {
     var isTimeTraveling: Bool { timeTravelOffset != 0 }
     #endif
 
-    init(store: SharedStore = SharedStore()) {
+    init(store: SharedStore = SharedStore(),
+         studentIDStore: StudentIDStore = StudentIDStore()) {
         self.store = store
+        self.studentIDStore = studentIDStore
         do {
             self.catalog = try BellScheduleCatalog.loadBundled()
         } catch {
@@ -105,6 +115,23 @@ final class AppModel {
         self.lunchMenu = lunchMenu
         self.lunchFetchMetadata = store.lunchFetchMetadata
 
+        let loadedStudentIDProfile: StudentIDProfile?
+        let studentIDLoadError: StudentIDStoreError?
+        do {
+            loadedStudentIDProfile = try studentIDStore.load()
+            studentIDLoadError = nil
+        } catch let error as StudentIDStoreError {
+            loadedStudentIDProfile = nil
+            studentIDLoadError = error
+        } catch {
+            // StudentIDStore currently normalizes failures to its typed error,
+            // but keep this boundary defensive if its implementation evolves.
+            loadedStudentIDProfile = nil
+            studentIDLoadError = .unableToRead
+        }
+        self.studentIDProfile = loadedStudentIDProfile
+        self.studentIDLoadError = studentIDLoadError
+
         self.lastComputedDay = today
         let inputs = ResolverInputs(
             map: map,
@@ -123,6 +150,39 @@ final class AppModel {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in self?.refreshDerived() }
         }
+
+        // An OpenIntent can enqueue its destination before SwiftUI has built
+        // the scene. Consume that request once the model is ready; RootView
+        // also observes the router for requests arriving later.
+        consumePendingIntent()
+    }
+
+    // MARK: - App intent routing
+
+    func consumePendingIntent() {
+        guard let request = intentRouter.consumePendingRequest() else { return }
+        switch request.destination {
+        case .studentID:
+            selectedTab = .studentID
+        }
+    }
+
+    // MARK: - Student ID
+
+    /// Persists first, then updates observable state, so a failed write never
+    /// leaves the UI claiming that an unsaved profile is stored.
+    func saveStudentID(_ profile: StudentIDProfile) throws {
+        let savedProfile = try studentIDStore.save(profile)
+        studentIDProfile = savedProfile
+        studentIDLoadError = nil
+    }
+
+    /// Deletion is idempotent in StudentIDStore. Keep the in-memory profile in
+    /// lockstep only after the store confirms the operation succeeded.
+    func deleteStudentID() throws {
+        try studentIDStore.delete()
+        studentIDProfile = nil
+        studentIDLoadError = nil
     }
 
     // MARK: - Clock

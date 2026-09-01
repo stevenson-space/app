@@ -13,12 +13,22 @@ struct RootView: View {
             Tab("Lunch", systemImage: "fork.knife", value: RootTab.lunch) {
                 LunchMenuView()
             }
+            Tab("ID", systemImage: "person.text.rectangle", value: RootTab.studentID) {
+                StudentIDView()
+            }
             Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
                 SettingsView()
             }
         }
         .preferredColorScheme(model.config.appearance.colorScheme)
+        .onChange(of: model.intentRouter.pendingRequest?.id, initial: true) { _, _ in
+            model.consumePendingIntent()
+        }
         .task {
+            // Covers a cold launch where the intent was handled while the
+            // scene was still being constructed.
+            model.consumePendingIntent()
+
             // One app-wide 1 Hz heartbeat: flips block boundaries and catches
             // midnight rollover. Cheap — a pure state lookup per tick; the UI
             // only re-renders when a derived value actually changes.
