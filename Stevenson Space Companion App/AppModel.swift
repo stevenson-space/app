@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Observation
 import ScheduleKit
+import StudentIDKit
 
 /// Root observable store. Owns the resolver inputs (persisted via SharedStore),
 /// derives today's timeline, and coordinates sync + notifications. All schedule
@@ -9,6 +10,7 @@ import ScheduleKit
 enum RootTab: Hashable {
     case home
     case lunch
+    case studentID
     case settings
 }
 
@@ -19,6 +21,7 @@ final class AppModel {
 
     let store: SharedStore
     let catalog: BellScheduleCatalog
+    private let studentIDStore: StudentIDStore
     private let syncService: ScheduleSyncService
     private let lunchSyncService: LunchMenuSyncService
 
@@ -33,6 +36,7 @@ final class AppModel {
     private(set) var lunchMenu: LunchMenu?
     private(set) var lunchFetchMetadata: FetchMetadata
     private(set) var isLunchSyncing = false
+    private(set) var studentIDProfile: StudentIDProfile?
 
     // MARK: Derived
 
@@ -65,8 +69,10 @@ final class AppModel {
     var isTimeTraveling: Bool { timeTravelOffset != 0 }
     #endif
 
-    init(store: SharedStore = SharedStore()) {
+    init(store: SharedStore = SharedStore(),
+         studentIDStore: StudentIDStore = StudentIDStore()) {
         self.store = store
+        self.studentIDStore = studentIDStore
         do {
             self.catalog = try BellScheduleCatalog.loadBundled()
         } catch {
@@ -104,6 +110,7 @@ final class AppModel {
         self.fetchMetadata = store.fetchMetadata
         self.lunchMenu = lunchMenu
         self.lunchFetchMetadata = store.lunchFetchMetadata
+        self.studentIDProfile = studentIDStore.profile
 
         self.lastComputedDay = today
         let inputs = ResolverInputs(
@@ -295,6 +302,17 @@ final class AppModel {
         store.overrides = overrides
         refreshDerived()
         rescheduleNotifications()
+    }
+
+    func saveStudentID(_ profile: StudentIDProfile) {
+        guard profile.isValid else { return }
+        studentIDProfile = profile
+        studentIDStore.profile = profile
+    }
+
+    func removeStudentID() {
+        studentIDProfile = nil
+        studentIDStore.profile = nil
     }
 
     // MARK: - Sync

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		905622C1300F25D400F40B5E /* ScheduleKit in Frameworks */ = {isa = PBXBuildFile; productRef = 905622C0300F25D400F40B5E /* ScheduleKit */; };
+		A11D00010000000000000001 /* StudentIDKit in Frameworks */ = {isa = PBXBuildFile; productRef = A11D00030000000000000003 /* StudentIDKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				905622C1300F25D400F40B5E /* ScheduleKit in Frameworks */,
+				A11D00010000000000000001 /* StudentIDKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = "Stevenson Space Companion App";
 			packageProductDependencies = (
 				905622C0300F25D400F40B5E /* ScheduleKit */,
+				A11D00030000000000000003 /* StudentIDKit */,
 			);
 			productName = "Stevenson Space Companion App";
 			productReference = 905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */;
@@ -102,6 +105,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				905622C2300F25D400F40B5E /* XCLocalSwiftPackageReference "Packages/ScheduleKit" */,
+				A11D00020000000000000002 /* XCLocalSwiftPackageReference "Packages/StudentIDKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 905622A9300F25D400F40B5E /* Products */;
@@ -349,12 +353,20 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/ScheduleKit;
 		};
+		A11D00020000000000000002 /* XCLocalSwiftPackageReference "Packages/StudentIDKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/StudentIDKit;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		905622C0300F25D400F40B5E /* ScheduleKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ScheduleKit;
+		};
+		A11D00030000000000000003 /* StudentIDKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StudentIDKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
