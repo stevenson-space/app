@@ -13,6 +13,9 @@ struct RootView: View {
             Tab("Lunch", systemImage: "fork.knife", value: RootTab.lunch) {
                 LunchMenuView()
             }
+            Tab("ID", systemImage: "person.text.rectangle", value: RootTab.studentID) {
+                StudentIDView()
+            }
             Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
                 SettingsView()
             }

@@ -17,7 +17,8 @@ Packages/ScheduleKit/          All schedule logic — no UI, no clock access.
     Storage/                   App-Group-ready SharedStore (UserDefaults suite)
     Notifications/             Pure NotificationPlanner (56 alerts + 1 refresh reminder)
   Tests/ScheduleKitTests/      The quality gate — run with `swift test`
-Stevenson Space Companion App/ SwiftUI app target: Home, Settings, system glue
+Packages/StudentIDKit/         On-device ID analysis, Code 39, private persistence
+Stevenson Space Companion App/ SwiftUI app target: Home, Lunch, ID, Settings
 ```
 
 Two pure functions are the heart of everything; every surface (and the future
@@ -59,6 +60,7 @@ components — never `+24h` arithmetic (DST-safe).
 ## Development
 
 - Logic tests (fast, no simulator): `swift test --package-path Packages/ScheduleKit`
+- Student ID tests: `swift test --package-path Packages/StudentIDKit`
 - App build: `xcodebuild -scheme "Stevenson Space Companion App" -destination 'generic/platform=iOS Simulator' build`
 - **Time travel**: DEBUG builds have a Developer section in Settings — jump the
   app clock to any instant or use one-tap scenarios (finals rotations, async
