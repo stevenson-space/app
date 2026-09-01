@@ -64,6 +64,7 @@ struct StudentIDView: View {
             }
         }
         .preferredColorScheme(.light)
+        .environment(\.colorScheme, .light)
         .photosPicker(
             isPresented: $isPhotoPickerPresented,
             selection: $photoSelection,

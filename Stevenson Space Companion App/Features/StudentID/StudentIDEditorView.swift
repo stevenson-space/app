@@ -125,5 +125,6 @@ struct StudentIDEditorView: View {
             }
         }
         .preferredColorScheme(.light)
+        .environment(\.colorScheme, .light)
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Vision
 
 public struct StudentIDAnalysis: Equatable, Sendable {
@@ -28,6 +29,11 @@ public enum StudentIDAnalyzer {
     }
 
     private static func analyzeSynchronously(_ imageData: Data) throws -> StudentIDAnalysis {
+        guard let imageSource = CGImageSourceCreateWithData(imageData as CFData, nil),
+              CGImageSourceCreateImageAtIndex(imageSource, 0, nil) != nil else {
+            throw StudentIDAnalysisError.unreadableImage
+        }
+
         let barcodeRequest = VNDetectBarcodesRequest()
         barcodeRequest.symbologies = [
             .code39, .code39Checksum, .code39FullASCII, .code39FullASCIIChecksum,
@@ -38,11 +44,20 @@ public enum StudentIDAnalyzer {
         textRequest.usesLanguageCorrection = false
         textRequest.recognitionLanguages = ["en-US"]
 
-        let handler = VNImageRequestHandler(data: imageData, options: [:])
         do {
-            try handler.perform([barcodeRequest, textRequest])
+            try VNImageRequestHandler(data: imageData, options: [:]).perform([barcodeRequest])
         } catch {
-            throw StudentIDAnalysisError.unreadableImage
+            #if DEBUG
+            print("Student ID barcode analysis failed: \(error)")
+            #endif
+        }
+
+        do {
+            try VNImageRequestHandler(data: imageData, options: [:]).perform([textRequest])
+        } catch {
+            #if DEBUG
+            print("Student ID name analysis failed: \(error)")
+            #endif
         }
 
         let barcodeObservation = barcodeRequest.results?
