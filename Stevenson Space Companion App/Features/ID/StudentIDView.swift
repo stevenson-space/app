@@ -12,6 +12,7 @@ struct StudentIDView: View {
     @State private var isPickerPresented = false
     @State private var pickedItem: PhotosPickerItem?
     @State private var stage: StudentIDImportStage?
+    @State private var importID: UUID?
     @State private var isScanning = false
     /// Set when the student asks for a different screenshot: the picker can only
     /// be presented once the import sheet has actually gone away.
@@ -179,56 +180,76 @@ struct StudentIDView: View {
     // MARK: - Import flow
 
     private var isImporting: Binding<Bool> {
-        Binding(get: { stage != nil }, set: { if !$0 { stage = nil } })
+        Binding(get: { stage != nil }, set: { if !$0 { dismissImport() } })
+    }
+
+    private func beginImport() -> UUID {
+        let id = UUID()
+        importID = id
+        stage = .processing
+        return id
+    }
+
+    private func dismissImport() {
+        importID = nil
+        stage = nil
+        pickedItem = nil
     }
 
     private func load(_ item: PhotosPickerItem?) {
         guard let item else { return }
-        stage = .processing
+        let id = beginImport()
         Task {
-            defer { pickedItem = nil }
-            guard let data = try? await item.loadTransferable(type: Data.self) else {
+            let data = try? await item.loadTransferable(type: Data.self)
+            guard importID == id else { return }
+            pickedItem = nil
+            guard let data else {
                 stage = .failed(StudentIDImportError.unreadableImage.description)
                 return
             }
-            await extract(from: data)
+            await extract(from: data, importID: id)
         }
     }
 
     private func paste(_ providers: [NSItemProvider]) {
         guard let provider = providers.first else { return }
-        stage = .processing
+        let id = beginImport()
         _ = provider.loadDataRepresentation(for: .image) { data, _ in
             Task { @MainActor in
+                guard importID == id else { return }
                 guard let data else {
                     stage = .failed(StudentIDImportError.unreadableImage.description)
                     return
                 }
-                await extract(from: data)
+                await extract(from: data, importID: id)
             }
         }
     }
 
     /// Vision runs off the main actor: the package is not MainActor-isolated, so
     /// awaiting it hops off and the sheet keeps animating while it works.
-    private func extract(from data: Data) async {
+    private func extract(from data: Data, importID id: UUID) async {
         do {
-            stage = .review(try await StudentIDExtractor.extract(from: data))
+            let extraction = try await StudentIDExtractor.extract(from: data)
+            guard importID == id else { return }
+            stage = .review(extraction, photo: extraction.photoJPEG.flatMap(UIImage.init(data:)))
         } catch let error as StudentIDImportError {
+            guard importID == id else { return }
             stage = .failed(error.description)
         } catch {
+            guard importID == id else { return }
             stage = .failed("Something went wrong reading that screenshot.")
         }
     }
 
-    private func save(_ extraction: StudentIDExtraction) {
-        model.saveStudentID(extraction)
-        stage = nil
+    private func save(_ extraction: StudentIDExtraction) throws {
+        try model.saveStudentID(extraction)
+        dismissImport()
     }
 
     private func chooseAnother() {
         picksAgainOnDismiss = true
-        stage = nil
+        dismissImport()
     }
 
     private func presentPickerIfAsked() {

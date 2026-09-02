@@ -319,18 +319,16 @@ final class AppModel {
 
     // MARK: - Student ID
 
-    func saveStudentID(_ extraction: StudentIDExtraction) {
-        guard let encoded = try? extraction.card.encoded() else { return }
-        store.studentIDData = encoded
-        studentID = extraction.card
-
+    func saveStudentID(_ extraction: StudentIDExtraction) throws {
+        let encoded = try extraction.card.encoded()
         if let jpeg = extraction.photoJPEG {
-            try? photoStore.save(jpeg)
-            studentIDPhoto = UIImage(data: jpeg)
+            try photoStore.save(jpeg)
         } else {
             photoStore.remove()
-            studentIDPhoto = nil
         }
+        store.studentIDData = encoded
+        studentID = extraction.card
+        studentIDPhoto = extraction.photoJPEG.flatMap(UIImage.init(data:))
     }
 
     func removeStudentID() {

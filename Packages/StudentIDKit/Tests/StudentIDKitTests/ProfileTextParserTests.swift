@@ -50,6 +50,24 @@ import Testing
         #expect(ProfileTextParser.printedStudentNumber(in: lines) == "847555")
     }
 
+    @Test(arguments: ["Student Number 123 59435", "Student Number 123456789 59435"])
+    func skipsInvalidDigitRunsOnTheSameLine(text: String) {
+        #expect(ProfileTextParser.printedStudentNumber(in: [line(text, x: 0, y: 0)]) == "59435")
+    }
+
+    @Test func usesTheBarcodeToDisambiguateNumbersOnTheSameLine() {
+        let lines = [line("Student Number 2026 59435", x: 0, y: 0)]
+        #expect(ProfileTextParser.printedStudentNumber(in: lines, matching: ["59435"]) == "59435")
+        #expect(ProfileTextParser.printedStudentNumber(in: lines, matching: ["2026"]) == "2026")
+        #expect(ProfileTextParser.printedStudentNumber(in: lines, matching: ["11111"]) == "2026")
+    }
+
+    @Test func considersEveryDigitRunBelowTheLabel() {
+        let lines = [line("Student Number", x: 0, y: 0),
+                     line("123 2026 59435", x: 0, y: 60)]
+        #expect(ProfileTextParser.printedStudentNumber(in: lines, matching: ["59435"]) == "59435")
+    }
+
     @Test func readsTheNameSittingAboveTheEnrollmentsLabel() {
         let name = ProfileTextParser.fullName(in: profileLines(), imageHeight: pageHeight)
         #expect(name == "Riley Vasquez")
@@ -65,7 +83,9 @@ import Testing
     @Test func rejectsSchoolNamesPricesAndLabelsAsNames() {
         for candidate in ["Student Profile", "Enrollments", "$0.00", "Grade 12",
                           "26-27 Adlai E Stevenson High S", "Today's Schedule",
-                          "ENDED", "Teacher: Anderson, Katie", "3012"] {
+                          "ENDED", "Teacher: Anderson, Katie", "3012",
+                          "Adlai E. Stevenson", "Stevenson High S", "Stevenson Summer",
+                          "Summer School", "Items in Cart", "Room", "Term"] {
             #expect(!ProfileTextParser.looksLikePersonName(candidate),
                     "\"\(candidate)\" was accepted as a name")
         }
@@ -73,10 +93,17 @@ import Testing
 
     @Test func acceptsTheShapesRealNamesTake() {
         for candidate in ["Riley Vasquez", "Mary-Kate O'Neill", "Jo Ann St. Clair",
-                          "Ana Sofía Ramírez Cruz"] {
+                          "Ana Sofía Ramírez Cruz", "Summer Chen", "Riley Stevenson",
+                          "Dean Grade", "April Teacher", "Summer-Rose Chen",
+                          "Adlai Chen", "Carter Day", "Summerfield Chen"] {
             #expect(ProfileTextParser.looksLikePersonName(candidate),
                     "\"\(candidate)\" was rejected as a name")
         }
+    }
+
+    @Test(arguments: ["Summer Chen", "Riley Stevenson", "Dean Grade"])
+    func keepsTheStudentsNameInsteadOfFallingBackToAnotherLine(name: String) {
+        #expect(ProfileTextParser.fullName(in: profileLines(name: name), imageHeight: pageHeight) == name)
     }
 
     @Test func stitchesANameSplitAcrossTwoObservations() {
@@ -118,6 +145,29 @@ import Testing
         let lines = [line("Room 30-12", x: 0, y: 0, width: 200, height: 30),
                      line("25-26 Adlai E Stevenson High S", x: 0, y: 60, width: 600, height: 30)]
         #expect(ProfileTextParser.schoolYearStart(in: lines) == 2025)
+    }
+
+    @Test func findsAConsecutiveYearPairAfterADateOnTheSameLine() {
+        let lines = [line("08/26 26-27 Adlai E Stevenson High S", x: 0, y: 0)]
+        #expect(ProfileTextParser.schoolYearStart(in: lines) == 2026)
+    }
+
+    @Test func readingOrderRemainsTransitiveAcrossDriftingBaselines() {
+        let lines = [line("Grade 12", x: 100, y: 0, height: 40),
+                     line("Grade 11", x: 50, y: 16, height: 40),
+                     line("Grade 10", x: 10, y: 32, height: 40)]
+        for a in lines {
+            #expect(!ProfileTextParser.readingOrder(a, a))
+            for b in lines where ProfileTextParser.readingOrder(a, b) {
+                #expect(!ProfileTextParser.readingOrder(b, a))
+                for c in lines where ProfileTextParser.readingOrder(b, c) {
+                    #expect(ProfileTextParser.readingOrder(a, c))
+                }
+            }
+        }
+        for order in [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]] {
+            #expect(ProfileTextParser.gradeLevel(in: order.map { lines[$0] }) == 12)
+        }
     }
 
     @Test func recognizesTheProfilePageByItsLabels() {
