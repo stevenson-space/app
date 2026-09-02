@@ -25,15 +25,15 @@ public enum StudentIDExtractor {
 
     static func extract(from image: CGImage) async throws -> StudentIDExtraction {
         let size = CGSize(width: image.width, height: image.height)
-        let lines = await recognizeText(in: image, size: size)
-        let printedNumber = ProfileTextParser.printedStudentNumber(in: lines)
-
-        let scan = await scanBarcodes(in: image)
+        async let recognizedLines = recognizeText(in: image, size: size)
+        async let barcodeScan = scanBarcodes(in: image)
+        let (lines, scan) = await (recognizedLines, barcodeScan)
         guard !scan.rawPayloads.isEmpty else { throw StudentIDImportError.barcodeNotFound }
         guard !scan.candidates.isEmpty else {
             throw StudentIDImportError.unsupportedBarcodePayload(scan.rawPayloads[0])
         }
         let candidates = scan.candidates
+        let printedNumber = ProfileTextParser.printedStudentNumber(in: lines, matching: candidates.map(\.payload))
 
         // When the page shows the number in print too, trust the barcode that
         // agrees with it; a disagreement means the screenshot is a composite of
@@ -74,31 +74,30 @@ public enum StudentIDExtractor {
 
     // MARK: - Barcode
 
-    private struct Candidate {
+    struct Candidate {
         let payload: String
         let requiresCheckDigit: Bool
 
-        init?(payload raw: String, requiresCheckDigit: Bool) {
+        static func interpretations(of raw: String, requiresCheckDigit: Bool) -> [Candidate] {
             let trimmed = raw.trimmingCharacters(in: CharacterSet(charactersIn: "* \t\n"))
+            var candidates: [Candidate] = []
             if StudentIDCard.isValidNumber(trimmed) {
-                payload = trimmed
-                self.requiresCheckDigit = requiresCheckDigit
-                return
+                candidates.append(Candidate(payload: trimmed, requiresCheckDigit: requiresCheckDigit))
             }
-            // A symbol carrying a modulo-43 check character reads back with it
-            // attached. Recognise that and record it, so the recreation encodes
-            // the same symbol rather than one the school's system would reject.
-            if trimmed.count > 1 {
+            // Checksum-aware Vision observations already exclude the check
+            // character. Other readers return it attached, and a numeric check
+            // character is indistinguishable from another ID digit without the
+            // printed number. Keep both interpretations, preferring the intact
+            // payload when no printed number resolves the ambiguity.
+            if !requiresCheckDigit || candidates.isEmpty {
                 let body = String(trimmed.dropLast())
                 if StudentIDCard.isValidNumber(body),
                    let expected = try? Code39.checkDigit(for: body),
                    expected == trimmed.last {
-                    payload = body
-                    self.requiresCheckDigit = true
-                    return
+                    candidates.append(Candidate(payload: body, requiresCheckDigit: true))
                 }
             }
-            return nil
+            return candidates
         }
     }
 
@@ -123,9 +122,7 @@ public enum StudentIDExtractor {
             raw.append(payload)
             let carriesCheckDigit = observation.symbology == .code39Checksum
                 || observation.symbology == .code39FullASCIIChecksum
-            if let candidate = Candidate(payload: payload, requiresCheckDigit: carriesCheckDigit) {
-                candidates.append(candidate)
-            }
+            candidates += Candidate.interpretations(of: payload, requiresCheckDigit: carriesCheckDigit)
         }
         guard candidates.isEmpty else {
             return BarcodeScan(rawPayloads: raw, candidates: candidates)
@@ -133,9 +130,7 @@ public enum StudentIDExtractor {
 
         for payload in Code39Decoder.decode(image) {
             raw.append(payload)
-            if let candidate = Candidate(payload: payload, requiresCheckDigit: false) {
-                candidates.append(candidate)
-            }
+            candidates += Candidate.interpretations(of: payload, requiresCheckDigit: false)
         }
         return BarcodeScan(rawPayloads: raw, candidates: candidates)
     }
@@ -367,11 +362,8 @@ public enum StudentIDExtractor {
             context.rotate(by: -.pi / 2)
         }
         switch orientation {
-        case .upMirrored, .downMirrored:
+        case .upMirrored, .downMirrored, .leftMirrored, .rightMirrored:
             context.translateBy(x: width, y: 0)
-            context.scaleBy(x: -1, y: 1)
-        case .leftMirrored, .rightMirrored:
-            context.translateBy(x: height, y: 0)
             context.scaleBy(x: -1, y: 1)
         default:
             break

@@ -10,7 +10,9 @@ struct TextLine: Equatable, Sendable {
 
     /// Lowercased, whitespace-collapsed, punctuation-normalized: what the
     /// anchor matching compares against.
-    var normalized: String {
+    let normalized: String
+
+    static func normalize(_ text: String) -> String {
         text.lowercased()
             .replacingOccurrences(of: "\u{2019}", with: "'")
             .split(whereSeparator: \.isWhitespace)
@@ -21,6 +23,7 @@ struct TextLine: Equatable, Sendable {
     init(text: String, frame: CGRect) {
         self.text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         self.frame = frame
+        normalized = Self.normalize(self.text)
     }
 }
 
@@ -55,11 +58,20 @@ enum ProfileTextParser {
 
     // MARK: Student number
 
-    static func printedStudentNumber(in lines: [TextLine]) -> String? {
+    static func printedStudentNumber(in lines: [TextLine], matching barcodePayloads: [String] = []) -> String? {
         guard let anchor = line(matching: "student number", in: lines) else { return nil }
 
+        func number(in text: String) -> String? {
+            let numbers = digitPattern.matches(in: text, range: NSRange(text.startIndex..., in: text))
+                .compactMap { capture(0, of: $0, in: text) }
+                .filter(StudentIDCard.isValidNumber)
+            // OCR can merge a year with the number. Use the barcode to choose
+            // among plausible values on this line; four-digit IDs remain valid.
+            return numbers.first(where: barcodePayloads.contains) ?? numbers.first
+        }
+
         // Recognition sometimes merges the label and its value into one line.
-        if let inline = digitRun(in: anchor.text), StudentIDCard.isValidNumber(inline) {
+        if let inline = number(in: anchor.text) {
             return inline
         }
 
@@ -69,8 +81,7 @@ enum ProfileTextParser {
             .sorted { $0.frame.minY < $1.frame.minY }
 
         for candidate in below {
-            guard let digits = digitRun(in: candidate.text) else { continue }
-            if StudentIDCard.isValidNumber(digits) { return digits }
+            if let digits = number(in: candidate.text) { return digits }
         }
         return nil
     }
@@ -128,15 +139,16 @@ enum ProfileTextParser {
         return ordered[first...last].map(\.text).joined(separator: " ")
     }
 
-    /// Words that appear on this page as labels, chrome, or school names — never
-    /// as somebody's name.
+    /// Recognizable page labels and school names. Single words such as Summer
+    /// or Stevenson can be part of a student's name.
     private static let stopPhrases = [
         "student profile", "student number", "student identification",
-        "today's schedule", "items in cart", "high school", "adlai", "stevenson",
-        "summer", "enrollment", "day: periods", "teacher", "room", "term",
+        "today's schedule", "items in cart", "high school", "adlai e stevenson",
+        "stevenson high", "stevenson summer", "summer school", "day periods",
     ]
     private static let stopWords: Set<String> = [
         "ended", "grade", "day", "periods", "cart", "wallet", "sem", "settings",
+        "summer", "enrollment", "enrollments", "teacher", "room", "term",
     ]
 
     static func looksLikePersonName(_ candidate: String) -> Bool {
@@ -148,10 +160,11 @@ enum ProfileTextParser {
         guard (1...5).contains(words.count) else { return false }
         guard trimmed.filter(\.isLetter).count >= 2 else { return false }
 
-        let normalized = TextLine(text: trimmed, frame: .zero).normalized
+        let normalized = TextLine.normalize(trimmed)
         if stopWords.contains(normalized) { return false }
-        if stopPhrases.contains(where: { normalized.contains($0) }) { return false }
-        if words.contains(where: { stopWords.contains(String($0).lowercased()) }) { return false }
+        let phrase = " " + normalized.split(whereSeparator: { !$0.isLetter && $0 != "'" })
+            .joined(separator: " ") + " "
+        if stopPhrases.contains(where: { phrase.contains(" " + $0 + " ") }) { return false }
         return true
     }
 
@@ -194,9 +207,12 @@ enum ProfileTextParser {
 
     static func schoolYearStart(in lines: [TextLine]) -> Int? {
         for line in lines.sorted(by: readingOrder) {
-            guard let (first, second) = firstYearPair(in: line.text) else { continue }
-            guard (first + 1) % 100 == second else { continue }
-            return 2000 + first
+            for match in yearPattern.matches(in: line.text, range: NSRange(line.text.startIndex..., in: line.text)) {
+                guard let first = Int(capture(1, of: match, in: line.text) ?? ""),
+                      let second = Int(capture(2, of: match, in: line.text) ?? ""),
+                      (first + 1) % 100 == second else { continue }
+                return 2000 + first
+            }
         }
         return nil
     }
@@ -204,10 +220,7 @@ enum ProfileTextParser {
     // MARK: Geometry helpers
 
     static func readingOrder(_ lhs: TextLine, _ rhs: TextLine) -> Bool {
-        if abs(lhs.frame.minY - rhs.frame.minY) > max(lhs.frame.height, rhs.frame.height) * 0.5 {
-            return lhs.frame.minY < rhs.frame.minY
-        }
-        return lhs.frame.minX < rhs.frame.minX
+        (lhs.frame.minY, lhs.frame.minX) < (rhs.frame.minY, rhs.frame.minX)
     }
 
     private static func horizontallyOverlaps(_ lhs: CGRect, _ rhs: CGRect, minimum: CGFloat = 0) -> Bool {
@@ -233,18 +246,6 @@ enum ProfileTextParser {
               let grade = Int(capture(1, of: match, in: text) ?? ""),
               (1...12).contains(grade) else { return nil }
         return grade
-    }
-
-    private static func firstYearPair(in text: String) -> (Int, Int)? {
-        guard let match = firstMatch(yearPattern, in: text),
-              let first = Int(capture(1, of: match, in: text) ?? ""),
-              let second = Int(capture(2, of: match, in: text) ?? "") else { return nil }
-        return (first, second)
-    }
-
-    private static func digitRun(in text: String) -> String? {
-        guard let match = firstMatch(digitPattern, in: text) else { return nil }
-        return capture(0, of: match, in: text)
     }
 
     private static func firstMatch(_ regex: NSRegularExpression, in text: String) -> NSTextCheckingResult? {

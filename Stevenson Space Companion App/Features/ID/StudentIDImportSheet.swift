@@ -4,7 +4,7 @@ import StudentIDKit
 /// What the import is doing right now.
 enum StudentIDImportStage {
     case processing
-    case review(StudentIDExtraction)
+    case review(StudentIDExtraction, photo: UIImage?)
     case failed(String)
 }
 
@@ -15,10 +15,11 @@ enum StudentIDImportStage {
 /// anywhere else, that lets someone type their own.
 struct StudentIDImportSheet: View {
     let stage: StudentIDImportStage
-    let onSave: (StudentIDExtraction) -> Void
+    let onSave: (StudentIDExtraction) throws -> Void
     let onChooseAnother: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var saveFailed = false
 
     var body: some View {
         NavigationStack {
@@ -26,8 +27,8 @@ struct StudentIDImportSheet: View {
                 switch stage {
                 case .processing:
                     processing
-                case .review(let extraction):
-                    review(extraction)
+                case .review(let extraction, let photo):
+                    review(extraction, photo: photo)
                 case .failed(let message):
                     failure(message)
                 }
@@ -39,12 +40,20 @@ struct StudentIDImportSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                if case .review(let extraction) = stage {
+                if case .review(let extraction, _) = stage {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") { onSave(extraction) }
+                        Button("Save") {
+                            do { try onSave(extraction) }
+                            catch { saveFailed = true }
+                        }
                             .fontWeight(.semibold)
                     }
                 }
+            }
+            .alert("Could not save your ID", isPresented: $saveFailed) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Your ID could not be stored on this phone. Check the available storage and try saving again.")
             }
         }
     }
@@ -66,10 +75,10 @@ struct StudentIDImportSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func review(_ extraction: StudentIDExtraction) -> some View {
+    private func review(_ extraction: StudentIDExtraction, photo: UIImage?) -> some View {
         ScrollView {
             VStack(spacing: 18) {
-                StudentIDCardView(content: .card(extraction.card, photo: photo(extraction)))
+                StudentIDCardView(content: .card(extraction.card, photo: photo))
 
                 VStack(spacing: 0) {
                     detail("Name", extraction.card.fullName ?? "Not found")
@@ -145,10 +154,6 @@ struct StudentIDImportSheet: View {
         .padding(.vertical, 12)
     }
 
-    private func photo(_ extraction: StudentIDExtraction) -> UIImage? {
-        extraction.photoJPEG.flatMap(UIImage.init(data:))
-    }
-
     /// Only the gaps a student can do something about are worth a line; a
     /// missing grade or school year is not worth re-taking a screenshot for.
     private func warnings(_ extraction: StudentIDExtraction) -> [String] {
@@ -158,7 +163,7 @@ struct StudentIDImportSheet: View {
                             + "Screenshot the whole Student Profile to include it.")
         }
         if extraction.warnings.contains(.photoNotFound) {
-            messages.append("No photo was found, so the card shows the school crest instead.")
+            messages.append("No photo was found, so the card shows a silhouette instead.")
         }
         return messages
     }

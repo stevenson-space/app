@@ -36,13 +36,29 @@ import Testing
         #expect(PhotoRegionFinder.locate(in: try #require(context.makeImage())) == nil)
     }
 
-    @Test func neverMistakesTheBarcodeForAPortrait() {
-        // The barcode is the other solid, portrait-ish, high-variance block on
-        // the page. Even with no limit passed and no photo to find, its vertical
-        // striping has to disqualify it on its own.
-        var options = SyntheticProfile.Options()
-        options.includePhoto = false
-        #expect(PhotoRegionFinder.locate(in: SyntheticProfile.image(options)) == nil)
+    @Test func neverMistakesTheBarcodeForAPortrait() throws {
+        // Work at the finder's grid resolution. Both shades count as ink, as
+        // densely packed bars do after downsampling. The blob has portrait
+        // proportions, full coverage, and plenty of brightness variance.
+        func stripedBlock(vertical: Bool) throws -> CGImage {
+            let context = try #require(CGContext(data: nil, width: 96, height: 192,
+                                                bitsPerComponent: 8, bytesPerRow: 0,
+                                                space: CGColorSpaceCreateDeviceRGB(),
+                                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 96, height: 192))
+            for index in 0..<(vertical ? 24 : 32) {
+                context.setFillColor(gray: index.isMultiple(of: 2) ? 0.15 : 0.7, alpha: 1)
+                context.fill(CGRect(x: 24 + (vertical ? index : 0),
+                                    y: 128 + (vertical ? 0 : index),
+                                    width: vertical ? 1 : 24, height: vertical ? 32 : 1))
+            }
+            return try #require(context.makeImage())
+        }
+        // The same shape and shades qualify when variation runs down columns.
+        #expect(PhotoRegionFinder.locate(in: try stripedBlock(vertical: false))
+                == CGRect(x: 24, y: 32, width: 24, height: 32))
+        #expect(PhotoRegionFinder.locate(in: try stripedBlock(vertical: true)) == nil)
     }
 
     @Test func stopsAtTheLimitItIsGiven() {

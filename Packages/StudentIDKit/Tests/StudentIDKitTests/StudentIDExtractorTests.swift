@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import StudentIDKit
 
 /// End-to-end through real Vision: a rendered page in, a finished card out.
@@ -37,6 +39,54 @@ import Testing
         options.barcodePayload = "104829"
         let extraction = try await StudentIDExtractor.extract(from: SyntheticProfile.image(options))
         #expect(extraction.card.idNumber == "104829")
+    }
+
+    @Test(arguments: ["99999", "59435"])
+    func resolvesCheckCharactersUsingThePrintedNumber(number: String) async throws {
+        var options = SyntheticProfile.Options()
+        options.number = number
+        options.barcodePayload = number + String(try Code39.checkDigit(for: number))
+        let extraction = try await StudentIDExtractor.extract(from: SyntheticProfile.image(options))
+        #expect(extraction.card.idNumber == number)
+        #expect(extraction.card.barcodePayload == number)
+        #expect(extraction.card.requiresCheckDigit)
+    }
+
+    @Test func keepsAnOrdinaryIDWhoseLastDigitAlsoLooksLikeAChecksum() async throws {
+        var options = SyntheticProfile.Options()
+        options.number = "999992"
+        options.barcodePayload = "999992"
+        let extraction = try await StudentIDExtractor.extract(from: SyntheticProfile.image(options))
+        #expect(extraction.card.idNumber == "999992")
+        #expect(!extraction.card.requiresCheckDigit)
+    }
+
+    @Test func resolvesAMergedYearAndNumberUsingTheBarcode() async throws {
+        var options = SyntheticProfile.Options()
+        options.number = "2026 59435"
+        let extraction = try await StudentIDExtractor.extract(from: SyntheticProfile.image(options))
+        #expect(extraction.card.idNumber == "59435")
+        #expect(!extraction.warnings.contains(.printedNumberNotFound))
+    }
+
+    @Test func fallbackPreservesBothNumericChecksumInterpretations() throws {
+        let symbol = try Code39.encode("99999", appendCheckDigit: true)
+        let image = try #require(Code39Renderer.makeImage(symbol: symbol, moduleWidthPixels: 5, barHeightPixels: 150))
+        let raw = try #require(Code39Decoder.decode(image).first)
+        let candidates = StudentIDExtractor.Candidate.interpretations(of: raw, requiresCheckDigit: false)
+        #expect(candidates.map(\.payload) == ["999992", "99999"])
+        #expect(candidates.map(\.requiresCheckDigit) == [false, true])
+        // With no printed number there is no evidence to remove a digit, and
+        // either interpretation recreates the same bars.
+        for candidate in candidates {
+            #expect(try Code39.encode(candidate.payload, appendCheckDigit: candidate.requiresCheckDigit).modules == symbol.modules)
+        }
+    }
+
+    @Test func doesNotStripACheckDigitTwiceFromAChecksumAwareReader() {
+        let candidates = StudentIDExtractor.Candidate.interpretations(of: "999992", requiresCheckDigit: true)
+        #expect(candidates.map(\.payload) == ["999992"])
+        #expect(candidates.first?.requiresCheckDigit == true)
     }
 
     @Test func stillSucceedsWhenTheNameCannotBeRead() async throws {
@@ -97,6 +147,43 @@ import Testing
         let data = SyntheticProfile.pngData(SyntheticProfile.image())
         let extraction = try await StudentIDExtractor.extract(from: data)
         #expect(extraction.card.idNumber == "59435")
+    }
+
+    @Test(arguments: Array(UInt32(1)...UInt32(8)))
+    func normalizesEveryEXIFOrientationWithoutClipping(rawOrientation: UInt32) throws {
+        // Four distinct quadrants on a non-square image expose clipped edges,
+        // incorrect rotations, and flips that accidentally use the other axis.
+        let width = 80, height = 40
+        let context = try #require(CGContext(data: nil, width: width, height: height,
+                                            bitsPerComponent: 8, bytesPerRow: 0,
+                                            space: CGColorSpaceCreateDeviceGray(),
+                                            bitmapInfo: CGImageAlphaInfo.none.rawValue))
+        let shades: [CGFloat] = [0.2, 0.4, 0.6, 0.8]
+        for (index, shade) in shades.enumerated() {
+            context.setFillColor(gray: shade, alpha: 1)
+            context.fill(CGRect(x: (index % 2) * 40, y: index < 2 ? 20 : 0, width: 40, height: 20))
+        }
+        let data = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(data, UTType.tiff.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, try #require(context.makeImage()), [
+            kCGImagePropertyOrientation: rawOrientation
+        ] as CFDictionary)
+        #expect(CGImageDestinationFinalize(destination))
+        let normalized = try #require(StudentIDExtractor.normalizedImage(from: data as Data))
+        let swapsAxes = rawOrientation >= 5
+        #expect(normalized.width == (swapsAxes ? height : width))
+        #expect(normalized.height == (swapsAxes ? width : height))
+        let buffer = try #require(ImageBuffer(normalized))
+        let corners = [(1, 1), (buffer.width - 2, 1),
+                       (1, buffer.height - 2), (buffer.width - 2, buffer.height - 2)]
+        let expectedQuadrants = [
+            [0, 1, 2, 3], [1, 0, 3, 2], [3, 2, 1, 0], [2, 3, 0, 1],
+            [0, 2, 1, 3], [2, 0, 3, 1], [3, 1, 2, 0], [1, 3, 0, 2],
+        ][Int(rawOrientation) - 1]
+        for (corner, quadrant) in zip(corners, expectedQuadrants) {
+            let value = Int(buffer.pixel(x: corner.0, y: corner.1))
+            #expect(abs(value - Int(shades[quadrant] * 255)) <= 2)
+        }
     }
 
     @Test func framesAPortraitCropAroundADetectedFace() {

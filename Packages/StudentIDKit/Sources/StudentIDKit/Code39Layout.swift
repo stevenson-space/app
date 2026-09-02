@@ -16,9 +16,6 @@ public struct Code39Layout: Equatable, Sendable {
     public let symbolWidth: CGFloat
     /// Points tall for the bars.
     public let barHeight: CGFloat
-    /// False when the space available forced modules narrower than asked for —
-    /// the symbol still fits and still encodes, but it is worth surfacing.
-    public let meetsPreferredModuleWidth: Bool
 
     /// The symbology guide asks for bars at least 15% of the symbol's length.
     public static let barHeightRatio: CGFloat = 0.15
@@ -26,7 +23,6 @@ public struct Code39Layout: Equatable, Sendable {
     public init(moduleCount: Int,
                 availableWidth: CGFloat,
                 displayScale: CGFloat,
-                preferredMinimumModuleWidth: CGFloat = 1.0,
                 maximumModuleWidth: CGFloat = 3.0,
                 minimumBarHeight: CGFloat = 44,
                 maximumBarHeight: CGFloat = 132) {
@@ -42,7 +38,6 @@ public struct Code39Layout: Equatable, Sendable {
 
         moduleWidth = max(onePixel, capped)
         symbolWidth = moduleWidth * count
-        meetsPreferredModuleWidth = moduleWidth + 1e-9 >= preferredMinimumModuleWidth
 
         let ideal = symbolWidth * Code39Layout.barHeightRatio
         let bounded = min(max(ideal, minimumBarHeight), max(minimumBarHeight, maximumBarHeight))

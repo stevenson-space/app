@@ -65,7 +65,8 @@ struct StudentIDScanView: View {
 /// is backgrounded mid-scan rather than dismissed.
 private struct ScreenAwakeAtFullBrightness: ViewModifier {
     @Environment(\.scenePhase) private var scenePhase
-    @State private var previousBrightness: CGFloat?
+    @State private var previousDisplay: (screen: UIScreen, brightness: CGFloat)?
+    @State private var previousIdleTimerDisabled: Bool?
 
     func body(content: Content) -> some View {
         content
@@ -77,23 +78,30 @@ private struct ScreenAwakeAtFullBrightness: ViewModifier {
     }
 
     private var screen: UIScreen? {
-        let scenes = UIApplication.shared.connectedScenes
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let active = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
-        return (active as? UIWindowScene)?.screen
+        return active?.screen
     }
 
     private func engage() {
-        guard let screen else { return }
-        if previousBrightness == nil { previousBrightness = screen.brightness }
-        screen.brightness = 1
+        if previousIdleTimerDisabled == nil {
+            previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
+        }
         UIApplication.shared.isIdleTimerDisabled = true
+        if previousDisplay == nil, let screen {
+            previousDisplay = (screen, screen.brightness)
+        }
+        previousDisplay?.screen.brightness = 1
     }
 
     private func restore() {
-        if let previousBrightness, let screen {
-            screen.brightness = previousBrightness
+        if let previousDisplay {
+            previousDisplay.screen.brightness = previousDisplay.brightness
         }
-        previousBrightness = nil
-        UIApplication.shared.isIdleTimerDisabled = false
+        previousDisplay = nil
+        if let previousIdleTimerDisabled {
+            UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled
+        }
+        previousIdleTimerDisabled = nil
     }
 }

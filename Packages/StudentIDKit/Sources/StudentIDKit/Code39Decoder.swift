@@ -89,11 +89,6 @@ enum Code39Decoder {
         guard index + 9 <= runs.count, runs[index].isDark else { return nil }
 
         let group = runs[index..<(index + 9)]
-        // Runs must alternate dark, light, dark, … within a character.
-        for (offset, run) in group.enumerated() where run.isDark != offset.isMultiple(of: 2) {
-            return nil
-        }
-
         let lengths = group.map(\.length)
         guard let narrow = lengths.min(), let wide = lengths.max(), narrow > 0 else { return nil }
         // Every character mixes narrow and wide elements at roughly 1:3. Anything

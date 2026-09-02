@@ -51,7 +51,6 @@ private func isClose(_ lhs: CGFloat, _ rhs: CGFloat, tolerance: CGFloat = 1e-9) 
         // width of the printed card, which is the right direction for a screen.
         #expect(isClose(layout.moduleWidth, 7.0 / 3.0))
         #expect(layout.symbolWidth > 300)
-        #expect(layout.meetsPreferredModuleWidth)
     }
 
     @Test func sixDigitNumberStillFitsTheCard() {
@@ -90,12 +89,10 @@ private func isClose(_ lhs: CGFloat, _ rhs: CGFloat, tolerance: CGFloat = 1e-9) 
         }
     }
 
-    @Test func reportsWhenTheSpaceForcesUnusablyThinBars() {
+    @Test func fitsEvenWhenTheSpaceForcesThinBars() {
         let layout = Code39Layout(moduleCount: moduleCount(digits: 8),
                                   availableWidth: 90,
-                                  displayScale: 3,
-                                  preferredMinimumModuleWidth: 1.0)
-        #expect(!layout.meetsPreferredModuleWidth)
+                                  displayScale: 3)
         #expect(layout.symbolWidth <= 90)
     }
 }
