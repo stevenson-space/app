@@ -28,14 +28,12 @@ public enum StudentIDExtractor {
         let lines = await recognizeText(in: image, size: size)
         let printedNumber = ProfileTextParser.printedStudentNumber(in: lines)
 
-        let observations = try await detectBarcodes(in: image)
-        guard !observations.isEmpty else { throw StudentIDImportError.barcodeNotFound }
-
-        let candidates = observations.compactMap(Candidate.init)
-        guard !candidates.isEmpty else {
-            let raw = observations.compactMap(\.payloadString).first ?? ""
-            throw StudentIDImportError.unsupportedBarcodePayload(raw)
+        let scan = await scanBarcodes(in: image)
+        guard !scan.rawPayloads.isEmpty else { throw StudentIDImportError.barcodeNotFound }
+        guard !scan.candidates.isEmpty else {
+            throw StudentIDImportError.unsupportedBarcodePayload(scan.rawPayloads[0])
         }
+        let candidates = scan.candidates
 
         // When the page shows the number in print too, trust the barcode that
         // agrees with it; a disagreement means the screenshot is a composite of
@@ -53,7 +51,7 @@ public enum StudentIDExtractor {
         let name = ProfileTextParser.fullName(in: lines, imageHeight: size.height)
         let grade = ProfileTextParser.gradeLevel(in: lines)
         let year = ProfileTextParser.schoolYearStart(in: lines)
-        let photo = await photoJPEG(from: image, size: size)
+        let photo = await photoJPEG(from: image, size: size, above: photoSearchLimit(in: lines))
 
         var warnings: [StudentIDWarning] = []
         if name == nil { warnings.append(.nameNotFound) }
@@ -80,27 +78,75 @@ public enum StudentIDExtractor {
         let payload: String
         let requiresCheckDigit: Bool
 
-        init?(_ observation: BarcodeObservation) {
-            guard let raw = observation.payloadString else { return nil }
+        init?(payload raw: String, requiresCheckDigit: Bool) {
             let trimmed = raw.trimmingCharacters(in: CharacterSet(charactersIn: "* \t\n"))
-            guard StudentIDCard.isValidNumber(trimmed) else { return nil }
-            payload = trimmed
-            // A checksum symbology means the printed symbol carries a modulo-43
-            // character that Vision strips from the payload. Re-encoding without
-            // it would produce a different symbol than the school issued.
-            requiresCheckDigit = observation.symbology == .code39Checksum
-                || observation.symbology == .code39FullASCIIChecksum
+            if StudentIDCard.isValidNumber(trimmed) {
+                payload = trimmed
+                self.requiresCheckDigit = requiresCheckDigit
+                return
+            }
+            // A symbol carrying a modulo-43 check character reads back with it
+            // attached. Recognise that and record it, so the recreation encodes
+            // the same symbol rather than one the school's system would reject.
+            if trimmed.count > 1 {
+                let body = String(trimmed.dropLast())
+                if StudentIDCard.isValidNumber(body),
+                   let expected = try? Code39.checkDigit(for: body),
+                   expected == trimmed.last {
+                    payload = body
+                    self.requiresCheckDigit = true
+                    return
+                }
+            }
+            return nil
         }
     }
 
-    private static func detectBarcodes(in image: CGImage) async throws -> [BarcodeObservation] {
-        var request = DetectBarcodesRequest()
-        request.symbologies = [.code39, .code39Checksum, .code39FullASCII, .code39FullASCIIChecksum]
-        do {
-            return try await request.perform(on: image)
-        } catch {
-            throw StudentIDImportError.barcodeNotFound
+    private struct BarcodeScan {
+        /// Everything read, so a barcode that is simply not a student number can
+        /// be reported differently from no barcode at all.
+        let rawPayloads: [String]
+        let candidates: [Candidate]
+    }
+
+    /// Vision first, then the package's own reader.
+    ///
+    /// The fallback is not belt-and-braces: Vision cannot create a barcode
+    /// detector in the iOS Simulator at all, so without it the feature could
+    /// only ever be used, or tested, on a physical device.
+    private static func scanBarcodes(in image: CGImage) async -> BarcodeScan {
+        var raw: [String] = []
+        var candidates: [Candidate] = []
+
+        for observation in (try? await visionBarcodes(in: image)) ?? [] {
+            guard let payload = observation.payloadString else { continue }
+            raw.append(payload)
+            let carriesCheckDigit = observation.symbology == .code39Checksum
+                || observation.symbology == .code39FullASCIIChecksum
+            if let candidate = Candidate(payload: payload, requiresCheckDigit: carriesCheckDigit) {
+                candidates.append(candidate)
+            }
         }
+        guard candidates.isEmpty else {
+            return BarcodeScan(rawPayloads: raw, candidates: candidates)
+        }
+
+        for payload in Code39Decoder.decode(image) {
+            raw.append(payload)
+            if let candidate = Candidate(payload: payload, requiresCheckDigit: false) {
+                candidates.append(candidate)
+            }
+        }
+        return BarcodeScan(rawPayloads: raw, candidates: candidates)
+    }
+
+    private static func visionBarcodes(in image: CGImage) async throws -> [BarcodeObservation] {
+        var request = DetectBarcodesRequest()
+        let wanted: [BarcodeSymbology] = [.code39, .code39Checksum,
+                                          .code39FullASCII, .code39FullASCIIChecksum]
+        let supported = Set(request.supportedSymbologies)
+        request.symbologies = wanted.filter(supported.contains)
+        return try await request.perform(on: image)
     }
 
     // MARK: - Text
@@ -123,28 +169,43 @@ public enum StudentIDExtractor {
 
     // MARK: - Photo
 
-    private static func photoJPEG(from image: CGImage, size: CGSize) async -> Data? {
+    /// Everything below the "Student Number" label — the barcode, most of all —
+    /// is out of bounds when looking for the photo.
+    private static func photoSearchLimit(in lines: [TextLine]) -> CGFloat? {
+        [ProfileTextParser.line(matching: "student number", in: lines),
+         ProfileTextParser.line(matching: "student identification", in: lines)]
+            .compactMap { $0?.frame.minY }
+            .min()
+    }
+
+    private static func photoJPEG(from image: CGImage, size: CGSize, above limit: CGFloat?) async -> Data? {
+        // A found face gives the best framing, so expand around it and pull the
+        // edges back onto the photo. The card's photo well fills and clips, so
+        // the crop keeps the source photo's aspect rather than being forced into
+        // one and losing the top of the head.
+        var crop: CGRect?
+        if let face = await largestFace(in: image, size: size) {
+            crop = trimmingPageMargin(portraitCrop(around: face, in: size), in: image)
+        } else if let region = PhotoRegionFinder.locate(in: image, above: limit) {
+            // No face — either the detector is unavailable, as it is in the
+            // Simulator, or it simply missed. The photo is still findable by its
+            // shape on the page.
+            crop = trimmingPageMargin(region, in: image)
+        }
+
+        guard let crop, crop.width > 1, crop.height > 1,
+              let cropped = image.cropping(to: crop) else { return nil }
+        return jpegData(from: cropped)
+    }
+
+    private static func largestFace(in image: CGImage, size: CGSize) async -> CGRect? {
         let request = DetectFaceRectanglesRequest()
         guard let faces = try? await request.perform(on: image) else { return nil }
-
-        let boxes = faces
+        return faces
             .filter { $0.confidence >= 0.5 }
             .map { $0.boundingBox.toImageCoordinates(size, origin: .upperLeft) }
             .filter { $0.midY < size.height * 0.6 }
-        guard let face = boxes.max(by: { $0.width * $0.height < $1.width * $1.height }) else {
-            return nil
-        }
-
-        // Expand around the face, then pull the edges back onto the photo. The
-        // card's photo well fills and clips, so the crop keeps whatever aspect
-        // the source photo has rather than being forced into one and losing the
-        // top of the head.
-        let expanded = portraitCrop(around: face, in: size)
-        let crop = trimmingPageMargin(expanded, in: image)
-        guard crop.width > 1, crop.height > 1, let cropped = image.cropping(to: crop) else {
-            return nil
-        }
-        return jpegData(from: cropped)
+            .max { $0.width * $0.height < $1.width * $1.height }
     }
 
     /// Grows a face box into a head-and-shoulders portrait: the face sits a
@@ -176,7 +237,7 @@ public enum StudentIDExtractor {
     /// really does have pale edges.
     static func trimmingPageMargin(_ rect: CGRect, in image: CGImage) -> CGRect {
         guard let cropped = image.cropping(to: rect.integral),
-              let buffer = grayscaleBuffer(cropped) else { return rect }
+              let buffer = ImageBuffer(cropped) else { return rect }
 
         let width = buffer.width
         let height = buffer.height
@@ -192,13 +253,13 @@ public enum StudentIDExtractor {
             return mean > 235 && dark * 20 <= samples.count
         }
         func column(_ x: Int) -> [UInt8] {
-            stride(from: 0, to: height, by: max(1, height / 64)).map { buffer.pixels[$0 * width + x] }
+            stride(from: 0, to: height, by: max(1, height / 64)).map { buffer.pixel(x: x, y: $0) }
         }
         // A bitmap context stores rows top-down in memory even though its
         // coordinate system counts upward, so row 0 really is the top edge.
         func row(_ yFromTop: Int) -> [UInt8] {
             stride(from: 0, to: width, by: max(1, width / 64)).map {
-                buffer.pixels[yFromTop * width + $0]
+                buffer.pixel(x: $0, y: yFromTop)
             }
         }
 
@@ -217,26 +278,6 @@ public enum StudentIDExtractor {
                              width: rect.width - CGFloat(left + right),
                              height: rect.height - CGFloat(top + bottom))
         return trimmed.width > 16 && trimmed.height > 16 ? trimmed : rect
-    }
-
-    private static func grayscaleBuffer(_ image: CGImage) -> (pixels: [UInt8], width: Int, height: Int)? {
-        let width = image.width
-        let height = image.height
-        var pixels = [UInt8](repeating: 0, count: width * height)
-        let drew = pixels.withUnsafeMutableBytes { raw -> Bool in
-            guard let context = CGContext(data: raw.baseAddress,
-                                          width: width,
-                                          height: height,
-                                          bitsPerComponent: 8,
-                                          bytesPerRow: width,
-                                          space: CGColorSpaceCreateDeviceGray(),
-                                          bitmapInfo: CGImageAlphaInfo.none.rawValue) else {
-                return false
-            }
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return true
-        }
-        return drew ? (pixels, width, height) : nil
     }
 
     private static func jpegData(from image: CGImage,

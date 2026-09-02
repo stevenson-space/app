@@ -19,6 +19,10 @@ enum SyntheticProfile {
         var enrollmentYear: String? = "26-27"
         var grade: Int? = 12
         var includeEndedSummerEnrollment = true
+        /// Draws a photographic block where Infinite Campus puts the student
+        /// photo. Synthetic art has no face in it, so this exercises the
+        /// geometric fallback rather than face detection.
+        var includePhoto = true
         /// Puts the ended summer enrollment first, so "the first grade on the
         /// page" is the wrong answer and the ENDED badge has to be honoured.
         var endedEnrollmentFirst = false
@@ -46,6 +50,13 @@ enum SyntheticProfile {
         cursor += 130
         draw("0 Items in Cart      $0.00", in: context, canvasHeight: height, at: CGPoint(x: 48, y: cursor), size: 34)
         cursor += 140
+
+        if options.includePhoto {
+            // Where Infinite Campus puts it: left of the name, clear of the
+            // cart row above it.
+            drawPhotoBlock(in: context, canvasHeight: height,
+                           rect: CGRect(x: 60, y: 700, width: 300, height: 420))
+        }
 
         if let name = options.name {
             draw(name, in: context, canvasHeight: height, at: CGPoint(x: 520, y: cursor), size: 58)
@@ -133,6 +144,29 @@ enum SyntheticProfile {
         CGImageDestinationAddImage(destination, image, nil)
         CGImageDestinationFinalize(destination)
         return data as Data
+    }
+
+    /// A stand-in for a portrait: a mid-tone ground broken up with deterministic
+    /// noise, so it reads as photographic rather than as a flat swatch.
+    private static func drawPhotoBlock(in context: CGContext, canvasHeight: Int, rect: CGRect) {
+        let flipped = CGRect(x: rect.minX, y: CGFloat(canvasHeight) - rect.maxY,
+                             width: rect.width, height: rect.height)
+        context.setFillColor(red: 0.33, green: 0.50, blue: 0.60, alpha: 1)
+        context.fill(flipped)
+
+        var seed: UInt64 = 0x5EED
+        func random() -> Double {
+            seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Double((seed >> 33) % 1000) / 1000
+        }
+        for _ in 0..<600 {
+            let shade = 0.22 + random() * 0.45
+            context.setFillColor(red: shade, green: shade * 0.9, blue: shade * 0.8, alpha: 1)
+            context.fill(CGRect(x: flipped.minX + random() * (flipped.width - 24),
+                                y: flipped.minY + random() * (flipped.height - 24),
+                                width: 10 + random() * 14,
+                                height: 10 + random() * 14))
+        }
     }
 
     /// `y` is the distance from the top of the canvas, matching how the page
