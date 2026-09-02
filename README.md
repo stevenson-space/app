@@ -17,7 +17,14 @@ Packages/ScheduleKit/          All schedule logic — no UI, no clock access.
     Storage/                   App-Group-ready SharedStore (UserDefaults suite)
     Notifications/             Pure NotificationPlanner (56 alerts + 1 refresh reminder)
   Tests/ScheduleKitTests/      The quality gate — run with `swift test`
-Stevenson Space Companion App/ SwiftUI app target: Home, Settings, system glue
+Packages/StudentIDKit/         Student ID logic — no UI.
+  Sources/StudentIDKit/
+    Code39.swift               Encoder; Code39Decoder is the reader
+    Code39Layout.swift         Pixel-snapped sizing so bars stay scannable
+    StudentIDExtractor.swift   Screenshot → barcode, name, grade, year, photo
+    StudentIDCard.swift        The model; its initializer is internal by design
+  Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
+Stevenson Space Companion App/ SwiftUI app target: Home, Lunch, ID, Settings
 ```
 
 Two pure functions are the heart of everything; every surface (and the future
@@ -32,6 +39,27 @@ momentState(at: now, in: timeline) // instant → what's happening right now
 (never defaults to Standard) → bundled break ranges → weekend → Standard weekday
 (by design, not a guess). All date math in `America/Chicago` via calendar
 components — never `+24h` arithmetic (DST-safe).
+
+## The ID tab
+
+The school stopped issuing physical IDs, so a student imports one screenshot of
+the Infinite Campus Student Profile page. The app reads the Code 39 barcode, the
+name, grade, and school year, crops the photo, and redraws the ID as a card whose
+barcode is re-encoded from the same payload the school issued.
+
+Two rules shape the code. **Nothing is typeable**: `StudentIDCard`'s initializer
+is internal to StudentIDKit, so the only source of a name or number is
+`StudentIDExtractor`, and the decoder re-validates stored values. And **the card
+does not follow dark mode**: a printed card does not invert, and the barcode has
+to stay black on white to scan.
+
+Vision cannot create its barcode or face detectors in the iOS Simulator, so
+StudentIDKit carries its own Code 39 reader and a geometric photo finder and
+falls back to them. That keeps the feature testable and usable off-device, and
+covers a device where Vision declines a symbol.
+
+The source screenshot is never stored — only the extracted fields (in
+`sk.studentID`) and the cropped photo (in Application Support).
 
 ## Data sources and the yearly update runbook
 
@@ -59,6 +87,7 @@ components — never `+24h` arithmetic (DST-safe).
 ## Development
 
 - Logic tests (fast, no simulator): `swift test --package-path Packages/ScheduleKit`
+  and `swift test --package-path Packages/StudentIDKit`
 - App build: `xcodebuild -scheme "Stevenson Space Companion App" -destination 'generic/platform=iOS Simulator' build`
 - **Time travel**: DEBUG builds have a Developer section in Settings — jump the
   app clock to any instant or use one-tap scenarios (finals rotations, async

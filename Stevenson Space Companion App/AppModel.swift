@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Observation
 import ScheduleKit
+import StudentIDKit
 
 /// Root observable store. Owns the resolver inputs (persisted via SharedStore),
 /// derives today's timeline, and coordinates sync + notifications. All schedule
@@ -9,6 +10,7 @@ import ScheduleKit
 enum RootTab: Hashable {
     case home
     case lunch
+    case id
     case settings
 }
 
@@ -21,6 +23,7 @@ final class AppModel {
     let catalog: BellScheduleCatalog
     private let syncService: ScheduleSyncService
     private let lunchSyncService: LunchMenuSyncService
+    private let photoStore: StudentIDPhotoStore
 
     // MARK: Resolver inputs (every write goes through `store`)
 
@@ -33,6 +36,10 @@ final class AppModel {
     private(set) var lunchMenu: LunchMenu?
     private(set) var lunchFetchMetadata: FetchMetadata
     private(set) var isLunchSyncing = false
+    /// Only ever written from a screenshot the extractor read; there is no code
+    /// path, in this type or the UI, that builds one from typed input.
+    private(set) var studentID: StudentIDCard?
+    private(set) var studentIDPhoto: UIImage?
 
     // MARK: Derived
 
@@ -76,6 +83,8 @@ final class AppModel {
         }
         self.syncService = ScheduleSyncService(store: store)
         self.lunchSyncService = LunchMenuSyncService(store: store)
+        let photoStore = StudentIDPhotoStore()
+        self.photoStore = photoStore
 
         // @Observable rewrites stored properties into computed accessors, so
         // work with locals until everything is assigned.
@@ -104,6 +113,17 @@ final class AppModel {
         self.fetchMetadata = store.fetchMetadata
         self.lunchMenu = lunchMenu
         self.lunchFetchMetadata = store.lunchFetchMetadata
+
+        let studentID = store.studentIDData.flatMap(StudentIDCard.decoded(from:))
+        self.studentID = studentID
+        // A photo with no card behind it is orphaned data; drop it rather than
+        // keeping a face on disk for an ID that no longer exists.
+        if studentID == nil {
+            photoStore.remove()
+            self.studentIDPhoto = nil
+        } else {
+            self.studentIDPhoto = photoStore.loadData().flatMap(UIImage.init(data:))
+        }
 
         self.lastComputedDay = today
         let inputs = ResolverInputs(
@@ -295,6 +315,38 @@ final class AppModel {
         store.overrides = overrides
         refreshDerived()
         rescheduleNotifications()
+    }
+
+    // MARK: - Student ID
+
+    func saveStudentID(_ extraction: StudentIDExtraction) {
+        guard let encoded = try? extraction.card.encoded() else { return }
+        store.studentIDData = encoded
+        studentID = extraction.card
+
+        if let jpeg = extraction.photoJPEG {
+            try? photoStore.save(jpeg)
+            studentIDPhoto = UIImage(data: jpeg)
+        } else {
+            photoStore.remove()
+            studentIDPhoto = nil
+        }
+    }
+
+    func removeStudentID() {
+        store.studentIDData = nil
+        photoStore.remove()
+        studentID = nil
+        studentIDPhoto = nil
+    }
+
+    /// School years roll over in August, so an ID imported last year is worth a
+    /// gentle nudge — the number rarely changes, but the grade on the card does.
+    var studentIDIsFromAnEarlierSchoolYear: Bool {
+        guard let start = studentID?.schoolYearStart else { return false }
+        let components = SchoolTime.calendar.dateComponents([.year, .month], from: now())
+        guard let year = components.year, let month = components.month else { return false }
+        return start < (month >= 8 ? year : year - 1)
     }
 
     // MARK: - Sync

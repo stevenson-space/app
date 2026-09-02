@@ -34,6 +34,25 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(store.overridesByDay[day(2026, 12, 17)] == override)
     }
 
+    @Test func studentIDDataRoundTripsAndClears() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        #expect(store.studentIDData == nil)
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        store.studentIDData = payload
+        #expect(store.studentIDData == payload)
+
+        store.studentIDData = nil
+        #expect(store.studentIDData == nil)
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func studentIDIsCarriedByTheAppGroupMigration() {
+        // Anything not in this list is silently left behind in the old suite.
+        #expect(SharedStore.migratableKeys.contains("sk.studentID"))
+    }
+
     @Test func mapURLDefaultsAndReset() {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
