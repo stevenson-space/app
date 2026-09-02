@@ -25,12 +25,16 @@ public final class SharedStore: @unchecked Sendable {
         static let mapURL = "sk.mapURL"
         static let lunchMenuData = "sk.lunchMenuData"
         static let lunchFetchMetadata = "sk.lunchFetchMetadata"
+        static let studentID = "sk.studentID"
         static let migrated = "sk.migratedToAppGroup"
         static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
                           notificationPrefs, mapURL, lunchMenuData,
-                          lunchFetchMetadata]
+                          lunchFetchMetadata, studentID]
     }
+
+    /// Every key the one-time App Group migration carries across.
+    static var migratableKeys: [String] { Keys.all }
 
     /// Test injection point.
     public init(defaults: UserDefaults) {
@@ -105,6 +109,23 @@ public final class SharedStore: @unchecked Sendable {
     public var lunchFetchMetadata: FetchMetadata {
         get { decode(FetchMetadata.self, key: Keys.lunchFetchMetadata) ?? FetchMetadata() }
         set { encode(newValue, key: Keys.lunchFetchMetadata) }
+    }
+
+    /// The student's ID card, as opaque bytes.
+    ///
+    /// Deliberately untyped here: the card model lives in StudentIDKit, and
+    /// ScheduleKit has no business depending on it. Keeping the key in this
+    /// store anyway means the ID rides along with everything else the day the
+    /// App Group entitlement lands and widgets need to read it.
+    public var studentIDData: Data? {
+        get { defaults.data(forKey: Keys.studentID) }
+        set {
+            if let newValue {
+                defaults.set(newValue, forKey: Keys.studentID)
+            } else {
+                defaults.removeObject(forKey: Keys.studentID)
+            }
+        }
     }
 
     public var notificationPrefs: NotificationPrefs {
