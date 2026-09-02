@@ -13,6 +13,9 @@ struct StudentIDView: View {
     @State private var pickedItem: PhotosPickerItem?
     @State private var stage: StudentIDImportStage?
     @State private var isScanning = false
+    /// Set when the student asks for a different screenshot: the picker can only
+    /// be presented once the import sheet has actually gone away.
+    @State private var picksAgainOnDismiss = false
 
     var body: some View {
         NavigationStack {
@@ -53,7 +56,7 @@ struct StudentIDView: View {
         }
         .photosPicker(isPresented: $isPickerPresented, selection: $pickedItem, matching: .images)
         .onChange(of: pickedItem) { _, item in load(item) }
-        .sheet(isPresented: isImporting) {
+        .sheet(isPresented: isImporting, onDismiss: presentPickerIfAsked) {
             StudentIDImportSheet(stage: stage ?? .processing,
                                  onSave: save,
                                  onChooseAnother: chooseAnother)
@@ -224,7 +227,13 @@ struct StudentIDView: View {
     }
 
     private func chooseAnother() {
+        picksAgainOnDismiss = true
         stage = nil
+    }
+
+    private func presentPickerIfAsked() {
+        guard picksAgainOnDismiss else { return }
+        picksAgainOnDismiss = false
         isPickerPresented = true
     }
 }

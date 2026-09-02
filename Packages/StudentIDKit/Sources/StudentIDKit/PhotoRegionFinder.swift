@@ -25,7 +25,9 @@ enum PhotoRegionFinder {
         // Skip the status and navigation bars at the very top.
         let firstRow = Int(Double(grid.rows) * 0.06)
         let ceiling = limit.map { Int($0 / grid.cellHeight) } ?? Int(Double(grid.rows) * 0.60)
-        let lastRow = min(ceiling, Int(Double(grid.rows) * 0.60))
+        // A limit above the navigation bars leaves nothing to search, which is a
+        // photo not found rather than an inverted range.
+        let lastRow = max(firstRow, min(ceiling, Int(Double(grid.rows) * 0.60)))
 
         var best: (rect: CGRect, area: Int)?
         for row in firstRow..<min(lastRow, grid.rows) {
