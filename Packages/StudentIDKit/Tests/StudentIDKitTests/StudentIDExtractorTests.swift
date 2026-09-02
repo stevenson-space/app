@@ -16,7 +16,18 @@ import Testing
         #expect(extraction.card.gradeLevel == 12)
         #expect(extraction.card.schoolYearStart == 2026)
         #expect(!extraction.warnings.contains(.printedNumberNotFound))
-        // Drawn text has no face in it, so there is nothing to crop.
+        // No real face to detect, so this is the geometric fallback finding the
+        // photo by its shape on the page.
+        #expect(extraction.photoJPEG != nil)
+        #expect(!extraction.warnings.contains(.photoNotFound))
+    }
+
+    @Test func reportsAMissingPhotoRatherThanFailing() async throws {
+        var options = SyntheticProfile.Options()
+        options.includePhoto = false
+        let extraction = try await StudentIDExtractor.extract(from: SyntheticProfile.image(options))
+        #expect(extraction.card.idNumber == "59435")
+        #expect(extraction.photoJPEG == nil)
         #expect(extraction.warnings.contains(.photoNotFound))
     }
 

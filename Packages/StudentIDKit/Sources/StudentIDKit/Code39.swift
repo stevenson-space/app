@@ -143,4 +143,13 @@ public enum Code39 {
 
     /// Exposed for the table-integrity tests.
     static var patternTable: [Character: [Bool]] { patterns }
+
+    /// The character a nine-element wide/narrow pattern stands for, if any.
+    /// The reverse of the drawing table, used when reading a symbol back.
+    static func character(for pattern: [Bool]) -> Character? {
+        reversePatterns[pattern.map { $0 ? "1" : "0" }.joined()]
+    }
+
+    private static let reversePatterns: [String: Character] = Dictionary(
+        uniqueKeysWithValues: patterns.map { ($0.value.map { $0 ? "1" : "0" }.joined(), $0.key) })
 }
