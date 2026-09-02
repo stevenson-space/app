@@ -44,7 +44,9 @@ public struct StudentIDCard: Equatable, Sendable {
     static func isValidNumber(_ value: String) -> Bool {
         !value.isEmpty
             && numberLengthRange.contains(value.count)
-            && value.allSatisfy(\.isNumber)
+            // ASCII digits only: Code 39 cannot encode an Arabic-Indic five,
+            // and a scanner would never read one back.
+            && value.allSatisfy { $0.isASCII && $0.isNumber }
     }
 
     /// "26–27", using an en dash, as the physical card prints it.

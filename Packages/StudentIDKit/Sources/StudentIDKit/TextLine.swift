@@ -47,7 +47,10 @@ enum ProfileTextParser {
     /// Guards against importing some unrelated Code 39 barcode as a student ID.
     static func looksLikeProfilePage(_ lines: [TextLine]) -> Bool {
         let anchors = ["enrollments", "student number", "student identification barcode", "student profile"]
-        return anchors.contains { phrase in lines.contains { $0.normalized.contains(phrase) } }
+        // Two independent labels, not one: a single stray phrase is the kind of
+        // thing an unrelated page can carry by accident.
+        let matched = anchors.filter { phrase in lines.contains { $0.normalized.contains(phrase) } }
+        return matched.count >= 2
     }
 
     // MARK: Student number
@@ -102,22 +105,27 @@ enum ProfileTextParser {
     static func joinedAcrossBaseline(_ line: TextLine, in lines: [TextLine]) -> String {
         let sameBaseline = lines.filter { other in
             abs(other.frame.midY - line.frame.midY) < line.frame.height * 0.6
-                && other.frame.minX >= line.frame.minX - 0.5
                 && isNameShaped(other.text)
         }
         guard sameBaseline.count > 1 else { return line.text }
 
+        // Recognition order says nothing about position, so walk out from the
+        // line itself in both directions and stop at the first gap wide enough
+        // to be a different column rather than the next word.
         let ordered = sameBaseline.sorted { $0.frame.minX < $1.frame.minX }
-        var pieces: [String] = []
-        var previous: TextLine?
-        for piece in ordered {
-            if let previous, piece.frame.minX - previous.frame.maxX > line.frame.height * 1.5 {
-                break
-            }
-            pieces.append(piece.text)
-            previous = piece
+        guard let anchor = ordered.firstIndex(of: line) else { return line.text }
+        let widestGap = line.frame.height * 1.5
+
+        var first = anchor
+        while first > 0, ordered[first].frame.minX - ordered[first - 1].frame.maxX <= widestGap {
+            first -= 1
         }
-        return pieces.joined(separator: " ")
+        var last = anchor
+        while last + 1 < ordered.count,
+              ordered[last + 1].frame.minX - ordered[last].frame.maxX <= widestGap {
+            last += 1
+        }
+        return ordered[first...last].map(\.text).joined(separator: " ")
     }
 
     /// Words that appear on this page as labels, chrome, or school names — never
@@ -215,7 +223,10 @@ enum ProfileTextParser {
         pattern: "\\bgrade\\s+([0-9]{1,2})\\b", options: [.caseInsensitive])
     private static let yearPattern = try! NSRegularExpression(
         pattern: "\\b([0-9]{2})\\s*[-\\x{2013}\\x{2014}/]\\s*([0-9]{2})\\b")
-    private static let digitPattern = try! NSRegularExpression(pattern: "[0-9]{3,10}")
+    /// Boundaries on both sides: a longer run of digits is somebody else's
+    /// number, not a student number with its tail cut off.
+    private static let digitPattern = try! NSRegularExpression(
+        pattern: "(?<![0-9])[0-9]{3,10}(?![0-9])")
 
     private static func firstGrade(in text: String) -> Int? {
         guard let match = firstMatch(gradePattern, in: text),
