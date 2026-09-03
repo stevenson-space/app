@@ -38,6 +38,13 @@ struct StudentIDView: View {
                 if model.studentID != nil {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
+                            if model.studentIDPhoto != nil {
+                                Toggle(isOn: Binding(
+                                    get: { model.studentIDPhotoHidden },
+                                    set: { model.setStudentIDPhotoHidden($0) })) {
+                                    Label("Hide ID Photo", systemImage: "eye.slash")
+                                }
+                            }
                             Button {
                                 isPickerPresented = true
                             } label: {
@@ -73,7 +80,7 @@ struct StudentIDView: View {
 
     private func savedCard(_ card: StudentIDCard) -> some View {
         VStack(spacing: 18) {
-            StudentIDCardView(content: .card(card, photo: model.studentIDPhoto))
+            StudentIDCardView(content: .card(card, photo: model.studentIDPhotoHidden ? nil : model.studentIDPhoto))
                 .onTapGesture { isScanning = true }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Opens the barcode full screen for scanning")

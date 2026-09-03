@@ -40,6 +40,7 @@ final class AppModel {
     /// path, in this type or the UI, that builds one from typed input.
     private(set) var studentID: StudentIDCard?
     private(set) var studentIDPhoto: UIImage?
+    private(set) var studentIDPhotoHidden: Bool
 
     // MARK: Derived
 
@@ -116,6 +117,7 @@ final class AppModel {
 
         let studentID = store.studentIDData.flatMap(StudentIDCard.decoded(from:))
         self.studentID = studentID
+        self.studentIDPhotoHidden = store.studentIDPhotoHidden
         // A photo with no card behind it is orphaned data; drop it rather than
         // keeping a face on disk for an ID that no longer exists.
         if studentID == nil {
@@ -318,6 +320,11 @@ final class AppModel {
     }
 
     // MARK: - Student ID
+
+    func setStudentIDPhotoHidden(_ hidden: Bool) {
+        store.studentIDPhotoHidden = hidden
+        studentIDPhotoHidden = hidden
+    }
 
     func saveStudentID(_ extraction: StudentIDExtraction) throws {
         let encoded = try extraction.card.encoded()
