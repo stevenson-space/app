@@ -28,7 +28,7 @@ struct SettingsView: View {
             NavigationLink {
                 PeriodEditorListView()
             } label: {
-                Label("My Schedule", systemImage: "book")
+                Label("My Schedule", systemImage: "scroll")
             }
         } header: {
             Text("My Schedule")
