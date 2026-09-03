@@ -78,6 +78,8 @@ struct StudentIDImportSheet: View {
     private func review(_ extraction: StudentIDExtraction, photo: UIImage?) -> some View {
         ScrollView {
             VStack(spacing: 18) {
+                ownershipWarning
+
                 StudentIDCardView(content: .card(extraction.card, photo: photo))
 
                 VStack(spacing: 0) {
@@ -139,6 +141,29 @@ struct StudentIDImportSheet: View {
     }
 
     // MARK: - Pieces
+
+    private var ownershipWarning: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Only add your own ID", systemImage: "exclamationmark.triangle.fill")
+                .font(.headline)
+                .foregroundStyle(.red)
+
+            Text("Adding someone else’s ID as your own is against school policy "
+                 + "and is punishable by disciplinary action from Stevenson.")
+                .font(.subheadline.weight(.semibold))
+
+            Text("By tapping Save, you confirm that this is your own student ID.")
+                .font(.subheadline)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color.red.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .strokeBorder(Color.red.opacity(0.3), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
 
     private func detail(_ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
