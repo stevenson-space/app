@@ -31,12 +31,6 @@ struct PeriodEditorListView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Text("Tap any card to change it. A class can run 1½ periods; the leftover half period becomes its own card.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
-                    .padding(.top, 6)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -224,8 +218,6 @@ struct BlockEditSheet: View {
                 TextField("Class name (e.g. AP Biology)", text: $name)
             }
             TextField("Room", text: $room)
-        } footer: {
-            Text("Tap the emoji to choose your card's icon or use an automatic one.")
         }
     }
 

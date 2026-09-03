@@ -32,8 +32,6 @@ struct SettingsView: View {
             }
         } header: {
             Text("My Schedule")
-        } footer: {
-            Text("Classes, 1½-period labs, lunch, advisory, and free periods all live there — tap any card to change it.")
         }
     }
 
@@ -125,10 +123,6 @@ struct SettingsView: View {
             }
         } header: {
             Text("Schedule Override")
-        } footer: {
-            if !model.overrides.isEmpty {
-                Text("Overrides apply to their date only and always win over synced data.")
-            }
         }
     }
 
@@ -204,8 +198,6 @@ struct DataSyncSection: View {
             if let error = model.fetchMetadata.lastError {
                 Text("Last sync problem: \(error). The app keeps using its last good copy.")
                     .foregroundStyle(.orange)
-            } else {
-                Text("Special-day data is shared with stevenson.space and cached for offline use.")
             }
         }
     }
