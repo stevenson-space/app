@@ -36,7 +36,7 @@ struct PeriodEditorListView: View {
             .padding(.vertical, 12)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Customize Schedule")
+        .navigationTitle("My Schedule")
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
                 .presentationDetents([.medium, .large])

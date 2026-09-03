@@ -28,10 +28,10 @@ struct SettingsView: View {
             NavigationLink {
                 PeriodEditorListView()
             } label: {
-                Label("Customize Schedule", systemImage: "slider.horizontal.3")
+                Label("My Schedule", systemImage: "slider.horizontal.3")
             }
         } header: {
-            Text("Customize Schedule")
+            Text("My Schedule")
         }
     }
 
