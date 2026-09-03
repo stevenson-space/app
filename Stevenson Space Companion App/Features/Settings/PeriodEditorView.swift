@@ -254,12 +254,6 @@ struct BlockEditSheet: View {
                     Text("B (second half)").tag(Half.b)
                 }
             }
-        } footer: {
-            if let advisoryHalf = advisoryPairHalf {
-                Text("Advisory holds \(number)\(advisoryHalf.rawValue), lunch the other half. Advisory doesn't meet on Fridays — lunch fills the whole period then.")
-            } else {
-                Text("Freshmen: advisory takes one half of your lunch period, lunch the other.")
-            }
         }
     }
 
