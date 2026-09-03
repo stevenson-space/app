@@ -80,8 +80,6 @@ struct OverrideEditorView: View {
                     }
                     .pickerStyle(.inline)
                 }
-            } footer: {
-                Text("An override applies to that date only and always wins over synced data. It never carries into other days.")
             }
 
             Section {
