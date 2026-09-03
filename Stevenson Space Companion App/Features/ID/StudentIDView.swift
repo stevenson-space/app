@@ -96,21 +96,15 @@ struct StudentIDView: View {
             .buttonStyle(.borderedProminent)
             .tint(StevensonPalette.accent)
 
-            VStack(spacing: 6) {
-                Text("Imported \(card.importedAt.formatted(.relative(presentation: .named)))")
+            if model.studentIDIsFromAnEarlierSchoolYear, let year = card.schoolYearLabel {
+                Label("This ID was imported for the \(year) school year. "
+                      + "Import a fresh screenshot if yours has changed.",
+                      systemImage: "calendar.badge.exclamationmark")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-
-                if model.studentIDIsFromAnEarlierSchoolYear, let year = card.schoolYearLabel {
-                    Label("This ID was imported for the \(year) school year. "
-                          + "Import a fresh screenshot if yours has changed.",
-                          systemImage: "calendar.badge.exclamationmark")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
         }
     }
 
