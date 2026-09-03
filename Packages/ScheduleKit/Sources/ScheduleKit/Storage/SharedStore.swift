@@ -26,11 +26,12 @@ public final class SharedStore: @unchecked Sendable {
         static let lunchMenuData = "sk.lunchMenuData"
         static let lunchFetchMetadata = "sk.lunchFetchMetadata"
         static let studentID = "sk.studentID"
+        static let studentIDPhotoHidden = "sk.studentIDPhotoHidden"
         static let migrated = "sk.migratedToAppGroup"
         static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
                           notificationPrefs, mapURL, lunchMenuData,
-                          lunchFetchMetadata, studentID]
+                          lunchFetchMetadata, studentID, studentIDPhotoHidden]
     }
 
     /// Every key the one-time App Group migration carries across.
@@ -126,6 +127,12 @@ public final class SharedStore: @unchecked Sendable {
                 defaults.removeObject(forKey: Keys.studentID)
             }
         }
+    }
+
+    /// A display preference; hiding the photo keeps the saved image available.
+    public var studentIDPhotoHidden: Bool {
+        get { defaults.bool(forKey: Keys.studentIDPhotoHidden) }
+        set { defaults.set(newValue, forKey: Keys.studentIDPhotoHidden) }
     }
 
     public var notificationPrefs: NotificationPrefs {
