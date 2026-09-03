@@ -151,9 +151,6 @@ struct StudentIDImportSheet: View {
             Text("Adding someone else’s ID as your own is against school policy "
                  + "and is punishable by disciplinary action from Stevenson.")
                 .font(.subheadline.weight(.semibold))
-
-            Text("By tapping Save, you confirm that this is your own student ID.")
-                .font(.subheadline)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(16)
