@@ -84,6 +84,19 @@ The source screenshot is never stored — only the extracted fields (in
    6·2·3·4, 2nd → 5·1·7·8). The app refetches with ETag on launch/foreground
    (1 h throttle) and always keeps the last good copy if a fetch or parse fails.
 
+## Lunch menu refresh
+
+The app checks the website's lunch menu when it launches or returns to the
+foreground, at most once per hour since the last attempt (including failed
+attempts). This is an eligibility interval, not an hourly timer: leaving the app
+open does not trigger another network check, and there is no background refresh.
+
+Pull down in the Lunch tab to check immediately, bypassing the one-hour limit.
+The status below the week picker shows the check in progress, the last successful
+check, or a failure with the saved/bundled menu kept available. A successful check
+can leave the dishes unchanged when the website has no new menu data. Selecting
+another date uses the downloaded rotation and does not require a new fetch.
+
 ## Development
 
 - Logic tests (fast, no simulator): `swift test --package-path Packages/ScheduleKit`

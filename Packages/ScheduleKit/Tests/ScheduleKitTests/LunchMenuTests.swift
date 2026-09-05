@@ -75,6 +75,64 @@ import Foundation
         #expect(store.lunchFetchMetadata.lastSuccess == now)
     }
 
+    @Test func automaticRefreshWaitsAnHourButManualRefreshBypassesThrottle() async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let data = validManifest()
+        LunchStubURLProtocol.handler = { _ in (200, [:], data) }
+        let session = ScheduleSyncService.makeSession(protocolClasses: [LunchStubURLProtocol.self])
+        let service = LunchMenuSyncService(store: store, session: session)
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+
+        #expect(await service.refresh(force: false, now: now) == .updated)
+        LunchStubURLProtocol.handler = { _ in
+            Issue.record("A throttled refresh must not send a request")
+            return (500, [:], Data())
+        }
+        #expect(await service.refresh(force: false, now: now.addingTimeInterval(3599))
+                == .skippedThrottled)
+        #expect(store.lunchFetchMetadata.lastAttempt == now)
+
+        LunchStubURLProtocol.handler = { _ in (200, [:], data) }
+        let manualCheck = now.addingTimeInterval(3599)
+        #expect(await service.refresh(force: true, now: manualCheck) == .notModified)
+        #expect(store.lunchFetchMetadata.lastSuccess == manualCheck)
+        #expect(store.lunchFetchMetadata.lastChanged == now)
+
+        let nextAutomaticCheck = manualCheck.addingTimeInterval(3600)
+        #expect(await service.refresh(force: false, now: nextAutomaticCheck) == .notModified)
+        #expect(store.lunchFetchMetadata.lastSuccess == nextAutomaticCheck)
+    }
+
+    @Test func unchangedRefreshRecordsSuccessfulCheckAndClearsPreviousError() async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let data = validManifest()
+        LunchStubURLProtocol.handler = { _ in (200, ["ETag": "\"lunch-1\""], data) }
+        let session = ScheduleSyncService.makeSession(protocolClasses: [LunchStubURLProtocol.self])
+        let service = LunchMenuSyncService(store: store, session: session)
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        #expect(await service.refresh(force: true, now: now) == .updated)
+
+        LunchStubURLProtocol.handler = { _ in (503, [:], Data()) }
+        #expect(await service.refresh(force: true, now: now.addingTimeInterval(1))
+                == .failed("HTTP 503"))
+        #expect(store.lunchFetchMetadata.lastError != nil)
+        #expect(store.lunchFetchMetadata.lastSuccess == now)
+        #expect(store.cachedLunchMenuData == data)
+
+        LunchStubURLProtocol.handler = { request in
+            #expect(request.value(forHTTPHeaderField: "If-None-Match") == "\"lunch-1\"")
+            return (304, [:], Data())
+        }
+        let checked = now.addingTimeInterval(2)
+        #expect(await service.refresh(force: true, now: checked) == .notModified)
+        #expect(store.lunchFetchMetadata.lastSuccess == checked)
+        #expect(store.lunchFetchMetadata.lastChanged == now)
+        #expect(store.lunchFetchMetadata.lastError == nil)
+        #expect(store.cachedLunchMenuData == data)
+    }
+
     @Test func invalidFetchKeepsLastGoodMenu() async {
         let (store, defaults, suite) = makeLunchStore()
         defer { defaults.removePersistentDomain(forName: suite) }
