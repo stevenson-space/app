@@ -9,19 +9,21 @@ struct HomeView: View {
             if model.todayTimeline.isSchoolDay {
                 ScrollView {
                     VStack(spacing: 22) {
-                        HomeHeaderView()
-                        HeroSection()
-                            .padding(.top, 6)
+                        HeroBand {
+                            VStack(spacing: 22) {
+                                HomeHeaderView()
+                                HeroSection()
+                                    .padding(.top, 6)
+                            }
+                        }
                         DayTimelineListView()
+                            .padding(.horizontal, 16)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
                     .padding(.bottom, 24)
                 }
             } else {
                 ScrollView {
                     StatusScreenView()
-                        .padding(.top, 40)
                 }
             }
         }

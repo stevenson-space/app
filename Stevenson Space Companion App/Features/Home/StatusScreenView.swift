@@ -5,49 +5,53 @@ import ScheduleKit
 /// a user opening the app in July must see something intentional, not a bug.
 struct StatusScreenView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
 
     var body: some View {
         let timeline = model.todayTimeline
         let content = content(for: timeline)
 
-        VStack(spacing: 18) {
-            Spacer(minLength: 30)
+        HeroBand {
+            VStack(spacing: 18) {
+                Spacer(minLength: 8)
 
-            Image(systemName: content.icon)
-                .font(.system(size: 64))
-                .foregroundStyle(content.tint)
+                Image(systemName: content.icon)
+                    .font(.system(size: 64))
+                    .foregroundStyle(theme.heroGlyph(classic: content.tint))
 
-            Text(content.title)
-                .font(.title.bold())
-                .multilineTextAlignment(.center)
+                Text(content.title)
+                    .font(.title.bold())
+                    .foregroundStyle(theme.onHero)
+                    .multilineTextAlignment(.center)
 
-            Text(content.message)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                Text(content.message)
+                    .font(.body)
+                    .foregroundStyle(theme.onHeroSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
 
-            if timeline.provenance == .override {
-                Label("Set by manual override", systemImage: "pencil")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.blue)
-            }
-
-            if case .outsideYear = timeline.kind {
-                summerCountdown
-            } else if let next = model.nextSchoolDay {
-                VStack(spacing: 6) {
-                    Text("NEXT SCHOOL DAY")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.tertiary)
-                    NextSchoolDayCard(next: next, today: model.today, pref: model.config.timeFormat)
+                if timeline.provenance == .override {
+                    Label("Set by manual override", systemImage: "pencil")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(theme.badgeInk(classic: .blue))
                 }
-                .padding(.top, 12)
-            }
 
-            Spacer()
+                if case .outsideYear = timeline.kind {
+                    summerCountdown
+                } else if let next = model.nextSchoolDay {
+                    VStack(spacing: 6) {
+                        Text("NEXT SCHOOL DAY")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(theme.onHeroSecondary)
+                        NextSchoolDayCard(next: next, today: model.today, pref: model.config.timeFormat)
+                    }
+                    .padding(.top, 12)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder private var summerCountdown: some View {
@@ -56,6 +60,7 @@ struct StatusScreenView: View {
                 if let days = daysUntil(next.day) {
                     Text("School starts in **\(days) day\(days == 1 ? "" : "s")**")
                         .font(.title3)
+                        .foregroundStyle(theme.onHero)
                 }
                 NextSchoolDayCard(next: next, today: model.today, pref: model.config.timeFormat)
             }
@@ -63,7 +68,7 @@ struct StatusScreenView: View {
         } else {
             Text("See you next school year!")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.onHeroSecondary)
         }
     }
 
