@@ -3,6 +3,7 @@ import Foundation
 import ImageIO
 import Testing
 import UniformTypeIdentifiers
+import Vision
 @testable import StudentIDKit
 
 /// End-to-end through real Vision: a rendered page in, a finished card out.
@@ -41,7 +42,7 @@ import UniformTypeIdentifiers
         #expect(extraction.card.idNumber == "104829")
     }
 
-    @Test(arguments: ["99999", "59435"])
+    @Test(arguments: ["99999", "59435", "99992"])
     func resolvesCheckCharactersUsingThePrintedNumber(number: String) async throws {
         var options = SyntheticProfile.Options()
         options.number = number
@@ -89,6 +90,33 @@ import UniformTypeIdentifiers
         #expect(candidates.first?.requiresCheckDigit == true)
     }
 
+    @Test func fallbackPreservesASpaceCheckCharacter() throws {
+        let symbol = try Code39.encode("99992", appendCheckDigit: true)
+        let image = try #require(Code39Renderer.makeImage(symbol: symbol, moduleWidthPixels: 5, barHeightPixels: 150))
+        let raw = try #require(Code39Decoder.decode(image).first)
+        #expect(raw == "99992 ")
+        for payload in [raw, "*" + raw + "*", " \t" + raw, raw + " \r\n", " *" + raw + "* \r\n"] {
+            let candidates = StudentIDExtractor.Candidate.interpretations(of: payload, requiresCheckDigit: false)
+            let candidate = try #require(candidates.first)
+            #expect(candidate.payload == "99992")
+            #expect(candidate.requiresCheckDigit)
+            #expect(try Code39.encode(candidate.payload, appendCheckDigit: candidate.requiresCheckDigit).modules == symbol.modules)
+        }
+    }
+
+    @Test(arguments: [" 59435", "59435 ", " \t*59435* \r\n", "59435   "])
+    func acceptsWhitespaceAroundABarcode(payload: String) {
+        let candidates = StudentIDExtractor.Candidate.interpretations(of: payload, requiresCheckDigit: false)
+        #expect(candidates.map(\.payload) == ["59435"])
+        #expect(candidates.first?.requiresCheckDigit == false)
+    }
+
+    @Test func ignoresPaddingOutsideTheSentinelsWhenCheckingForASpaceChecksum() {
+        let candidates = StudentIDExtractor.Candidate.interpretations(of: " *99992* \r\n", requiresCheckDigit: false)
+        #expect(candidates.first?.payload == "99992")
+        #expect(candidates.first?.requiresCheckDigit == false)
+    }
+
     @Test func stillSucceedsWhenTheNameCannotBeRead() async throws {
         var options = SyntheticProfile.Options()
         options.name = nil
@@ -98,11 +126,28 @@ import UniformTypeIdentifiers
         #expect(extraction.warnings.contains(.nameNotFound))
     }
 
-    @Test func honoursTheEndedBadgeWhenEnrollmentsAreListedOutOfOrder() async throws {
+    @Test(arguments: [true, false])
+    func honoursTheEndedBadgeWhenEnrollmentsAreListedOutOfOrder(badgeBesideHeader: Bool) async throws {
         var options = SyntheticProfile.Options()
         options.endedEnrollmentFirst = true
-        let extraction = try await StudentIDExtractor.extract(from: SyntheticProfile.image(options))
+        options.endedBadgeBesideNextHeader = badgeBesideHeader
+        let image = SyntheticProfile.image(options)
+        if badgeBesideHeader {
+            // Verify the fixture actually exercises Vision's drifting boxes,
+            // rather than passing because the badge sorts before the header.
+            var request = RecognizeTextRequest()
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = false
+            let observations = try await request.perform(on: image)
+            let badge = try #require(observations.first { $0.topCandidates(1).first?.string == "ENDED" })
+            let header = try #require(observations.first { $0.topCandidates(1).first?.string.hasPrefix("26-27") == true })
+            let size = CGSize(width: image.width, height: image.height)
+            #expect(badge.boundingBox.toImageCoordinates(size, origin: .upperLeft).minY
+                    > header.boundingBox.toImageCoordinates(size, origin: .upperLeft).minY)
+        }
+        let extraction = try await StudentIDExtractor.extract(from: image)
         #expect(extraction.card.gradeLevel == 12)
+        #expect(extraction.card.schoolYearStart == 2026)
     }
 
     @Test func refusesAScreenshotWithNoBarcode() async {
@@ -199,15 +244,18 @@ import UniformTypeIdentifiers
         #expect(CGRect(origin: .zero, size: size).contains(crop))
     }
 
-    @Test func trimsMarginOffTheCorrectEdges() {
+    @Test(arguments: [true, false])
+    func trimsMarginOffTheCorrectEdges(opaqueBackground: Bool) {
         // A stripe of white along only the top: the trim must take it off the
         // top, not the bottom. Reading the pixel buffer upside down would pass
         // a symmetric test and quietly crop the wrong end of the photo.
         let context = CGContext(data: nil, width: 200, height: 400, bitsPerComponent: 8,
                                 bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.setFillColor(gray: 1, alpha: 1)
-        context.fill(CGRect(x: 0, y: 0, width: 200, height: 400))
+        if opaqueBackground {
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 200, height: 400))
+        }
         context.setFillColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1)
         // Bottom-up drawing: the lower 320pt of the context is the *bottom* of
         // the image, leaving 80pt of white across the top.

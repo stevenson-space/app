@@ -49,8 +49,7 @@ public enum StudentIDExtractor {
         }
 
         let name = ProfileTextParser.fullName(in: lines, imageHeight: size.height)
-        let grade = ProfileTextParser.gradeLevel(in: lines)
-        let year = ProfileTextParser.schoolYearStart(in: lines)
+        let (grade, year) = ProfileTextParser.enrollmentDetails(in: lines)
         let photo = await photoJPEG(from: image, size: size, above: photoSearchLimit(in: lines))
 
         var warnings: [StudentIDWarning] = []
@@ -79,7 +78,17 @@ public enum StudentIDExtractor {
         let requiresCheckDigit: Bool
 
         static func interpretations(of raw: String, requiresCheckDigit: Bool) -> [Candidate] {
-            let trimmed = raw.trimmingCharacters(in: CharacterSet(charactersIn: "* \t\n"))
+            let leadingTrimmed = String(raw.drop(while: { $0.isWhitespace || $0 == "*" }))
+            let withoutPadding = leadingTrimmed.trimmingCharacters(in: .whitespacesAndNewlines)
+            let unwrapped = withoutPadding.last == "*" ? String(withoutPadding.dropLast()) : leadingTrimmed
+            let trimmed = unwrapped.trimmingCharacters(in: .whitespacesAndNewlines)
+            // A trailing space can be the modulo-43 check character. Preserve
+            // it only when it validates; ordinary padding must not reject an ID.
+            if !requiresCheckDigit, unwrapped.last(where: { !$0.isWhitespace || $0 == " " }) == " ",
+               StudentIDCard.isValidNumber(trimmed),
+               (try? Code39.checkDigit(for: trimmed)) == " " {
+                return [Candidate(payload: trimmed, requiresCheckDigit: true)]
+            }
             var candidates: [Candidate] = []
             if StudentIDCard.isValidNumber(trimmed) {
                 candidates.append(Candidate(payload: trimmed, requiresCheckDigit: requiresCheckDigit))

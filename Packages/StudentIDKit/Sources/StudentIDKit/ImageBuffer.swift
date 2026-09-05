@@ -27,6 +27,8 @@ struct ImageBuffer {
                                           bitmapInfo: CGImageAlphaInfo.none.rawValue) else {
                 return false
             }
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
             return true
         }

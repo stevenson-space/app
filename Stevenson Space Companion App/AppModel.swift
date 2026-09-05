@@ -343,6 +343,7 @@ final class AppModel {
         photoStore.remove()
         studentID = nil
         studentIDPhoto = nil
+        setStudentIDPhotoHidden(false)
     }
 
     /// School years roll over in August, so an ID imported last year is worth a

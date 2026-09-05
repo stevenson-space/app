@@ -18,13 +18,13 @@ struct Code39BarcodeView: View {
     @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        if let symbol = try? Code39.encode(payload, appendCheckDigit: includeCheckDigit) {
+        if let symbol = try? Code39.encode(payload, appendCheckDigit: includeCheckDigit),
             let layout = Code39Layout(moduleCount: symbol.totalModuleCount,
                                       availableWidth: availableWidth,
                                       displayScale: displayScale,
                                       maximumModuleWidth: maximumModuleWidth,
                                       minimumBarHeight: minimumBarHeight,
-                                      maximumBarHeight: maximumBarHeight)
+                                      maximumBarHeight: maximumBarHeight) {
             Canvas(opaque: true, rendersAsynchronously: false) { context, size in
                 context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white))
                 context.fill(barsPath(symbol: symbol, layout: layout, height: size.height),
@@ -42,21 +42,11 @@ struct Code39BarcodeView: View {
     private func barsPath(symbol: Code39.Symbol, layout: Code39Layout, height: CGFloat) -> Path {
         var path = Path()
         let leading = CGFloat(Code39.quietZoneModules) * layout.moduleWidth
-        var index = 0
-        while index < symbol.modules.count {
-            guard symbol.modules[index] else {
-                index += 1
-                continue
-            }
-            var run = 1
-            while index + run < symbol.modules.count, symbol.modules[index + run] {
-                run += 1
-            }
-            path.addRect(CGRect(x: leading + CGFloat(index) * layout.moduleWidth,
+        for run in symbol.barRuns {
+            path.addRect(CGRect(x: leading + CGFloat(run.lowerBound) * layout.moduleWidth,
                                 y: 0,
-                                width: CGFloat(run) * layout.moduleWidth,
+                                width: CGFloat(run.count) * layout.moduleWidth,
                                 height: height))
-            index += run
         }
         return path
     }

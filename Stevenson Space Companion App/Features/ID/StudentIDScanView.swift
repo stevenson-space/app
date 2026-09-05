@@ -56,7 +56,7 @@ struct StudentIDScanView: View {
         .modifier(ScreenAwakeAtFullBrightness())
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Student ID barcode, number "
-                            + card.idNumber.map(String.init).joined(separator: " "))
+                            + card.spokenNumber)
     }
 }
 

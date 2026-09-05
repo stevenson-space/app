@@ -65,4 +65,28 @@ import Testing
         // With the ceiling above the photo, there is nothing left to find.
         #expect(PhotoRegionFinder.locate(in: SyntheticProfile.image(), above: 600) == nil)
     }
+
+    @Test func boundsAConnectedPhotoThatCrossesTheSearchLimit() throws {
+        let region = try #require(PhotoRegionFinder.locate(in: SyntheticProfile.image(), above: 1000))
+        #expect(region.maxY <= 1000)
+        #expect(abs(region.minY - 700) < 30)
+    }
+
+    @Test func excludesTheHeaderWhenItTouchesThePhoto() throws {
+        // Match the grid resolution so the header ends exactly at firstRow.
+        let context = try #require(CGContext(data: nil, width: 96, height: 192,
+                                            bitsPerComponent: 8, bytesPerRow: 0,
+                                            space: CGColorSpaceCreateDeviceRGB(),
+                                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(gray: 1, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 96, height: 192))
+        context.setFillColor(gray: 0.3, alpha: 1)
+        context.fill(CGRect(x: 0, y: 181, width: 96, height: 11))
+        for row in 11..<43 {
+            context.setFillColor(gray: row.isMultiple(of: 2) ? 0.15 : 0.7, alpha: 1)
+            context.fill(CGRect(x: 24, y: 191 - row, width: 24, height: 1))
+        }
+        #expect(PhotoRegionFinder.locate(in: try #require(context.makeImage()))
+                == CGRect(x: 24, y: 11, width: 24, height: 32))
+    }
 }

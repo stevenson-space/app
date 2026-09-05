@@ -17,7 +17,9 @@ enum SyntheticProfile {
         var number: String? = "59435"
         var barcodePayload: String? = "59435"
         var enrollmentYear: String? = "26-27"
+        var endedEnrollmentYear: String? = "25-26"
         var grade: Int? = 12
+        var endedGrade: Int? = 11
         var includeEndedSummerEnrollment = true
         /// Draws a photographic block where Infinite Campus puts the student
         /// photo. Synthetic art has no face in it, so this exercises the
@@ -26,6 +28,9 @@ enum SyntheticProfile {
         /// Puts the ended summer enrollment first, so "the first grade on the
         /// page" is the wrong answer and the ENDED badge has to be honoured.
         var endedEnrollmentFirst = false
+        /// Put the shorter ENDED chip beside the following header so Vision's
+        /// bounding boxes can sort the badge after that header.
+        var endedBadgeBesideNextHeader = false
     }
 
     static func image(_ options: Options = Options()) -> CGImage {
@@ -67,21 +72,24 @@ enum SyntheticProfile {
         cursor += 70
 
         func drawEnrollment(_ suffix: String, ended: Bool) {
-            let year = options.enrollmentYear ?? "26-27"
-            draw("\(year) Adlai E Stevenson \(suffix)", in: context, canvasHeight: height,
-                 at: CGPoint(x: 520, y: cursor), size: 36)
+            let year = ended ? options.endedEnrollmentYear : options.enrollmentYear
+            let headerX: CGFloat = !ended && options.endedBadgeBesideNextHeader ? 700 : 520
+            draw([year, "Adlai E Stevenson \(suffix)"].compactMap { $0 }.joined(separator: " "),
+                 in: context, canvasHeight: height,
+                 at: CGPoint(x: headerX, y: cursor), size: 36)
             cursor += 56
-            if let grade = options.grade {
+            if let grade = ended ? options.endedGrade : options.grade {
                 draw("Grade \(grade)", in: context, canvasHeight: height,
                      at: CGPoint(x: 520, y: cursor), size: 36)
                 cursor += 56
             }
             if ended {
+                let badgeY = cursor + (options.endedBadgeBesideNextHeader ? 12 : 0)
                 draw("ENDED", in: context, canvasHeight: height,
-                     at: CGPoint(x: 520, y: cursor), size: 32)
-                cursor += 66
+                     at: CGPoint(x: 520, y: badgeY), size: 32)
+                if !options.endedBadgeBesideNextHeader { cursor += 66 }
             }
-            cursor += 20
+            if !ended || !options.endedBadgeBesideNextHeader { cursor += 20 }
         }
 
         if options.endedEnrollmentFirst, options.includeEndedSummerEnrollment {

@@ -155,7 +155,7 @@ struct StudentIDView: View {
             }
 
             Text("Nothing leaves your phone. The screenshot itself is not saved \u{2014} "
-                 + "only your name, number, and photo.")
+                 + "only your name, number, grade, school year, barcode details, import date, and photo.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

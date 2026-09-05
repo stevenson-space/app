@@ -76,7 +76,8 @@ struct StudentIDImportSheet: View {
     }
 
     private func review(_ extraction: StudentIDExtraction, photo: UIImage?) -> some View {
-        ScrollView {
+        let messages = warnings(extraction)
+        return ScrollView {
             VStack(spacing: 18) {
                 ownershipWarning
 
@@ -98,9 +99,9 @@ struct StudentIDImportSheet: View {
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color(.secondarySystemGroupedBackground)))
 
-                if !warnings(extraction).isEmpty {
+                if !messages.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(warnings(extraction), id: \.self) { warning in
+                        ForEach(messages, id: \.self) { warning in
                             Label(warning, systemImage: "exclamationmark.circle")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)

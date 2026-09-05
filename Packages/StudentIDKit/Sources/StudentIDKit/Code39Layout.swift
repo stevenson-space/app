@@ -20,23 +20,27 @@ public struct Code39Layout: Equatable, Sendable {
     /// The symbology guide asks for bars at least 15% of the symbol's length.
     public static let barHeightRatio: CGFloat = 0.15
 
-    public init(moduleCount: Int,
+    /// Returns nil when even one pixel per module cannot fit.
+    public init?(moduleCount: Int,
                 availableWidth: CGFloat,
                 displayScale: CGFloat,
                 maximumModuleWidth: CGFloat = 3.0,
                 minimumBarHeight: CGFloat = 44,
                 maximumBarHeight: CGFloat = 132) {
-        let scale = displayScale > 0 ? displayScale : 1
+        guard moduleCount > 0, availableWidth.isFinite, availableWidth > 0,
+              maximumModuleWidth.isFinite, maximumModuleWidth > 0 else { return nil }
+        let scale = displayScale.isFinite && displayScale > 0 ? displayScale : 1
         let onePixel = 1 / scale
-        let count = CGFloat(max(moduleCount, 1))
+        let count = CGFloat(moduleCount)
 
         // Widest module that still fits, snapped down to whole pixels. A symbol
         // is never allowed to grow past the space it was given, so a cramped
-        // container yields thinner bars rather than clipped ones.
-        let fitting = max(onePixel, ((availableWidth / count) * scale).rounded(.down) / scale)
+        // container cannot display a symbol below one pixel per module.
+        let fitting = ((availableWidth / count) * scale).rounded(.down) / scale
         let capped = min(fitting, (maximumModuleWidth * scale).rounded(.down) / scale)
+        guard capped >= onePixel else { return nil }
 
-        moduleWidth = max(onePixel, capped)
+        moduleWidth = capped
         symbolWidth = moduleWidth * count
 
         let ideal = symbolWidth * Code39Layout.barHeightRatio

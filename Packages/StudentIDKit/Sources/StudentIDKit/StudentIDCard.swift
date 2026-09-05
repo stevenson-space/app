@@ -60,6 +60,11 @@ public struct StudentIDCard: Equatable, Sendable {
         gradeLevel.map { "Grade \($0)" }
     }
 
+    /// Speak each digit separately so the number is easy to read to somebody.
+    public var spokenNumber: String {
+        idNumber.map(String.init).joined(separator: " ")
+    }
+
     // MARK: - Storage
 
     public func encoded() throws -> Data {

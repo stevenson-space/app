@@ -29,6 +29,23 @@ public enum Code39 {
         /// the number to lay out against the available width — forgetting the
         /// quiet zones is what makes a barcode unscannable at the edges.
         public var totalModuleCount: Int { modules.count + 2 * Code39.quietZoneModules }
+
+        /// Contiguous bars in module coordinates, excluding the quiet zones.
+        /// Drawing each run once avoids seams between adjacent bar modules.
+        public var barRuns: [Range<Int>] {
+            var runs: [Range<Int>] = []
+            var index = 0
+            while index < modules.count {
+                guard modules[index] else {
+                    index += 1
+                    continue
+                }
+                let start = index
+                while index < modules.count, modules[index] { index += 1 }
+                runs.append(start..<index)
+            }
+            return runs
+        }
     }
 
     public enum EncodingError: Error, Equatable, CustomStringConvertible {
