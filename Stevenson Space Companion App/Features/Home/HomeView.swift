@@ -3,6 +3,7 @@ import ScheduleKit
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Group {
@@ -28,6 +29,7 @@ struct HomeView: View {
             }
         }
         .background(Color(.systemGroupedBackground))
+        .statusBarField(theme.statusField)
         #if DEBUG
         .overlay(alignment: .bottom) {
             if model.isTimeTraveling {

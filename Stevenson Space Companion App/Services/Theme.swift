@@ -64,6 +64,19 @@ enum StevensonBrand {
             : UIColor(red: 0.106, green: 0.369, blue: 0.125, alpha: 1)
     })
 
+    /// #2E7D32 — the green directly under the status bar in light mode. iOS
+    /// draws the clock in black there and gives no app outside a navigation bar
+    /// any say in it, so the band's own green would carry it at 2.3:1. This is
+    /// one step up the same green ramp, where the clock — bold, and large by
+    /// WCAG's reckoning — reads at 4.1:1 against a 3:1 bar. Dark mode's clock is
+    /// white and the band already carries it at 15:1, so there this *is* the
+    /// band and the join below it is invisible.
+    static let statusField = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.078, green: 0.200, blue: 0.106, alpha: 1)
+            : UIColor(red: 0.180, green: 0.490, blue: 0.196, alpha: 1)
+    })
+
     /// The disc the countdown sits on, punched out of the band. It matches the
     /// system appearance so `.primary`/`.secondary` text stays correct on it.
     static let disc = Color(uiColor: UIColor { traits in
@@ -118,6 +131,8 @@ struct Theme: Equatable {
 
     /// The disc behind the countdown, or nil to draw the dial bare.
     var heroDisc: Color? { isStevenson ? StevensonBrand.disc : nil }
+    /// The colour behind the system clock, and the top stop of the band's join.
+    var statusField: Color { isStevenson ? StevensonBrand.statusField : .clear }
 
     /// Primary text on the band.
     var onHero: Color { isStevenson ? .white : .primary }
