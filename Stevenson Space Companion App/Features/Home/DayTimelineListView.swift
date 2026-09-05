@@ -5,6 +5,7 @@ import ScheduleKit
 /// past dims, current highlights, the next block carries a countdown chip.
 struct DayTimelineListView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
 
     var body: some View {
         let timeline = model.todayTimeline
@@ -27,19 +28,20 @@ struct DayTimelineListView: View {
                         title: block.displayName,
                         subtitle: subtitle(for: block, pref: pref),
                         dimmed: now >= block.end,
-                        highlightTint: isCurrent ? ScheduleStyle.tint(for: block.role) : nil
+                        highlightTint: isCurrent ? theme.now(for: block.role) : nil,
+                        highlightOpacity: theme.nowWashOpacity
                     ) {
                         if isCurrent {
                             Text("NOW")
                                 .font(.caption.weight(.heavy))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(theme.nowInk)
                                 .padding(.horizontal, 9)
                                 .padding(.vertical, 4)
-                                .background(Capsule().fill(ScheduleStyle.tint(for: block.role)))
+                                .background(Capsule().fill(theme.now(for: block.role)))
                         } else if block.id == nextUpcomingID {
                             Text(TimeDisplay.untilChip(block.start.timeIntervalSince(now)))
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.green)
+                                .foregroundStyle(theme.upcoming)
                         }
                     }
                     .accessibilityElement(children: .ignore)

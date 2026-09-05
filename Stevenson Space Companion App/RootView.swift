@@ -4,6 +4,8 @@ import ScheduleKit
 struct RootView: View {
     @Environment(AppModel.self) private var model
 
+    private var theme: Theme { Theme(model.config.theme) }
+
     var body: some View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
@@ -20,6 +22,8 @@ struct RootView: View {
                 SettingsView()
             }
         }
+        .tint(theme.accent)
+        .environment(\.theme, theme)
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             // One app-wide 1 Hz heartbeat: flips block boundaries and catches

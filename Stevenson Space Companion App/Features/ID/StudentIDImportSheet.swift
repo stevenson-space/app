@@ -19,6 +19,7 @@ struct StudentIDImportSheet: View {
     let onChooseAnother: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
     @State private var saveFailed = false
 
     var body: some View {
@@ -134,7 +135,7 @@ struct StudentIDImportSheet: View {
                 .multilineTextAlignment(.center)
             Button("Try Another Screenshot", action: onChooseAnother)
                 .buttonStyle(.borderedProminent)
-                .tint(StevensonPalette.accent)
+                .tint(theme.accent)
                 .padding(.top, 4)
         }
         .padding(.horizontal, 32)

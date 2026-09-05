@@ -18,6 +18,7 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         config.freePeriods = [7]
         config.customizations["3"] = PeriodCustomization(name: "AP Bio", room: "214")
         config.appearance = .dark
+        config.theme = .classic
         store.userConfig = config
         #expect(store.userConfig == config)
     }
@@ -80,6 +81,8 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(config.freePeriods.isEmpty)
         #expect(config.timeFormat == .system)
         #expect(config.appearance == .system)
+        // A blob predating themes opts into Stevenson, like a fresh install.
+        #expect(config.theme == .stevenson)
 
         defaults.set(Data(#"{"blockEndEnabled":true}"#.utf8), forKey: "sk.notificationPrefs")
         let prefs = store.notificationPrefs

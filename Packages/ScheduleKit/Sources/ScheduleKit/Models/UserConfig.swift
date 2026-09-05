@@ -28,6 +28,22 @@ public enum AppearancePref: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// Which colour identity the app's chrome wears. Purely cosmetic — it never
+/// touches the semantic colours that flag an abnormal schedule.
+public enum ThemePref: String, Codable, CaseIterable, Sendable {
+    /// Stevenson green and gold.
+    case stevenson
+    /// The stock iOS palette the app shipped with.
+    case classic
+
+    public var displayName: String {
+        switch self {
+        case .stevenson: return "Stevenson"
+        case .classic: return "Classic"
+        }
+    }
+}
+
 public struct PeriodCustomization: Codable, Equatable, Sendable {
     public var name: String?
     public var room: String?
@@ -76,6 +92,7 @@ public struct UserConfig: Equatable, Sendable {
     public var customizations: [String: PeriodCustomization]
     public var timeFormat: TimeFormatPref
     public var appearance: AppearancePref
+    public var theme: ThemePref
 
     /// Grid-first designated initializer. Out-of-range keys and entries equal
     /// to the default plan are dropped so the sparse form stays canonical and
@@ -83,13 +100,15 @@ public struct UserConfig: Equatable, Sendable {
     public init(periodPlans: [Int: PeriodPlan],
                 customizations: [String: PeriodCustomization] = [:],
                 timeFormat: TimeFormatPref = .system,
-                appearance: AppearancePref = .system) {
+                appearance: AppearancePref = .system,
+                theme: ThemePref = .stevenson) {
         self.periodPlans = periodPlans.filter {
             Self.periodRange.contains($0.key) && !$0.value.isStandardClass(for: $0.key)
         }
         self.customizations = customizations
         self.timeFormat = timeFormat
         self.appearance = appearance
+        self.theme = theme
     }
 
     /// Legacy-shaped initializer; builds the grid from the old exception
@@ -100,9 +119,10 @@ public struct UserConfig: Equatable, Sendable {
                 freePeriods: Set<Int> = [],
                 customizations: [String: PeriodCustomization] = [:],
                 timeFormat: TimeFormatPref = .system,
-                appearance: AppearancePref = .system) {
+                appearance: AppearancePref = .system,
+                theme: ThemePref = .stevenson) {
         self.init(periodPlans: [:], customizations: customizations,
-                  timeFormat: timeFormat, appearance: appearance)
+                  timeFormat: timeFormat, appearance: appearance, theme: theme)
         self.freePeriods = freePeriods
         self.advisory = advisory
         self.lunch = lunch
@@ -390,7 +410,7 @@ extension UserConfig {
 extension UserConfig: Codable {
     private enum CodingKeys: String, CodingKey {
         case lunch, advisory, freePeriods, customizations,
-             timeFormat, appearance, periodPlans
+             timeFormat, appearance, theme, periodPlans
     }
 
     public init(from decoder: Decoder) throws {
@@ -399,6 +419,9 @@ extension UserConfig: Codable {
             [String: PeriodCustomization].self, forKey: .customizations) ?? [:]
         let timeFormat = try c.decodeIfPresent(TimeFormatPref.self, forKey: .timeFormat) ?? .system
         let appearance = try c.decodeIfPresent(AppearancePref.self, forKey: .appearance) ?? .system
+        // A blob written before themes existed predates the Stevenson colours,
+        // so it opts in like a fresh install rather than being pinned to Classic.
+        let theme = try c.decodeIfPresent(ThemePref.self, forKey: .theme) ?? .stevenson
 
         if let raw = try? c.decodeIfPresent([String: PeriodPlan].self, forKey: .periodPlans) {
             // Keys are strings for JSON stability; merge (rather than trap) if
@@ -407,14 +430,14 @@ extension UserConfig: Codable {
                 raw.compactMap { key, value in Int(key).map { ($0, value) } },
                 uniquingKeysWith: { first, _ in first })
             self.init(periodPlans: plans, customizations: customizations,
-                      timeFormat: timeFormat, appearance: appearance)
+                      timeFormat: timeFormat, appearance: appearance, theme: theme)
         } else {
             self.init(
                 lunch: try c.decodeIfPresent(SplitAssignment.self, forKey: .lunch),
                 advisory: try c.decodeIfPresent(SplitAssignment.self, forKey: .advisory),
                 freePeriods: try c.decodeIfPresent(Set<Int>.self, forKey: .freePeriods) ?? [],
                 customizations: customizations,
-                timeFormat: timeFormat, appearance: appearance)
+                timeFormat: timeFormat, appearance: appearance, theme: theme)
         }
     }
 
@@ -429,6 +452,7 @@ extension UserConfig: Codable {
         try c.encode(customizations, forKey: .customizations)
         try c.encode(timeFormat, forKey: .timeFormat)
         try c.encode(appearance, forKey: .appearance)
+        try c.encode(theme, forKey: .theme)
     }
 }
 
