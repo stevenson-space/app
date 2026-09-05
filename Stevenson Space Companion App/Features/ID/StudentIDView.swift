@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 /// scannable card two taps away for the rest of the year.
 struct StudentIDView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
 
     @State private var isPickerPresented = false
     @State private var pickedItem: PhotosPickerItem?
@@ -94,7 +95,7 @@ struct StudentIDView: View {
                     .padding(.vertical, 6)
             }
             .buttonStyle(.borderedProminent)
-            .tint(StevensonPalette.accent)
+            .tint(theme.accent)
 
             if model.studentIDIsFromAnEarlierSchoolYear, let year = card.schoolYearLabel {
                 Label("This ID was imported for the \(year) school year. "
@@ -147,7 +148,7 @@ struct StudentIDView: View {
                         .padding(.vertical, 6)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(StevensonPalette.accent)
+                .tint(theme.accent)
 
                 PasteButton(supportedContentTypes: [.image], payloadAction: paste)
                     .buttonBorderShape(.capsule)
@@ -169,7 +170,7 @@ struct StudentIDView: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: 24, height: 24)
-                .background(Circle().fill(StevensonPalette.accent))
+                .background(Circle().fill(theme.accent))
             Text(text)
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)

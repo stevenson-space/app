@@ -130,6 +130,14 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section("Appearance") {
+            Picker("Theme", selection: Binding(
+                get: { model.config.theme },
+                set: { newValue in model.updateConfig { $0.theme = newValue } })) {
+                ForEach(ThemePref.allCases, id: \.self) { pref in
+                    Text(pref.displayName).tag(pref)
+                }
+            }
+
             Picker("Color scheme", selection: Binding(
                 get: { model.config.appearance },
                 set: { newValue in model.updateConfig { $0.appearance = newValue } })) {

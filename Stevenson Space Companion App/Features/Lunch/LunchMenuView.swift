@@ -110,7 +110,8 @@ struct LunchMenuView: View {
 }
 
 private struct WeekPicker: View {
-    private let accent = StevensonPalette.accent
+    @Environment(\.theme) private var theme
+    private var accent: Color { theme.accent }
 
     let weekdays: [DayKey]
     let selectedDay: DayKey

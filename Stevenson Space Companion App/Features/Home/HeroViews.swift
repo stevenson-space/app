@@ -26,6 +26,9 @@ struct CountdownDial: View {
     let start: Date
     let end: Date
     let tint: Color
+    /// The unfilled remainder of the ring. Separate from `tint` so a theme can
+    /// give the two arcs different colours.
+    var track: Color? = nil
     let offset: TimeInterval
     let label: String
     var sublabel: String?
@@ -39,7 +42,7 @@ struct CountdownDial: View {
 
             ZStack {
                 Circle()
-                    .stroke(tint.opacity(0.15), lineWidth: 16)
+                    .stroke(track ?? tint.opacity(0.15), lineWidth: 16)
                 Circle()
                     .trim(from: 0, to: fraction)
                     .stroke(tint, style: StrokeStyle(lineWidth: 16, lineCap: .round))
@@ -70,6 +73,7 @@ struct CountdownDial: View {
 /// different layout, not just a different color.
 struct HeroSection: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -92,7 +96,8 @@ struct HeroSection: View {
                 CountdownDial(
                     start: first.start.addingTimeInterval(-3600),
                     end: first.start,
-                    tint: .blue,
+                    tint: theme.dial(classic: .blue),
+                    track: theme.dialTrack(classic: .blue),
                     offset: model.displayOffset,
                     label: "until school starts")
                 nextLine(icon: "sunrise", text:
@@ -104,7 +109,8 @@ struct HeroSection: View {
                 CountdownDial(
                     start: current.start,
                     end: current.end,
-                    tint: ScheduleStyle.tint(for: current.role),
+                    tint: theme.dial(for: current.role),
+                    track: theme.dialTrack(for: current.role),
                     offset: model.displayOffset,
                     label: heroLabel(for: current, pref: pref))
                 if let next {
@@ -211,6 +217,7 @@ struct PassingHero: View {
 
 /// After the last bell: done for today, plus what tomorrow looks like.
 struct AfterSchoolHero: View {
+    @Environment(\.theme) private var theme
     let next: DayTimeline?
     let today: DayKey
     let pref: TimeFormatPref
@@ -219,7 +226,7 @@ struct AfterSchoolHero: View {
         VStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(.green)
+                .foregroundStyle(theme.upcoming)
             Text("Done for today")
                 .font(.title2.bold())
             if let next {

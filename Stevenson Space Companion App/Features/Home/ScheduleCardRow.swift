@@ -10,6 +10,9 @@ struct ScheduleCardRow<Trailing: View>: View {
     var dimmed = false
     /// Tint of the "happening now" state; nil for every other card.
     var highlightTint: Color? = nil
+    /// How strongly `highlightTint` washes the card. Themed, because a pale
+    /// fill needs more alpha than a saturated one to register as a highlight.
+    var highlightOpacity: Double = 0.16
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
@@ -38,7 +41,7 @@ struct ScheduleCardRow<Trailing: View>: View {
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(highlightTint.map { AnyShapeStyle($0.opacity(0.16)) }
+                .fill(highlightTint.map { AnyShapeStyle($0.opacity(highlightOpacity)) }
                       ?? AnyShapeStyle(Color(.secondarySystemGroupedBackground)))
         )
         .opacity(dimmed ? 0.5 : 1)
