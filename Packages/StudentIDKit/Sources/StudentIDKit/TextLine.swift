@@ -183,38 +183,144 @@ enum ProfileTextParser {
     // MARK: Grade and school year
 
     static func gradeLevel(in lines: [TextLine]) -> Int? {
-        let ordered = lines.sorted(by: readingOrder)
-        let endedBadges = ordered.filter { $0.normalized == "ended" }
-
-        /// A grade sitting just above an ENDED badge belongs to a finished
-        /// enrollment (the summer session), not the one the student is in now.
-        func belongsToEndedEnrollment(_ line: TextLine) -> Bool {
-            endedBadges.contains { badge in
-                badge.frame.minY > line.frame.minY
-                    && badge.frame.minY - line.frame.maxY < line.frame.height * 2.5
-            }
-        }
-
-        var fallback: Int?
-        for line in ordered {
-            guard let grade = firstGrade(in: line.text) else { continue }
-            if fallback == nil { fallback = grade }
-            if belongsToEndedEnrollment(line) { continue }
-            return grade
-        }
-        return fallback
+        enrollmentDetails(in: lines).gradeLevel
     }
 
     static func schoolYearStart(in lines: [TextLine]) -> Int? {
-        for line in lines.sorted(by: readingOrder) {
+        enrollmentDetails(in: lines).schoolYearStart
+    }
+
+    /// Parse both fields together so extraction sorts and selects an enrollment
+    /// only once. OCR can put a short ENDED chip just below the next header's
+    /// top edge, so badge ownership follows the nearby grade, not a line slice.
+    static func enrollmentDetails(in lines: [TextLine]) -> (gradeLevel: Int?, schoolYearStart: Int?) {
+        let start = line(matching: "enrollments", in: lines)?.frame.minY ?? -.infinity
+        let sectionEnd = lines.filter { line in
+            line.frame.minY > start && ["student number", "student identification", "today's schedule"]
+                .contains(where: line.normalized.contains)
+        }.map(\.frame.minY).min() ?? .infinity
+        let ordered = joinedEnrollmentHeaders(in: lines
+            .filter { $0.frame.minY >= start && $0.frame.minY < sectionEnd }
+            .sorted(by: readingOrder))
+        let grades = ordered.indices.filter { firstGrade(in: ordered[$0].text) != nil }
+        let headers: [(index: Int, year: Int?)] = ordered.enumerated().compactMap { index, line in
             for match in yearPattern.matches(in: line.text, range: NSRange(line.text.startIndex..., in: line.text)) {
                 guard let first = Int(capture(1, of: match, in: line.text) ?? ""),
                       let second = Int(capture(2, of: match, in: line.text) ?? ""),
                       (first + 1) % 100 == second else { continue }
-                return 2000 + first
+                return (index, 2000 + first)
+            }
+            // The school still anchors the grade when OCR misses its year.
+            if line.normalized.contains("stevenson high") || line.normalized.contains("stevenson summer") {
+                return (index, nil)
+            }
+            return nil
+        }
+
+        var endedGrades: Set<Int> = []
+        var endedHeaders: Set<Int> = []
+        for badge in ordered where badge.normalized == "ended" {
+            if let grade = grades.last(where: {
+                let frame = ordered[$0].frame
+                return badge.frame.minY > frame.minY
+                    && badge.frame.minY - frame.maxY < frame.height * 2.5
+            }) {
+                endedGrades.insert(grade)
+            } else if let header = headers.filter({
+                let frame = ordered[$0.index].frame
+                return badge.frame.minY >= frame.minY
+                    && badge.frame.minY - frame.maxY < frame.height * 4
+            }).min(by: {
+                let lhsOffset = abs(ordered[$0.index].frame.minX - badge.frame.minX)
+                let rhsOffset = abs(ordered[$1.index].frame.minX - badge.frame.minX)
+                return lhsOffset == rhsOffset ? $0.index > $1.index : lhsOffset < rhsOffset
+            }) {
+                // Recognition can miss the grade entirely; the badge must still
+                // be near a header. Prefer the aligned enrollment when the next
+                // header drifts beside its badge; break alignment ties by recency.
+                endedHeaders.insert(header.index)
             }
         }
+
+        var enrollments: [(grade: Int?, year: Int?, ended: Bool)] = []
+        var assignedGrades: Set<Int> = []
+        for (offset, header) in headers.enumerated() {
+            let end = offset + 1 < headers.count ? headers[offset + 1].index : ordered.count
+            let frame = ordered[header.index].frame
+            let grade = grades.first {
+                $0 >= header.index && $0 < end
+                    && ordered[$0].frame.minY - frame.maxY < frame.height * 2.5
+            }
+            if let grade { assignedGrades.insert(grade) }
+            enrollments.append((grade.flatMap { firstGrade(in: ordered[$0].text) }, header.year,
+                                endedHeaders.contains(header.index) || grade.map(endedGrades.contains) == true))
+        }
+        if let selected = enrollments.first(where: { !$0.ended }) {
+            return (selected.grade, selected.year)
+        }
+
+        // A readable active grade can outlive its header in OCR. Prefer it to
+        // a finished enrollment, without borrowing that enrollment's year.
+        if let grade = grades.first(where: { !assignedGrades.contains($0) && !endedGrades.contains($0) }) {
+            return (firstGrade(in: ordered[grade].text), nil)
+        }
+        if let selected = enrollments.first {
+            return (selected.grade, selected.year)
+        }
+
+        // If no enrollment header survived OCR, retain the nearby-badge grade
+        // heuristic within the enrollment section.
+        let grade = grades.first(where: { !endedGrades.contains($0) }) ?? grades.first
+        return (grade.flatMap { firstGrade(in: ordered[$0].text) }, nil)
+    }
+
+    /// Vision can recognize a header in pieces: the year and school side by side
+    /// on one row, or a header too wide for its column wrapped onto the next
+    /// row. Join only adjacent fragments, so they share a grade and ENDED badge.
+    private static func joinedEnrollmentHeaders(in lines: [TextLine]) -> [TextLine] {
+        var joined: [TextLine] = []
+        for line in lines {
+            if let previous = joined.last, let merged = joinedHeader(previous, line) {
+                joined[joined.count - 1] = merged
+                continue
+            }
+            joined.append(line)
+        }
+        return joined
+    }
+
+    /// Two header fragments merged, or nil when they are separate lines. A
+    /// fragment carrying both the year and the school is already whole, so
+    /// neither side of a join may hold the other's half.
+    private static func joinedHeader(_ previous: TextLine, _ line: TextLine) -> TextLine? {
+        let pair = [previous, line].sorted { $0.frame.minX < $1.frame.minX }
+        let year = pair[0], school = pair[1]
+        let height = min(year.frame.height, school.frame.height)
+        let yearRange = NSRange(year.text.startIndex..., in: year.text)
+        if firstMatch(yearPattern, in: year.text)?.range == yearRange,
+           namesSchool(school), firstMatch(yearPattern, in: school.text) == nil,
+           abs(year.frame.midY - school.frame.midY) < height * 0.6,
+           school.frame.minX - year.frame.maxX <= height * 1.5 {
+            return TextLine(text: year.text + " " + school.text,
+                            frame: year.frame.union(school.frame))
+        }
+
+        // Wrapped: the school continues on the row below, left-aligned under the
+        // year that opens the header. Without this the year becomes an
+        // enrollment of its own and swallows the grade belonging to the school.
+        if firstMatch(yearPattern, in: previous.text) != nil, !namesSchool(previous),
+           namesSchool(line), firstMatch(yearPattern, in: line.text) == nil,
+           line.frame.minY > previous.frame.midY,
+           line.frame.minY - previous.frame.maxY < height * 0.8,
+           abs(line.frame.minX - previous.frame.minX) < height * 1.5 {
+            return TextLine(text: previous.text + " " + line.text,
+                            frame: previous.frame.union(line.frame))
+        }
         return nil
+    }
+
+    private static func namesSchool(_ line: TextLine) -> Bool {
+        line.normalized.contains("stevenson high") || line.normalized.contains("stevenson summer")
     }
 
     // MARK: Geometry helpers

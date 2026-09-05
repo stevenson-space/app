@@ -34,7 +34,7 @@ enum PhotoRegionFinder {
             for column in 0..<grid.columns {
                 let index = row * grid.columns + column
                 guard !visited[index], grid.isInk[index] else { continue }
-                let blob = grid.flood(from: index, visited: &visited)
+                let blob = grid.flood(from: index, visited: &visited, firstRow: firstRow, lastRow: lastRow)
                 guard let rect = qualify(blob, in: grid) else { continue }
                 if best == nil || blob.count > best!.area {
                     best = (rect, blob.count)
@@ -129,7 +129,7 @@ enum PhotoRegionFinder {
             self.luminance = luminance
         }
 
-        func flood(from start: Int, visited: inout [Bool]) -> [Int] {
+        func flood(from start: Int, visited: inout [Bool], firstRow: Int, lastRow: Int) -> [Int] {
             var stack = [start]
             var blob: [Int] = []
             visited[start] = true
@@ -141,7 +141,7 @@ enum PhotoRegionFinder {
                     let nextColumn = column + dx
                     let nextRow = row + dy
                     guard nextColumn >= 0, nextColumn < columns,
-                          nextRow >= 0, nextRow < rows else { continue }
+                          nextRow >= firstRow, nextRow < rows, nextRow < lastRow else { continue }
                     let next = nextRow * columns + nextColumn
                     guard !visited[next], isInk[next] else { continue }
                     visited[next] = true

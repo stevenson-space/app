@@ -34,21 +34,9 @@ public enum Code39Renderer {
         context.setShouldAntialias(false)
         context.setFillColor(gray: 0, alpha: 1)
 
-        // Coalesce neighbouring bar modules into one rectangle so adjacent wide
-        // and narrow bars never show a seam.
-        var index = 0
-        while index < symbol.modules.count {
-            guard symbol.modules[index] else {
-                index += 1
-                continue
-            }
-            var run = 1
-            while index + run < symbol.modules.count, symbol.modules[index + run] {
-                run += 1
-            }
-            let x = (max(0, quietZoneModules) + index) * moduleWidth
-            context.fill(CGRect(x: x, y: 0, width: run * moduleWidth, height: height))
-            index += run
+        for run in symbol.barRuns {
+            let x = (max(0, quietZoneModules) + run.lowerBound) * moduleWidth
+            context.fill(CGRect(x: x, y: 0, width: run.count * moduleWidth, height: height))
         }
 
         return context.makeImage()

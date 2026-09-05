@@ -141,6 +141,166 @@ import Testing
         #expect(ProfileTextParser.schoolYearStart(in: profileLines()) == 2026)
     }
 
+    @Test(arguments: [-2.0, 0.0, 2.0])
+    func joinsTheYearAndSchoolWhenOCRSplitsTheHeader(schoolOffset: CGFloat) {
+        let lines = [
+            line("Enrollments", x: 520, y: 630, height: 36),
+            line("26-27", x: 520, y: 690, width: 100, height: 36),
+            line("Adlai E Stevenson High S", x: 640, y: 690 + schoolOffset, width: 500, height: 36),
+            line("Grade 12", x: 520, y: 746, height: 36),
+        ]
+        let enrollment = ProfileTextParser.enrollmentDetails(in: lines.reversed())
+        #expect(enrollment.gradeLevel == 12)
+        #expect(enrollment.schoolYearStart == 2026)
+    }
+
+    @Test func skipsAnEndedEnrollmentWithASplitHeader() {
+        let lines = [
+            line("Enrollments", x: 520, y: 630, height: 36),
+            line("25-26", x: 520, y: 690, width: 100, height: 36),
+            line("Adlai E Stevenson Summer", x: 640, y: 690, width: 500, height: 36),
+            line("Grade 11", x: 520, y: 746, height: 36),
+            line("ENDED", x: 520, y: 800, height: 32),
+            line("26-27 Adlai E Stevenson High S", x: 520, y: 880, height: 36),
+            line("Grade 12", x: 520, y: 936, height: 36),
+        ]
+        let enrollment = ProfileTextParser.enrollmentDetails(in: lines)
+        #expect(enrollment.gradeLevel == 12)
+        #expect(enrollment.schoolYearStart == 2026)
+    }
+
+    @Test func joinsAHeaderThatWrapsOntoTheNextRow() {
+        let lines = [
+            line("Enrollments", x: 520, y: 630, height: 36),
+            line("26-27 Adlai E", x: 520, y: 690, width: 260, height: 36),
+            line("Stevenson High School", x: 520, y: 746, width: 420, height: 36),
+            line("Grade 12", x: 520, y: 802, height: 36),
+        ]
+        let enrollment = ProfileTextParser.enrollmentDetails(in: lines.reversed())
+        #expect(enrollment.gradeLevel == 12)
+        #expect(enrollment.schoolYearStart == 2026)
+    }
+
+    @Test func skipsAnEndedEnrollmentWhoseHeaderWraps() {
+        let lines = [
+            line("Enrollments", x: 520, y: 630, height: 36),
+            line("25-26 Adlai E", x: 520, y: 690, width: 260, height: 36),
+            line("Stevenson Summer School", x: 520, y: 746, width: 460, height: 36),
+            line("Grade 11", x: 520, y: 802, height: 36),
+            line("ENDED", x: 520, y: 856, width: 160, height: 32),
+            line("26-27 Adlai E", x: 520, y: 930, width: 260, height: 36),
+            line("Stevenson High School", x: 520, y: 986, width: 420, height: 36),
+            line("Grade 12", x: 520, y: 1042, height: 36),
+        ]
+        let enrollment = ProfileTextParser.enrollmentDetails(in: lines)
+        #expect(enrollment.gradeLevel == 12)
+        #expect(enrollment.schoolYearStart == 2026)
+    }
+
+    @Test(arguments: [true, false])
+    func keepsAnActiveGradeWhenOnlyItsHeaderIsMissing(activeFirst: Bool) {
+        let lines = [
+            line("Enrollments", x: 520, y: 630, height: 36),
+            line("Grade 12", x: 520, y: activeFirst ? 746 : 1050, height: 36),
+            line("25-26 Adlai E Stevenson Summer", x: 520, y: 810, height: 36),
+            line("Grade 11", x: 520, y: 866, height: 36),
+            line("ENDED", x: 520, y: 922, height: 32),
+            line("Student Number", x: 520, y: 1120, height: 36),
+        ]
+        let enrollment = ProfileTextParser.enrollmentDetails(in: lines)
+        #expect(enrollment.gradeLevel == 12)
+        #expect(enrollment.schoolYearStart == nil)
+    }
+
+    @Test func keepsTheActiveGradeWhenItsYearIsNotRecognized() {
+        let lines = [
+            line("Enrollments", x: 520, y: 630, height: 36),
+            line("Adlai E Stevenson High S", x: 520, y: 690, height: 36),
+            line("Grade 12", x: 520, y: 746, height: 36),
+            line("25-26 Adlai E Stevenson Summer", x: 520, y: 810, height: 36),
+            line("Grade 11", x: 520, y: 866, height: 36),
+            line("ENDED", x: 520, y: 922, height: 32),
+        ]
+        #expect(ProfileTextParser.gradeLevel(in: lines) == 12)
+        #expect(ProfileTextParser.schoolYearStart(in: lines) == nil)
+    }
+
+    @Test(arguments: [true, false])
+    func takesTheYearFromTheActiveEnrollment(gradeRecognized: Bool) {
+        var lines = [
+            line("25-26 Adlai E Stevenson Summer", x: 520, y: 690),
+            line("ENDED", x: 520, y: 800),
+            line("26-27 Adlai E Stevenson High S", x: 520, y: 880),
+        ]
+        if gradeRecognized {
+            lines += [line("Grade 11", x: 520, y: 746), line("Grade 12", x: 520, y: 936)]
+            #expect(ProfileTextParser.gradeLevel(in: lines) == 12)
+        } else {
+            lines.append(line("Grade 11", x: 520, y: 746))
+            #expect(ProfileTextParser.gradeLevel(in: lines) == nil)
+        }
+        #expect(ProfileTextParser.schoolYearStart(in: lines) == 2026)
+    }
+
+    @Test func keepsTheYearWhenOnlyAnEndedEnrollmentIsVisible() {
+        let lines = [line("25-26 Adlai E Stevenson Summer", x: 520, y: 690),
+                     line("Grade 11", x: 520, y: 746), line("ENDED", x: 520, y: 800)]
+        #expect(ProfileTextParser.gradeLevel(in: lines) == 11)
+        #expect(ProfileTextParser.schoolYearStart(in: lines) == 2025)
+    }
+
+    @Test(arguments: [798.0, 800.0, 802.0])
+    func associatesAnEndedBadgeWithTheGradeAboveADriftingHeader(headerY: CGFloat) {
+        let lines = [
+            line("25-26 Adlai E Stevenson Summer", x: 520, y: 690, height: 36),
+            line("Grade 11", x: 520, y: 746, height: 36),
+            line("26-27 Adlai E Stevenson High S", x: 700, y: headerY, height: 36),
+            line("ENDED", x: 520, y: 800, height: 32),
+            line("Grade 12", x: 700, y: 854, height: 36),
+        ]
+        #expect(ProfileTextParser.schoolYearStart(in: lines.reversed()) == 2026)
+        #expect(ProfileTextParser.gradeLevel(in: lines.reversed()) == 12)
+    }
+
+    @Test(arguments: [540.0, 700.0])
+    func keepsTheCurrentEnrollmentWhenTheOldGradeIsMissingAndTheNextHeaderDrifts(headerX: CGFloat) {
+        let lines = [
+            line("25-26 Adlai E Stevenson Summer", x: 520, y: 690, height: 36),
+            line("26-27 Adlai E Stevenson High S", x: headerX, y: 798, height: 36),
+            line("ENDED", x: 520, y: 800, height: 32),
+            line("Grade 12", x: headerX, y: 854, height: 36),
+        ]
+        let enrollment = ProfileTextParser.enrollmentDetails(in: lines.reversed())
+        #expect(enrollment.schoolYearStart == 2026)
+        #expect(enrollment.gradeLevel == 12)
+    }
+
+    @Test(arguments: [true, false])
+    func ignoresUnrelatedTextBelowTheLastEnrollment(sectionLabelRecognized: Bool) {
+        var lines = [
+            line("25-26 Adlai E Stevenson Summer", x: 520, y: 690),
+            line("Grade 11", x: 520, y: 746),
+            line("ENDED", x: 520, y: 800),
+            line("26-27 Adlai E Stevenson High S", x: 520, y: 880),
+            line("ENDED", x: 520, y: 1400),
+            line("Grade 9", x: 520, y: 1460),
+        ]
+        if sectionLabelRecognized {
+            lines.append(line("Student Number", x: 520, y: 1000))
+        }
+        #expect(ProfileTextParser.schoolYearStart(in: lines) == 2026)
+        #expect(ProfileTextParser.gradeLevel(in: lines) == nil)
+    }
+
+    @Test func stopsAtTheNextSectionEvenWhenItIsCloseToTheEnrollment() {
+        let lines = [line("26-27 Adlai E Stevenson High S", x: 520, y: 690),
+                     line("Student Number", x: 520, y: 740),
+                     line("Grade 9", x: 520, y: 790),
+                     line("ENDED", x: 520, y: 840)]
+        #expect(ProfileTextParser.gradeLevel(in: lines) == nil)
+        #expect(ProfileTextParser.schoolYearStart(in: lines) == 2026)
+    }
+
     @Test func ignoresNumberPairsThatAreNotConsecutiveYears() {
         let lines = [line("Room 30-12", x: 0, y: 0, width: 200, height: 30),
                      line("25-26 Adlai E Stevenson High S", x: 0, y: 60, width: 600, height: 30)]

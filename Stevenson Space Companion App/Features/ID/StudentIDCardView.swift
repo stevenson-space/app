@@ -170,7 +170,7 @@ struct StudentIDCardView: View {
     private var isPlaceholder: Bool { card == nil }
 
     private var displayName: String {
-        card?.fullName ?? (isPlaceholder ? "Your Name" : "Adlai E. Stevenson High School")
+        card?.fullName ?? (isPlaceholder ? "Your Name" : "Name not found")
     }
 
     private var numberLabel: String { card?.idNumber ?? "00000" }
@@ -183,9 +183,7 @@ struct StudentIDCardView: View {
         guard let card else { return "Student ID card, not set up yet" }
         var parts = ["Student ID"]
         if let name = card.fullName { parts.append(name) }
-        // Spoken digit by digit — "fifty-nine thousand four hundred thirty-five"
-        // is useless when you are reading a number to somebody.
-        parts.append("number " + card.idNumber.map(String.init).joined(separator: " "))
+        parts.append("number " + card.spokenNumber)
         if let grade = card.gradeLabel { parts.append(grade) }
         if let year = card.schoolYearLabel { parts.append("school year " + year) }
         return parts.joined(separator: ", ")

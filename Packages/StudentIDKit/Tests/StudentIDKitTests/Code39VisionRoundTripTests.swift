@@ -38,9 +38,9 @@ import Vision
     @Test func decodesAtTheExactGeometryTheCardDraws() async throws {
         // iPhone 17 at 3x: 7px modules, 46pt bars.
         let symbol = try Code39.encode("59435")
-        let layout = Code39Layout(moduleCount: symbol.totalModuleCount,
+        let layout = try #require(Code39Layout(moduleCount: symbol.totalModuleCount,
                                   availableWidth: 402 - 32 - 36,
-                                  displayScale: 3)
+                                  displayScale: 3))
         let image = try #require(Code39Renderer.makeImage(
             symbol: symbol,
             moduleWidthPixels: Int((layout.moduleWidth * 3).rounded()),
@@ -50,11 +50,11 @@ import Vision
 
     @Test func decodesAtTheExactGeometryScanModeDraws() async throws {
         let symbol = try Code39.encode("59435")
-        let layout = Code39Layout(moduleCount: symbol.totalModuleCount,
+        let layout = try #require(Code39Layout(moduleCount: symbol.totalModuleCount,
                                   availableWidth: 402 - 40,
                                   displayScale: 3,
                                   maximumModuleWidth: 4,
-                                  minimumBarHeight: 120)
+                                  minimumBarHeight: 120))
         let image = try #require(Code39Renderer.makeImage(
             symbol: symbol,
             moduleWidthPixels: Int((layout.moduleWidth * 3).rounded()),
