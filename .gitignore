@@ -64,3 +64,17 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Local tooling and package state
+.claude/
+.swiftpm/
+
+# Additional build output
+build/
+
+# Local secrets and signing credentials
+.env
+.env.*
+*.p12
+*.mobileprovision
+*.provisionprofile
