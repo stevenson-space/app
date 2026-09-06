@@ -47,9 +47,6 @@ struct LunchMenuView: View {
                     }
                 }
             }
-            .refreshable {
-                await model.syncLunch(force: true)
-            }
         }
     }
 
@@ -74,7 +71,7 @@ struct LunchMenuView: View {
             ContentUnavailableView(
                 "Menu unavailable",
                 systemImage: "fork.knife.circle",
-                description: Text("Pull down to try loading the lunch menu again."))
+                description: Text("The lunch menu could not be loaded."))
             .frame(minHeight: 320)
         } else {
             ContentUnavailableView(
