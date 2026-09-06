@@ -80,8 +80,8 @@ struct HomeHeaderView: View {
                   systemImage: "wifi.slash")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-        } else if model.isDataStale, let lastSuccess = model.fetchMetadata.lastSuccess {
-            Label("Schedule data last synced \(lastSuccess.formatted(.relative(presentation: .named)))",
+        } else if let lastChanged = model.fetchMetadata.lastChanged {
+            Label("Schedule updated \(lastChanged.formatted(.relative(presentation: .named)))",
                   systemImage: "clock.arrow.circlepath")
                 .font(.caption2)
                 .foregroundStyle(.secondary)

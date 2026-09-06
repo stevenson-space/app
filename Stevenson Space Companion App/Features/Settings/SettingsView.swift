@@ -10,7 +10,6 @@ struct SettingsView: View {
                 myScheduleSection
                 notificationsSection
                 overrideSection
-                DataSyncSection()
                 appearanceSection
                 aboutSection
                 #if DEBUG
@@ -154,51 +153,6 @@ struct SettingsView: View {
         Section("About") {
             LabeledContent("Version",
                            value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
-        }
-    }
-}
-
-// MARK: - Data & Sync
-
-struct DataSyncSection: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        Section {
-            LabeledContent("Last checked") {
-                Text(model.fetchMetadata.lastSuccess?
-                    .formatted(.relative(presentation: .named)) ?? "Never")
-            }
-            LabeledContent("Last data change") {
-                Text(model.fetchMetadata.lastChanged?
-                    .formatted(date: .abbreviated, time: .shortened) ?? "—")
-            }
-            if let coverage = model.map?.coverage {
-                LabeledContent("Covers") {
-                    Text("\(TimeDisplay.shortDayLabel(coverage.start)) – \(TimeDisplay.shortDayLabel(coverage.end))")
-                        .font(.caption)
-                }
-            }
-
-            Button {
-                Task { await model.sync(force: true) }
-            } label: {
-                HStack {
-                    Text("Refresh Now")
-                    if model.isSyncing {
-                        Spacer()
-                        ProgressView()
-                    }
-                }
-            }
-            .disabled(model.isSyncing)
-        } header: {
-            Text("Data & Sync")
-        } footer: {
-            if let error = model.fetchMetadata.lastError {
-                Text("Last sync problem: \(error). The app keeps using its last good copy.")
-                    .foregroundStyle(.orange)
-            }
         }
     }
 }
