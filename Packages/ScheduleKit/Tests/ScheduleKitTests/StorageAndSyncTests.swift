@@ -60,13 +60,39 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(store.mapURL == SharedStore.defaultMapURL)
         #expect(store.isUsingDefaultMapURL)
 
-        let custom = URL(string: "https://example.com/dates.json")!
-        store.mapURL = custom
-        #expect(store.mapURL == custom)
+        // Still honoured when it names an approved source, so an install that
+        // persisted one before the editor was removed keeps working.
+        let sameHost = "https://raw.githubusercontent.com/stevenson-space/shs/dev/dates.json"
+        defaults.set(sameHost, forKey: "sk.mapURL")
+        #expect(store.mapURL.absoluteString == sameHost)
         #expect(!store.isUsingDefaultMapURL)
 
         store.resetMapURL()
         #expect(store.mapURL == SharedStore.defaultMapURL)
+    }
+
+    @Test func mapURLFallsBackToTheDefaultForAnySourceNotOnTheAllowList() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        for raw in ["http://raw.githubusercontent.com/a/b.json",       // not HTTPS
+                    "https://evil.example.com/dates.json",             // wrong host
+                    "https://raw.githubusercontent.com:8443/a.json",   // odd port
+                    "https://user:pw@raw.githubusercontent.com/a.json", // credentials
+                    "file:///etc/passwd",
+                    "not a url at all"] {
+            defaults.set(raw, forKey: "sk.mapURL")
+            #expect(store.mapURL == SharedStore.defaultMapURL, "accepted \(raw)")
+        }
+    }
+
+    @Test func retiringACustomMapURLClearsIt() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("https://raw.githubusercontent.com/x/y.json", forKey: "sk.mapURL")
+        store.retireCustomMapURLIfNeeded()
+        #expect(defaults.object(forKey: "sk.mapURL") == nil)
     }
 
     @Test func tolerantDecodingOfOlderBlobs() throws {

@@ -359,11 +359,10 @@ final class AppModel {
 
     var mapURL: URL { store.mapURL }
 
-    func setMapURL(_ url: URL) {
-        store.mapURL = url
-        invalidateETagAndResync()
-    }
-
+    /// There is no setter on purpose: the data-source editor was removed, so the
+    /// only supported source is the default one and the only move left is back
+    /// to it. Re-adding a setter means re-adding the allow-list check in
+    /// `SharedStore.isAllowedSource` at the call site too.
     func resetMapURL() {
         store.resetMapURL()
         invalidateETagAndResync()

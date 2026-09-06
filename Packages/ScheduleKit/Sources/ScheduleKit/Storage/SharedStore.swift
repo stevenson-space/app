@@ -14,6 +14,10 @@ public final class SharedStore: @unchecked Sendable {
     public static let defaultLunchMenuURL = URL(
         string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-menu.json")!
 
+    /// Hosts the schedule and lunch manifests. Every remote source the app is
+    /// allowed to reach lives here; nothing else is fetchable.
+    public static let allowedHosts: Set<String> = ["raw.githubusercontent.com"]
+
     private let defaults: UserDefaults
 
     private enum Keys {
@@ -140,15 +144,30 @@ public final class SharedStore: @unchecked Sendable {
         set { encode(newValue, key: Keys.notificationPrefs) }
     }
 
-    /// The remote map URL — user-editable in Settings, resettable to default.
+    /// The remote map URL.
+    ///
+    /// Read-only: the in-app data-source editor was removed, so there is no
+    /// supported way to set this any more. A value left behind by an older
+    /// install — or written into the plist by hand — is honoured only if it
+    /// still points at an approved source, so a persisted URL cannot redirect
+    /// schedule requests somewhere the app would never choose itself.
     public var mapURL: URL {
-        get {
-            guard let raw = defaults.string(forKey: Keys.mapURL), let url = URL(string: raw) else {
-                return SharedStore.defaultMapURL
-            }
-            return url
+        guard let raw = defaults.string(forKey: Keys.mapURL),
+              let url = URL(string: raw),
+              SharedStore.isAllowedSource(url) else {
+            return SharedStore.defaultMapURL
         }
-        set { defaults.set(newValue.absoluteString, forKey: Keys.mapURL) }
+        return url
+    }
+
+    /// HTTPS, an approved host, no embedded credentials, and the default port.
+    public static func isAllowedSource(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https",
+              let host = url.host?.lowercased(),
+              allowedHosts.contains(host),
+              url.user == nil, url.password == nil,
+              url.port == nil || url.port == 443 else { return false }
+        return true
     }
 
     public var isUsingDefaultMapURL: Bool { mapURL == SharedStore.defaultMapURL }
