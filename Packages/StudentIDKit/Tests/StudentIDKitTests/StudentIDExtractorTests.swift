@@ -194,6 +194,29 @@ import Vision
         #expect(extraction.card.idNumber == "59435")
     }
 
+    @Test func refusesAFileTooLargeToBeAScreenshot() {
+        // Trailing bytes past the image itself: decoders happily ignore them, so
+        // only the byte cap stops this from reaching the decoder at all.
+        var data = SyntheticProfile.pngData(SyntheticProfile.image())
+        data.append(Data(count: StudentIDExtractor.maxImageBytes))
+        #expect(StudentIDExtractor.normalizedImage(from: data) == nil)
+    }
+
+    @Test func decodesAnOversizedImageDownToTheWorkingCap() throws {
+        let width = 9000, height = 300
+        let context = try #require(CGContext(data: nil, width: width, height: height,
+                                             bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpaceCreateDeviceGray(),
+                                             bitmapInfo: CGImageAlphaInfo.none.rawValue))
+        context.setFillColor(gray: 0.5, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let data = SyntheticProfile.pngData(try #require(context.makeImage()))
+
+        let normalized = try #require(StudentIDExtractor.normalizedImage(from: data))
+        #expect(normalized.width == StudentIDExtractor.maxWorkingDimension)
+        #expect(max(normalized.width, normalized.height) <= StudentIDExtractor.maxWorkingDimension)
+    }
+
     @Test(arguments: Array(UInt32(1)...UInt32(8)))
     func normalizesEveryEXIFOrientationWithoutClipping(rawOrientation: UInt32) throws {
         // Four distinct quadrants on a non-square image expose clipped edges,
