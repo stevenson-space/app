@@ -19,6 +19,7 @@ public final class SharedStore: @unchecked Sendable {
     public static let allowedHosts: Set<String> = ["raw.githubusercontent.com"]
 
     private let defaults: UserDefaults
+    private let secrets: SecretStore
 
     private enum Keys {
         static let userConfig = "sk.userConfig"
@@ -41,9 +42,11 @@ public final class SharedStore: @unchecked Sendable {
     /// Every key the one-time App Group migration carries across.
     static var migratableKeys: [String] { Keys.all }
 
-    /// Test injection point.
-    public init(defaults: UserDefaults) {
+    /// Test injection point. Pass an `InMemorySecretStore` so tests never reach
+    /// the host's real keychain.
+    public init(defaults: UserDefaults, secrets: SecretStore = KeychainSecretStore()) {
         self.defaults = defaults
+        self.secrets = secrets
     }
 
     public convenience init() {
@@ -53,6 +56,9 @@ public final class SharedStore: @unchecked Sendable {
         } else {
             self.init(defaults: .standard)
         }
+        // Order matters: the App Group migration must land any legacy blob in
+        // this suite before the keychain migration goes looking for it.
+        migrateStudentIDToKeychainIfNeeded()
         retireCustomMapURLIfNeeded()
     }
 
@@ -76,6 +82,29 @@ public final class SharedStore: @unchecked Sendable {
             }
         }
         defaults.set(true, forKey: Keys.migrated)
+    }
+
+    /// Moves a student ID written by a version that kept it in `UserDefaults`
+    /// into the keychain, once.
+    ///
+    /// The plist copy is deleted only after the keychain write succeeds — on a
+    /// background launch with the device still locked the write fails, and the
+    /// card must survive until an unlocked launch can move it.
+    func migrateStudentIDToKeychainIfNeeded() {
+        guard let legacy = defaults.data(forKey: Keys.studentID) else { return }
+        switch secrets.read(Keys.studentID) {
+        case .value:
+            // Already migrated; the plist copy is a leftover from a run whose
+            // cleanup did not finish.
+            defaults.removeObject(forKey: Keys.studentID)
+        case .unavailable:
+            // Locked. Reading nothing here does not mean there is nothing there,
+            // so leave both copies alone and migrate on a later launch.
+            return
+        case .missing:
+            guard (try? secrets.write(legacy, for: Keys.studentID)) != nil else { return }
+            defaults.removeObject(forKey: Keys.studentID)
+        }
     }
 
     // MARK: - Typed accessors
@@ -116,21 +145,30 @@ public final class SharedStore: @unchecked Sendable {
         set { encode(newValue, key: Keys.lunchFetchMetadata) }
     }
 
-    /// The student's ID card, as opaque bytes.
+    /// The student's ID card, as opaque bytes, in the keychain.
     ///
     /// Deliberately untyped here: the card model lives in StudentIDKit, and
-    /// ScheduleKit has no business depending on it. Keeping the key in this
-    /// store anyway means the ID rides along with everything else the day the
-    /// App Group entitlement lands and widgets need to read it.
-    public var studentIDData: Data? {
-        get { defaults.data(forKey: Keys.studentID) }
-        set {
-            if let newValue {
-                defaults.set(newValue, forKey: Keys.studentID)
-            } else {
-                defaults.removeObject(forKey: Keys.studentID)
-            }
-        }
+    /// ScheduleKit has no business depending on it. It is the one thing this
+    /// store keeps outside `UserDefaults`, because a preferences plist is
+    /// readable from a backup or an extracted container and carries the
+    /// student's number and name in the clear.
+    ///
+    /// Being device-only and unavailable while locked, a widget will not be able
+    /// to read it as-is; when the App Group entitlement lands, publish a
+    /// deliberately redacted view for that surface rather than moving this.
+    public func readStudentIDData() -> SecretReadResult {
+        secrets.read(Keys.studentID)
+    }
+
+    /// Nil for both "no card saved" and "cannot be read right now" — call
+    /// `readStudentIDData()` where the difference matters.
+    public var studentIDData: Data? { readStudentIDData().data }
+
+    public func setStudentIDData(_ data: Data?) throws {
+        try secrets.write(data, for: Keys.studentID)
+        // A blob left by a version that used the plist would otherwise outlive
+        // the removal and reappear at the next migration.
+        defaults.removeObject(forKey: Keys.studentID)
     }
 
     /// A display preference; hiding the photo keeps the saved image available.

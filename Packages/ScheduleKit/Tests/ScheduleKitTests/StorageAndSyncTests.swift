@@ -2,11 +2,18 @@ import Testing
 import Foundation
 @testable import ScheduleKit
 
-/// Isolated UserDefaults per test.
+/// Isolated UserDefaults per test, and a keychain stand-in so no test ever
+/// touches the host's real one.
 private func makeStore() -> (SharedStore, UserDefaults, String) {
+    let (store, defaults, suite, _) = makeStoreWithSecrets()
+    return (store, defaults, suite)
+}
+
+private func makeStoreWithSecrets() -> (SharedStore, UserDefaults, String, InMemorySecretStore) {
     let suiteName = "sk-tests-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
-    return (SharedStore(defaults: defaults), defaults, suiteName)
+    let secrets = InMemorySecretStore()
+    return (SharedStore(defaults: defaults, secrets: secrets), defaults, suiteName, secrets)
 }
 
 @Suite struct SharedStoreTests {
@@ -34,17 +41,71 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(store.overridesByDay[day(2026, 12, 17)] == override)
     }
 
-    @Test func studentIDDataRoundTripsAndClears() {
+    @Test func studentIDDataRoundTripsAndClears() throws {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        #expect(store.studentIDData == nil)
+        #expect(store.readStudentIDData() == .missing)
         let payload = Data(#"{"idNumber":"59435"}"#.utf8)
-        store.studentIDData = payload
+        try store.setStudentIDData(payload)
+        #expect(store.readStudentIDData() == .value(payload))
         #expect(store.studentIDData == payload)
 
-        store.studentIDData = nil
+        try store.setStudentIDData(nil)
         #expect(store.studentIDData == nil)
+        // The identity bytes never live in the preferences plist.
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func studentIDNeverTouchesUserDefaults() throws {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        try store.setStudentIDData(Data(#"{"idNumber":"59435"}"#.utf8))
+        let plist = defaults.dictionaryRepresentation()
+        for (key, value) in plist where key.hasPrefix("sk.") {
+            #expect((value as? Data).map { String(decoding: $0, as: UTF8.self) }?
+                .contains("59435") != true, "\(key) carries the ID number")
+        }
+    }
+
+    @Test func aLockedKeychainIsNotAnEmptyOne() throws {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        try store.setStudentIDData(Data(#"{"idNumber":"59435"}"#.utf8))
+        secrets.isUnavailable = true
+        // Reported as unreadable, not absent, so nothing downstream concludes
+        // the student has no ID and cleans up after it.
+        #expect(store.readStudentIDData() == .unavailable)
+    }
+
+    @Test func migratesAStudentIDLeftInUserDefaults() {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+        store.migrateStudentIDToKeychainIfNeeded()
+
+        #expect(secrets.read("sk.studentID") == .value(payload))
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func keepsTheLegacyBlobWhenTheKeychainWriteFails() {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+        // A background launch while the device is still locked.
+        secrets.isUnavailable = true
+        store.migrateStudentIDToKeychainIfNeeded()
+        #expect(defaults.data(forKey: "sk.studentID") == payload)
+
+        secrets.isUnavailable = false
+        store.migrateStudentIDToKeychainIfNeeded()
+        #expect(secrets.read("sk.studentID") == .value(payload))
         #expect(defaults.object(forKey: "sk.studentID") == nil)
     }
 
