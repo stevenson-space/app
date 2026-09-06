@@ -59,7 +59,7 @@ public actor LunchMenuSyncService {
                 return .notModified
 
             case 200:
-                let data = try await collectBody(byteStream, limit: LunchMenuParser.maxBytes)
+                let data = try await Self.collectBody(byteStream, limit: LunchMenuParser.maxBytes)
                 return try commit(data, etag: http.value(forHTTPHeaderField: "ETag"),
                                   metadata: &metadata, now: now)
 
@@ -108,15 +108,17 @@ public actor LunchMenuSyncService {
         try await withThrowingTaskGroup(of: (String, Data).self) { group in
             for source in Self.legacySources {
                 group.addTask {
-                    let (data, response) = try await session.data(from: source.url)
+                    // Streamed, like the consolidated path: six sources fetched
+                    // at once, each buffered whole, is six unbounded allocations
+                    // if an endpoint misbehaves. `collectBody` stops reading the
+                    // moment one goes over the limit.
+                    let (byteStream, response) = try await session.bytes(from: source.url)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
                         throw LunchMenuParserError.invalid(
                             "legacy lunch source \(source.key) returned HTTP \(status)")
                     }
-                    guard data.count <= LunchMenuParser.maxBytes else {
-                        throw LunchMenuParserError.tooLarge(bytes: data.count)
-                    }
+                    let data = try await Self.collectBody(byteStream, limit: LunchMenuParser.maxBytes)
                     return (source.key, data)
                 }
             }
@@ -145,7 +147,7 @@ public actor LunchMenuSyncService {
         return try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys])
     }
 
-    private func collectBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
+    private static func collectBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
         var data = Data()
         for try await byte in bytes {
             data.append(byte)

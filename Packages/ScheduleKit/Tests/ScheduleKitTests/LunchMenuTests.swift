@@ -112,6 +112,31 @@ import Foundation
         #expect(dayMenu.sections.first { $0.station == .comfort }?.items == ["comfort-one"])
         #expect(store.lunchFetchMetadata.etag == nil)
     }
+
+    @Test func anOversizedLegacyStationFileIsRejected() async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LunchStubURLProtocol.handler = { request in
+            guard let filename = request.url?.lastPathComponent else {
+                return (400, [:], Data())
+            }
+            if filename == "lunch-menu.json" { return (404, [:], Data()) }
+            if filename == "soup.json" {
+                // Six of these are fetched at once, so an endpoint serving an
+                // endless body must be cut off mid-stream, not buffered whole.
+                return (200, [:], Data(repeating: 0x20, count: LunchMenuParser.maxBytes * 4))
+            }
+            return (200, [:], legacyPayload(filename: filename))
+        }
+        let session = ScheduleSyncService.makeSession(protocolClasses: [LunchStubURLProtocol.self])
+        let service = LunchMenuSyncService(store: store, session: session)
+
+        guard case .failed = await service.refresh(force: true) else {
+            Issue.record("Expected an oversized legacy source to fail")
+            return
+        }
+        #expect(store.cachedLunchMenuData == nil)
+    }
 }
 
 private final class LunchStubURLProtocol: URLProtocol {
