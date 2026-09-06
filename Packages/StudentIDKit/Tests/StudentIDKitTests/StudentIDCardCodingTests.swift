@@ -37,6 +37,13 @@ import Testing
         }
     }
 
+    @Test func refusesABarcodeThatDisagreesWithTheDisplayedNumber() {
+        // Both halves are well-formed student numbers, so only the equality
+        // check catches this: the card would show one number and scan as another.
+        let data = Data(#"{"idNumber":"59435","barcodePayload":"12345"}"#.utf8)
+        #expect(StudentIDCard.decoded(from: data) == nil)
+    }
+
     @Test func dropsImplausibleGradesAndYears() throws {
         let data = Data(#"{"idNumber":"59435","gradeLevel":99,"schoolYearStart":1200}"#.utf8)
         let restored = try #require(StudentIDCard.decoded(from: data))

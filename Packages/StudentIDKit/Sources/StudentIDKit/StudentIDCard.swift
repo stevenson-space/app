@@ -108,6 +108,15 @@ extension StudentIDCard: Codable {
                 forKey: .barcodePayload, in: container,
                 debugDescription: "\"\(payload)\" is not encodable as a student barcode")
         }
+        // The extractor only ever mints a card whose barcode is the number it
+        // shows. A record where the two differ was edited after the fact, and
+        // would put one number on screen while scanning as another — exactly the
+        // thing "students cannot type their own number" is meant to prevent.
+        guard payload == number else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .barcodePayload, in: container,
+                debugDescription: "barcode \"\(payload)\" does not match the displayed number \"\(number)\"")
+        }
         barcodePayload = payload
 
         requiresCheckDigit = try container.decodeIfPresent(Bool.self, forKey: .requiresCheckDigit) ?? false
