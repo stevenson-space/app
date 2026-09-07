@@ -69,6 +69,10 @@ fastlane/test_output
 .claude/
 .swiftpm/
 
+# Local security review output. The repository is public, and these reports
+# name weaknesses by file and line; keep them out of it.
+security_best_practices_report.md
+
 # Additional build output
 build/
 
