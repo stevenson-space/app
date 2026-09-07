@@ -17,7 +17,12 @@ import Vision
 public enum StudentIDExtractor {
 
     public static func extract(from imageData: Data) async throws -> StudentIDExtraction {
-        guard let image = normalizedImage(from: imageData) else {
+        let image: CGImage
+        do {
+            image = try normalizedImageResult(from: imageData)
+        } catch ImageNormalizationError.tooLarge {
+            throw StudentIDImportError.imageTooLarge
+        } catch {
             throw StudentIDImportError.unreadableImage
         }
         return try await extract(from: image)
@@ -335,6 +340,11 @@ public enum StudentIDExtractor {
     /// decode, face detection, OCR, and the crop — to roughly 64 MB.
     static let maxWorkingDimension = 4096
 
+    private enum ImageNormalizationError: Error {
+        case unreadable
+        case tooLarge
+    }
+
     /// Decodes and, if the file carries an EXIF orientation, bakes it in — so
     /// every coordinate downstream lives in one space and no crop comes out
     /// sideways.
@@ -344,15 +354,23 @@ public enum StudentIDExtractor {
     /// with a hard pixel cap. An oversized or malicious file is therefore
     /// rejected, or downscaled, before it can allocate.
     static func normalizedImage(from data: Data) -> CGImage? {
-        guard data.count <= maxImageBytes,
-              let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        try? normalizedImageResult(from: data)
+    }
+
+    private static func normalizedImageResult(from data: Data) throws -> CGImage {
+        guard data.count <= maxImageBytes else { throw ImageNormalizationError.tooLarge }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            throw ImageNormalizationError.unreadable
+        }
 
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         guard let width = properties?[kCGImagePropertyPixelWidth] as? Int,
               let height = properties?[kCGImagePropertyPixelHeight] as? Int,
-              width > 0, height > 0,
-              width.multipliedReportingOverflow(by: height).overflow == false,
-              width * height <= maxSourcePixels else { return nil }
+              width > 0, height > 0 else { throw ImageNormalizationError.unreadable }
+        guard width.multipliedReportingOverflow(by: height).overflow == false,
+              width * height <= maxSourcePixels else {
+            throw ImageNormalizationError.tooLarge
+        }
 
         // Thumbnail decoding never materializes the full-size image, so a file
         // claiming modest dimensions cannot expand past the cap either.
@@ -362,13 +380,16 @@ public enum StudentIDExtractor {
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceThumbnailMaxPixelSize: maxWorkingDimension,
             kCGImageSourceShouldCacheImmediately: true,
-        ] as CFDictionary) else { return nil }
+        ] as CFDictionary) else { throw ImageNormalizationError.unreadable }
 
         let raw = properties?[kCGImagePropertyOrientation] as? UInt32 ?? 1
         guard let orientation = CGImagePropertyOrientation(rawValue: raw), orientation != .up else {
             return image
         }
-        return redrawn(image, orientation: orientation)
+        guard let redrawn = redrawn(image, orientation: orientation) else {
+            throw ImageNormalizationError.unreadable
+        }
+        return redrawn
     }
 
     private static func redrawn(_ image: CGImage, orientation: CGImagePropertyOrientation) -> CGImage? {

@@ -44,17 +44,17 @@ public final class SharedStore: @unchecked Sendable {
 
     /// Test injection point. Pass an `InMemorySecretStore` so tests never reach
     /// the host's real keychain.
-    public init(defaults: UserDefaults, secrets: SecretStore = KeychainSecretStore()) {
+    public init(defaults: UserDefaults, secrets: SecretStore) {
         self.defaults = defaults
         self.secrets = secrets
     }
 
     public convenience init() {
         if let suite = UserDefaults(suiteName: SharedStore.appGroupID) {
-            self.init(defaults: suite)
+            self.init(defaults: suite, secrets: KeychainSecretStore())
             migrateFromStandardIfNeeded()
         } else {
-            self.init(defaults: .standard)
+            self.init(defaults: .standard, secrets: KeychainSecretStore())
         }
         // Order matters: the App Group migration must land any legacy blob in
         // this suite before the keychain migration goes looking for it.

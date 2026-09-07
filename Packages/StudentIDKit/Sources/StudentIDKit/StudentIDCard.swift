@@ -150,6 +150,7 @@ public struct StudentIDExtraction: Sendable {
 
 public enum StudentIDImportError: Error, Equatable, CustomStringConvertible {
     case unreadableImage
+    case imageTooLarge
     case barcodeNotFound
     case unsupportedBarcodePayload(String)
     case numberMismatch(barcode: String, printed: String)
@@ -159,6 +160,8 @@ public enum StudentIDImportError: Error, Equatable, CustomStringConvertible {
         switch self {
         case .unreadableImage:
             return "That file could not be opened as an image."
+        case .imageTooLarge:
+            return "That image is too large. Choose a screenshot or a smaller image."
         case .barcodeNotFound:
             return "No barcode found. Screenshot the whole Student Profile page, including the barcode near the bottom."
         case .unsupportedBarcodePayload:

@@ -355,8 +355,8 @@ final class AppModel {
         studentIDPhoto = extraction.photoJPEG.flatMap(UIImage.init(data:))
     }
 
-    func removeStudentID() {
-        try? store.setStudentIDData(nil)
+    func removeStudentID() throws {
+        try store.setStudentIDData(nil)
         photoStore.remove()
         studentID = nil
         studentIDPhoto = nil
@@ -483,6 +483,9 @@ final class AppModel {
 
     func handleScenePhase(_ phase: ScenePhase) {
         guard phase == .active else { return }
+        // A transient keychain error may not emit a protected-data notification;
+        // retry the launch-time read whenever the app returns to the foreground.
+        reloadStudentIDIfUnread()
         if today != lastComputedDay {
             refreshDerived()
         }

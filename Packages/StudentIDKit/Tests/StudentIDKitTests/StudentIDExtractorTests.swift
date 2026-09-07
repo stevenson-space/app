@@ -202,6 +202,13 @@ import Vision
         #expect(StudentIDExtractor.normalizedImage(from: data) == nil)
     }
 
+    @Test func explainsWhenAnImportedImageIsTooLarge() async {
+        let data = Data(count: StudentIDExtractor.maxImageBytes + 1)
+        await #expect(throws: StudentIDImportError.imageTooLarge) {
+            try await StudentIDExtractor.extract(from: data)
+        }
+    }
+
     @Test func decodesAnOversizedImageDownToTheWorkingCap() throws {
         let width = 9000, height = 300
         let context = try #require(CGContext(data: nil, width: width, height: height,

@@ -397,5 +397,6 @@ private extension LunchMenuStation {
 #Preview {
     let defaults = UserDefaults(suiteName: "lunch-menu-preview")!
     LunchMenuView()
-        .environment(AppModel(store: SharedStore(defaults: defaults)))
+        .environment(AppModel(store: SharedStore(defaults: defaults,
+                                                  secrets: InMemorySecretStore())))
 }

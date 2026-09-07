@@ -35,8 +35,8 @@ public struct StudentIDPhotoStore: Sendable {
         // The strongest class available: the file is unreadable whenever the
         // screen is locked. The card is only ever shown in the foreground, on an
         // unlocked device, so the student at the lunch line never notices — but
-        // a launch while locked will read nothing, which is why `load()`
-        // distinguishes "no photo" from "not yet".
+        // a launch while locked will read nothing; AppModel preserves the file
+        // by gating cleanup on the card's protected keychain read instead.
         try jpeg.write(to: url, options: [.atomic, .completeFileProtection])
         #else
         try jpeg.write(to: url, options: [.atomic])
@@ -44,24 +44,8 @@ public struct StudentIDPhotoStore: Sendable {
         return url
     }
 
-    /// What a read found — a locked device is not an absent photo, and deleting
-    /// on the strength of one would throw away the student's ID picture.
-    public enum LoadResult: Sendable {
-        case value(Data)
-        case missing
-        /// The file is there but protected; try again once the device unlocks.
-        case unavailable
-    }
-
-    public func load() -> LoadResult {
-        if let data = try? Data(contentsOf: fileURL) { return .value(data) }
-        // Existence is readable while locked even when the contents are not.
-        return FileManager.default.fileExists(atPath: fileURL.path) ? .unavailable : .missing
-    }
-
     public func loadData() -> Data? {
-        if case let .value(data) = load() { return data }
-        return nil
+        try? Data(contentsOf: fileURL)
     }
 
     public func remove() {

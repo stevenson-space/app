@@ -169,7 +169,7 @@ private final class LunchStubURLProtocol: URLProtocol {
 private func makeLunchStore() -> (SharedStore, UserDefaults, String) {
     let suite = "sk-lunch-tests-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suite)!
-    return (SharedStore(defaults: defaults), defaults, suite)
+    return (SharedStore(defaults: defaults, secrets: InMemorySecretStore()), defaults, suite)
 }
 
 private func validManifest(offset: Int = 0, specialWeekdays: Int = 5) -> Data {
