@@ -35,7 +35,7 @@ public struct StudentIDPhotoStore: Sendable {
         // The strongest class available: the file is unreadable whenever the
         // screen is locked. The card is only ever shown in the foreground, on an
         // unlocked device, so the student at the lunch line never notices — but
-        // a launch while locked will read nothing, which is why `loadData`
+        // a launch while locked will read nothing, which is why `load()`
         // distinguishes "no photo" from "not yet".
         try jpeg.write(to: url, options: [.atomic, .completeFileProtection])
         #else
