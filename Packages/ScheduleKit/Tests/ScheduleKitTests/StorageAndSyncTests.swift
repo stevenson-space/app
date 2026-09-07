@@ -16,6 +16,15 @@ private func makeStoreWithSecrets() -> (SharedStore, UserDefaults, String, InMem
     return (SharedStore(defaults: defaults, secrets: secrets), defaults, suiteName, secrets)
 }
 
+/// Reads as an empty keychain but refuses every write — the shape of a
+/// keychain that is reachable but not writable (a missing entitlement, say).
+private struct WriteRefusingSecretStore: SecretStore {
+    func read(_ key: String) -> SecretReadResult { .missing }
+    func write(_ data: Data?, for key: String) throws {
+        throw SecretStoreError(status: -34018)
+    }
+}
+
 @Suite struct SharedStoreTests {
     @Test func configRoundTrip() {
         let (store, defaults, suite) = makeStore()
@@ -90,6 +99,42 @@ private func makeStoreWithSecrets() -> (SharedStore, UserDefaults, String, InMem
 
         #expect(secrets.read("sk.studentID") == .value(payload))
         #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func servesAndMigratesALegacyCardWhenTheFirstLaunchWasLocked() {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // Upgraded install launched into the background before first unlock:
+        // the migration deferred, so the card is still only in the plist.
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+        secrets.isUnavailable = true
+        store.migrateStudentIDToKeychainIfNeeded()
+        #expect(store.readStudentIDData() == .unavailable)
+
+        // The device unlocks. Nothing runs the migration again for the life of
+        // the process, so the read has to pick it up or the ID stays invisible.
+        secrets.isUnavailable = false
+        #expect(store.readStudentIDData() == .value(payload))
+        #expect(secrets.read("sk.studentID") == .value(payload))
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func stillServesTheLegacyCardWhenTheKeychainWriteKeepsFailing() {
+        let suiteName = "sk-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = SharedStore(defaults: defaults, secrets: WriteRefusingSecretStore())
+
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+
+        // A keychain that reads empty but refuses every write. Reporting the
+        // card missing here would orphan-delete the student's photo while the
+        // card itself is sitting right there in the plist.
+        #expect(store.readStudentIDData() == .value(payload))
+        #expect(defaults.data(forKey: "sk.studentID") == payload)
     }
 
     @Test func keepsTheLegacyBlobWhenTheKeychainWriteFails() {

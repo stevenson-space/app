@@ -157,7 +157,23 @@ public final class SharedStore: @unchecked Sendable {
     /// to read it as-is; when the App Group entitlement lands, publish a
     /// deliberately redacted view for that surface rather than moving this.
     public func readStudentIDData() -> SecretReadResult {
-        secrets.read(Keys.studentID)
+        let stored = secrets.read(Keys.studentID)
+        guard case .missing = stored, let legacy = defaults.data(forKey: Keys.studentID) else {
+            return stored
+        }
+        // The keychain definitively has nothing while the plist still holds a
+        // card, so the one-time move has not happened: the launch that would
+        // have run it met a locked device, or its write failed. Retry it now
+        // that something is actually asking for the card — `init()` runs the
+        // migration once per launch, which is no help to a process that started
+        // before first unlock.
+        if (try? secrets.write(legacy, for: Keys.studentID)) != nil {
+            defaults.removeObject(forKey: Keys.studentID)
+        }
+        // Either way, serve the bytes the student still has. Reporting the card
+        // as missing would blank the ID tab for the rest of the session and let
+        // the launch-time orphan cleanup delete the photo that belongs to it.
+        return .value(legacy)
     }
 
     /// Nil for both "no card saved" and "cannot be read right now" — call
