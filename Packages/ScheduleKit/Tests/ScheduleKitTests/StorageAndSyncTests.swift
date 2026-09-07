@@ -16,6 +16,32 @@ private func makeStoreWithSecrets() -> (SharedStore, UserDefaults, String, InMem
     return (SharedStore(defaults: defaults, secrets: secrets), defaults, suiteName, secrets)
 }
 
+/// Stands in for a pre-App-Group install: a scratch suite playing the part of
+/// `UserDefaults.standard`, so the upgrade path is testable without writing the
+/// host's own defaults.
+private struct UpgradedInstall {
+    let store: SharedStore
+    let suite: UserDefaults
+    let legacy: UserDefaults
+    let secrets: InMemorySecretStore
+    private let suiteName: String
+    private let legacyName: String
+
+    init() {
+        suiteName = "sk-tests-\(UUID().uuidString)"
+        legacyName = "sk-tests-legacy-\(UUID().uuidString)"
+        suite = UserDefaults(suiteName: suiteName)!
+        legacy = UserDefaults(suiteName: legacyName)!
+        secrets = InMemorySecretStore()
+        store = SharedStore(defaults: suite, secrets: secrets, legacyDefaults: legacy)
+    }
+
+    func tearDown() {
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        UserDefaults.standard.removePersistentDomain(forName: legacyName)
+    }
+}
+
 /// Reads as an empty keychain but refuses every write — the shape of a
 /// keychain that is reachable but not writable (a missing entitlement, say).
 private struct WriteRefusingSecretStore: SecretStore {
@@ -152,6 +178,64 @@ private struct WriteRefusingSecretStore: SecretStore {
         store.migrateStudentIDToKeychainIfNeeded()
         #expect(secrets.read("sk.studentID") == .value(payload))
         #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func theAppGroupMigrationDropsTheStandardCopyOnlyOnceTheKeychainHasIt() {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+
+        // A pre-App-Group install, its card still in the plist, upgrading on a
+        // background launch before first unlock.
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        install.legacy.set(payload, forKey: "sk.studentID")
+        install.secrets.isUnavailable = true
+        install.store.migrateFromStandardIfNeeded()
+        install.store.migrateStudentIDToKeychainIfNeeded()
+
+        // The keychain could not confirm anything, so neither copy may go.
+        #expect(install.suite.data(forKey: "sk.studentID") == payload)
+        #expect(install.legacy.data(forKey: "sk.studentID") == payload)
+
+        install.secrets.isUnavailable = false
+        install.store.migrateStudentIDToKeychainIfNeeded()
+
+        #expect(install.secrets.read("sk.studentID") == .value(payload))
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        // The plaintext card would otherwise sit in the old plist forever: the
+        // App Group migration copies it out but nothing was deleting it.
+        #expect(install.legacy.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func aCardStrandedInTheStandardDefaultsIsClearedOnALaterLaunch() {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+
+        // What a version that cleaned up only the suite left behind: the card
+        // is safely in the keychain, its plaintext twin still in the old plist.
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        try? install.secrets.write(payload, for: "sk.studentID")
+        install.legacy.set(payload, forKey: "sk.studentID")
+        install.suite.set(true, forKey: "sk.migratedToAppGroup")
+
+        install.store.migrateFromStandardIfNeeded()
+        install.store.migrateStudentIDToKeychainIfNeeded()
+
+        #expect(install.legacy.object(forKey: "sk.studentID") == nil)
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        #expect(install.store.readStudentIDData() == .value(payload))
+    }
+
+    @Test func savingACardClearsAnyPlaintextCopyInBothPlists() throws {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+
+        install.legacy.set(Data(#"{"idNumber":"59435"}"#.utf8), forKey: "sk.studentID")
+        install.suite.set(Data(#"{"idNumber":"59435"}"#.utf8), forKey: "sk.studentID")
+
+        try install.store.setStudentIDData(Data(#"{"idNumber":"11111"}"#.utf8))
+
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        #expect(install.legacy.object(forKey: "sk.studentID") == nil)
     }
 
     @Test func studentIDIsCarriedByTheAppGroupMigration() {

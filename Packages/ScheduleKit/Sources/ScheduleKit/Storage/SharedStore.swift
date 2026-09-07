@@ -20,6 +20,9 @@ public final class SharedStore: @unchecked Sendable {
 
     private let defaults: UserDefaults
     private let secrets: SecretStore
+    /// Where this app kept its preferences before the App Group suite existed.
+    /// A separate property only so tests can point it somewhere harmless.
+    private let legacyDefaults: UserDefaults
 
     private enum Keys {
         static let userConfig = "sk.userConfig"
@@ -43,10 +46,13 @@ public final class SharedStore: @unchecked Sendable {
     static var migratableKeys: [String] { Keys.all }
 
     /// Test injection point. Pass an `InMemorySecretStore` so tests never reach
-    /// the host's real keychain.
-    public init(defaults: UserDefaults, secrets: SecretStore) {
+    /// the host's real keychain, and a scratch suite as `legacyDefaults` so
+    /// they never write to the host's standard defaults either.
+    public init(defaults: UserDefaults, secrets: SecretStore,
+                legacyDefaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.secrets = secrets
+        self.legacyDefaults = legacyDefaults
     }
 
     public convenience init() {
@@ -73,15 +79,31 @@ public final class SharedStore: @unchecked Sendable {
     }
 
     /// Copies any pre-App-Group data from `.standard` into the suite, once.
+    /// The student ID is copied like everything else and deliberately not
+    /// deleted here: `migrateStudentIDToKeychainIfNeeded` drops both plaintext
+    /// copies together, once the keychain is known to hold the card.
     func migrateFromStandardIfNeeded() {
         guard !defaults.bool(forKey: Keys.migrated) else { return }
-        let standard = UserDefaults.standard
         for key in Keys.all where defaults.object(forKey: key) == nil {
-            if let value = standard.object(forKey: key) {
+            if let value = legacyDefaults.object(forKey: key) {
                 defaults.set(value, forKey: key)
             }
         }
         defaults.set(true, forKey: Keys.migrated)
+    }
+
+    /// The plaintext card, wherever an older version left it: this suite, or
+    /// the standard defaults from before the suite existed.
+    private var legacyStudentIDData: Data? {
+        defaults.data(forKey: Keys.studentID) ?? legacyDefaults.data(forKey: Keys.studentID)
+    }
+
+    /// Drops the plaintext card from every plist that could still hold one.
+    /// Only ever called once the keychain is known to have the bytes: the
+    /// standard-defaults copy is the last one an upgraded install has left.
+    private func clearPlaintextStudentID() {
+        defaults.removeObject(forKey: Keys.studentID)
+        legacyDefaults.removeObject(forKey: Keys.studentID)
     }
 
     /// Moves a student ID written by a version that kept it in `UserDefaults`
@@ -91,19 +113,20 @@ public final class SharedStore: @unchecked Sendable {
     /// background launch with the device still locked the write fails, and the
     /// card must survive until an unlocked launch can move it.
     func migrateStudentIDToKeychainIfNeeded() {
-        guard let legacy = defaults.data(forKey: Keys.studentID) else { return }
+        guard let legacy = legacyStudentIDData else { return }
         switch secrets.read(Keys.studentID) {
         case .value:
-            // Already migrated; the plist copy is a leftover from a run whose
-            // cleanup did not finish.
-            defaults.removeObject(forKey: Keys.studentID)
+            // Already migrated; the plist copies are leftovers from a run whose
+            // cleanup did not finish — including an install upgraded by a
+            // version that cleared the suite but not the standard defaults.
+            clearPlaintextStudentID()
         case .unavailable:
             // Locked. Reading nothing here does not mean there is nothing there,
             // so leave both copies alone and migrate on a later launch.
             return
         case .missing:
             guard (try? secrets.write(legacy, for: Keys.studentID)) != nil else { return }
-            defaults.removeObject(forKey: Keys.studentID)
+            clearPlaintextStudentID()
         }
     }
 
@@ -158,7 +181,7 @@ public final class SharedStore: @unchecked Sendable {
     /// deliberately redacted view for that surface rather than moving this.
     public func readStudentIDData() -> SecretReadResult {
         let stored = secrets.read(Keys.studentID)
-        guard case .missing = stored, let legacy = defaults.data(forKey: Keys.studentID) else {
+        guard case .missing = stored, let legacy = legacyStudentIDData else {
             return stored
         }
         // The keychain definitively has nothing while the plist still holds a
@@ -168,7 +191,7 @@ public final class SharedStore: @unchecked Sendable {
         // migration once per launch, which is no help to a process that started
         // before first unlock.
         if (try? secrets.write(legacy, for: Keys.studentID)) != nil {
-            defaults.removeObject(forKey: Keys.studentID)
+            clearPlaintextStudentID()
         }
         // Either way, serve the bytes the student still has. Reporting the card
         // as missing would blank the ID tab for the rest of the session and let
@@ -184,7 +207,7 @@ public final class SharedStore: @unchecked Sendable {
         try secrets.write(data, for: Keys.studentID)
         // A blob left by a version that used the plist would otherwise outlive
         // the removal and reappear at the next migration.
-        defaults.removeObject(forKey: Keys.studentID)
+        clearPlaintextStudentID()
     }
 
     /// A display preference; hiding the photo keeps the saved image available.
