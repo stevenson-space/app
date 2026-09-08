@@ -73,8 +73,16 @@ public final class SharedStore: @unchecked Sendable {
     /// active forever with no recovery path. Drop it once so upgraded installs
     /// return to the supported default source.
     func retireCustomMapURLIfNeeded() {
-        guard !defaults.bool(forKey: Keys.mapURLRetired) else { return }
+        // Clean up both stores even if an earlier launch already recorded the
+        // retirement. Otherwise a later migration pass could reintroduce the
+        // legacy value from the standard defaults suite.
+        if defaults.bool(forKey: Keys.mapURLRetired) {
+            defaults.removeObject(forKey: Keys.mapURL)
+            legacyDefaults.removeObject(forKey: Keys.mapURL)
+            return
+        }
         resetMapURL()
+        legacyDefaults.removeObject(forKey: Keys.mapURL)
         defaults.set(true, forKey: Keys.mapURLRetired)
     }
 
@@ -84,12 +92,28 @@ public final class SharedStore: @unchecked Sendable {
     /// copies together, once the keychain is known to hold the card.
     func migrateFromStandardIfNeeded() {
         guard !defaults.bool(forKey: Keys.migrated) else { return }
+        var copied = false
         for key in Keys.all where defaults.object(forKey: key) == nil {
+            // A retired custom URL must never be copied back from the old
+            // suite. Other keys remain eligible for migration and retries.
+            if key == Keys.mapURL && defaults.bool(forKey: Keys.mapURLRetired) {
+                continue
+            }
             if let value = legacyDefaults.object(forKey: key) {
                 defaults.set(value, forKey: key)
+                copied = true
             }
         }
-        defaults.set(true, forKey: Keys.migrated)
+        // A launch before first unlock reads the old plist as empty, which is
+        // indistinguishable from having nothing to migrate. Burning the
+        // one-shot flag there would strand the config, overrides and prefs in
+        // the old suite forever, so only a launch that actually carried
+        // something across closes the door. On a genuinely fresh install the
+        // loop keeps running — ten `object(forKey:)` reads, and the old suite
+        // is empty, so there is nothing left for it to resurrect.
+        if copied {
+            defaults.set(true, forKey: Keys.migrated)
+        }
     }
 
     /// The plaintext card, wherever an older version left it: this suite, or

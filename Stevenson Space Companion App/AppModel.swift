@@ -343,14 +343,27 @@ final class AppModel {
 
     func saveStudentID(_ extraction: StudentIDExtraction) throws {
         let encoded = try extraction.card.encoded()
+        // The card and the photo are one thing to the student, so the photo
+        // write has to be undone if the card write fails below: the new face
+        // over the old card is worse than either import failing outright.
+        let previousPhoto = photoStore.loadData()
         if let jpeg = extraction.photoJPEG {
             try photoStore.save(jpeg)
         } else {
             photoStore.remove()
         }
-        // Last, and throwing: a card the student was told was saved but which
-        // never reached the keychain would vanish at the next launch.
-        try store.setStudentIDData(encoded)
+        do {
+            // Last, and throwing: a card the student was told was saved but which
+            // never reached the keychain would vanish at the next launch.
+            try store.setStudentIDData(encoded)
+        } catch {
+            if let previousPhoto {
+                try? photoStore.save(previousPhoto)
+            } else {
+                photoStore.remove()
+            }
+            throw error
+        }
         studentID = extraction.card
         studentIDPhoto = extraction.photoJPEG.flatMap(UIImage.init(data:))
     }
@@ -367,6 +380,11 @@ final class AppModel {
     /// locked. Both the card and the photo are protected until first unlock, and
     /// the app can be launched into the background before that happens.
     private func reloadStudentIDIfUnread() {
+        // The hide-photo flag is in the App Group plist, which is as unreadable
+        // as the card itself before first unlock. Left alone it stays at the
+        // `false` that a locked launch read, and a photo the student chose to
+        // hide comes back for the rest of the session.
+        studentIDPhotoHidden = store.studentIDPhotoHidden
         if studentID == nil {
             studentID = store.studentIDData.flatMap(StudentIDCard.decoded(from:))
         }
