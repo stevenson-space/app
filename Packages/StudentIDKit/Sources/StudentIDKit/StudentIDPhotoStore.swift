@@ -48,6 +48,14 @@ public struct StudentIDPhotoStore: Sendable {
         try? Data(contentsOf: fileURL)
     }
 
+    /// Rewrites an existing photo with the current protection class.
+    public func reapplyProtectionIfPresent() {
+        #if os(iOS)
+        guard let data = loadData() else { return }
+        try? data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+        #endif
+    }
+
     public func remove() {
         try? FileManager.default.removeItem(at: fileURL)
     }

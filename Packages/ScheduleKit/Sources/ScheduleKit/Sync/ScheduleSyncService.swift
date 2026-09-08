@@ -1,5 +1,14 @@
 import Foundation
 
+private final class RedirectPolicy: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(SharedStore.isAllowedSource(request.url ?? URL(fileURLWithPath: "")) ? request : nil)
+    }
+}
+
 public enum SyncResult: Equatable, Sendable {
     /// New content validated and committed to the cache.
     case updated
@@ -39,7 +48,7 @@ public actor ScheduleSyncService {
         if let protocolClasses {
             config.protocolClasses = protocolClasses
         }
-        return URLSession(configuration: config)
+        return URLSession(configuration: config, delegate: RedirectPolicy(), delegateQueue: nil)
     }
 
     @discardableResult

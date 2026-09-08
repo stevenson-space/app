@@ -125,6 +125,7 @@ final class AppModel {
         self.studentID = studentID
         self.studentIDPhotoHidden = store.studentIDPhotoHidden
         if studentID != nil {
+            photoStore.reapplyProtectionIfPresent()
             self.studentIDPhoto = photoStore.loadData().flatMap(UIImage.init(data:))
         } else if idRead == .unavailable {
             self.studentIDPhoto = nil
@@ -358,7 +359,7 @@ final class AppModel {
             try store.setStudentIDData(encoded)
         } catch {
             if let previousPhoto {
-                try? photoStore.save(previousPhoto)
+                _ = try? photoStore.save(previousPhoto)
             } else {
                 photoStore.remove()
             }
