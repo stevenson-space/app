@@ -2,11 +2,53 @@ import Testing
 import Foundation
 @testable import ScheduleKit
 
-/// Isolated UserDefaults per test.
+/// Isolated UserDefaults per test, and a keychain stand-in so no test ever
+/// touches the host's real one.
 private func makeStore() -> (SharedStore, UserDefaults, String) {
+    let (store, defaults, suite, _) = makeStoreWithSecrets()
+    return (store, defaults, suite)
+}
+
+private func makeStoreWithSecrets() -> (SharedStore, UserDefaults, String, InMemorySecretStore) {
     let suiteName = "sk-tests-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
-    return (SharedStore(defaults: defaults), defaults, suiteName)
+    let secrets = InMemorySecretStore()
+    return (SharedStore(defaults: defaults, secrets: secrets), defaults, suiteName, secrets)
+}
+
+/// Stands in for a pre-App-Group install: a scratch suite playing the part of
+/// `UserDefaults.standard`, so the upgrade path is testable without writing the
+/// host's own defaults.
+private struct UpgradedInstall {
+    let store: SharedStore
+    let suite: UserDefaults
+    let legacy: UserDefaults
+    let secrets: InMemorySecretStore
+    private let suiteName: String
+    private let legacyName: String
+
+    init() {
+        suiteName = "sk-tests-\(UUID().uuidString)"
+        legacyName = "sk-tests-legacy-\(UUID().uuidString)"
+        suite = UserDefaults(suiteName: suiteName)!
+        legacy = UserDefaults(suiteName: legacyName)!
+        secrets = InMemorySecretStore()
+        store = SharedStore(defaults: suite, secrets: secrets, legacyDefaults: legacy)
+    }
+
+    func tearDown() {
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        UserDefaults.standard.removePersistentDomain(forName: legacyName)
+    }
+}
+
+/// Reads as an empty keychain but refuses every write — the shape of a
+/// keychain that is reachable but not writable (a missing entitlement, say).
+private struct WriteRefusingSecretStore: SecretStore {
+    func read(_ key: String) -> SecretReadResult { .missing }
+    func write(_ data: Data?, for key: String) throws {
+        throw SecretStoreError(status: -34018)
+    }
 }
 
 @Suite struct SharedStoreTests {
@@ -34,18 +76,166 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(store.overridesByDay[day(2026, 12, 17)] == override)
     }
 
-    @Test func studentIDDataRoundTripsAndClears() {
+    @Test func studentIDDataRoundTripsAndClears() throws {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        #expect(store.studentIDData == nil)
+        #expect(store.readStudentIDData() == .missing)
         let payload = Data(#"{"idNumber":"59435"}"#.utf8)
-        store.studentIDData = payload
+        try store.setStudentIDData(payload)
+        #expect(store.readStudentIDData() == .value(payload))
         #expect(store.studentIDData == payload)
 
-        store.studentIDData = nil
+        try store.setStudentIDData(nil)
         #expect(store.studentIDData == nil)
+        // The identity bytes never live in the preferences plist.
         #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func studentIDNeverTouchesUserDefaults() throws {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        try store.setStudentIDData(Data(#"{"idNumber":"59435"}"#.utf8))
+        let plist = defaults.dictionaryRepresentation()
+        for (key, value) in plist where key.hasPrefix("sk.") {
+            #expect((value as? Data).map { String(decoding: $0, as: UTF8.self) }?
+                .contains("59435") != true, "\(key) carries the ID number")
+        }
+    }
+
+    @Test func aLockedKeychainIsNotAnEmptyOne() throws {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        try store.setStudentIDData(Data(#"{"idNumber":"59435"}"#.utf8))
+        secrets.isUnavailable = true
+        // Reported as unreadable, not absent, so nothing downstream concludes
+        // the student has no ID and cleans up after it.
+        #expect(store.readStudentIDData() == .unavailable)
+    }
+
+    @Test func migratesAStudentIDLeftInUserDefaults() {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+        store.migrateStudentIDToKeychainIfNeeded()
+
+        #expect(secrets.read("sk.studentID") == .value(payload))
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func servesAndMigratesALegacyCardWhenTheFirstLaunchWasLocked() {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // Upgraded install launched into the background before first unlock:
+        // the migration deferred, so the card is still only in the plist.
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+        secrets.isUnavailable = true
+        store.migrateStudentIDToKeychainIfNeeded()
+        #expect(store.readStudentIDData() == .unavailable)
+
+        // The device unlocks. Nothing runs the migration again for the life of
+        // the process, so the read has to pick it up or the ID stays invisible.
+        secrets.isUnavailable = false
+        #expect(store.readStudentIDData() == .value(payload))
+        #expect(secrets.read("sk.studentID") == .value(payload))
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func stillServesTheLegacyCardWhenTheKeychainWriteKeepsFailing() {
+        let suiteName = "sk-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = SharedStore(defaults: defaults, secrets: WriteRefusingSecretStore())
+
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+
+        // A keychain that reads empty but refuses every write. Reporting the
+        // card missing here would orphan-delete the student's photo while the
+        // card itself is sitting right there in the plist.
+        #expect(store.readStudentIDData() == .value(payload))
+        #expect(defaults.data(forKey: "sk.studentID") == payload)
+    }
+
+    @Test func keepsTheLegacyBlobWhenTheKeychainWriteFails() {
+        let (store, defaults, suite, secrets) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        defaults.set(payload, forKey: "sk.studentID")
+        // A background launch while the device is still locked.
+        secrets.isUnavailable = true
+        store.migrateStudentIDToKeychainIfNeeded()
+        #expect(defaults.data(forKey: "sk.studentID") == payload)
+
+        secrets.isUnavailable = false
+        store.migrateStudentIDToKeychainIfNeeded()
+        #expect(secrets.read("sk.studentID") == .value(payload))
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func theAppGroupMigrationDropsTheStandardCopyOnlyOnceTheKeychainHasIt() {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+
+        // A pre-App-Group install, its card still in the plist, upgrading on a
+        // background launch before first unlock.
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        install.legacy.set(payload, forKey: "sk.studentID")
+        install.secrets.isUnavailable = true
+        install.store.migrateFromStandardIfNeeded()
+        install.store.migrateStudentIDToKeychainIfNeeded()
+
+        // The keychain could not confirm anything, so neither copy may go.
+        #expect(install.suite.data(forKey: "sk.studentID") == payload)
+        #expect(install.legacy.data(forKey: "sk.studentID") == payload)
+
+        install.secrets.isUnavailable = false
+        install.store.migrateStudentIDToKeychainIfNeeded()
+
+        #expect(install.secrets.read("sk.studentID") == .value(payload))
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        // The plaintext card would otherwise sit in the old plist forever: the
+        // App Group migration copies it out but nothing was deleting it.
+        #expect(install.legacy.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func aCardStrandedInTheStandardDefaultsIsClearedOnALaterLaunch() {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+
+        // What a version that cleaned up only the suite left behind: the card
+        // is safely in the keychain, its plaintext twin still in the old plist.
+        let payload = Data(#"{"idNumber":"59435"}"#.utf8)
+        try? install.secrets.write(payload, for: "sk.studentID")
+        install.legacy.set(payload, forKey: "sk.studentID")
+        install.suite.set(true, forKey: "sk.migratedToAppGroup")
+
+        install.store.migrateFromStandardIfNeeded()
+        install.store.migrateStudentIDToKeychainIfNeeded()
+
+        #expect(install.legacy.object(forKey: "sk.studentID") == nil)
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        #expect(install.store.readStudentIDData() == .value(payload))
+    }
+
+    @Test func savingACardClearsAnyPlaintextCopyInBothPlists() throws {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+
+        install.legacy.set(Data(#"{"idNumber":"59435"}"#.utf8), forKey: "sk.studentID")
+        install.suite.set(Data(#"{"idNumber":"59435"}"#.utf8), forKey: "sk.studentID")
+
+        try install.store.setStudentIDData(Data(#"{"idNumber":"11111"}"#.utf8))
+
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        #expect(install.legacy.object(forKey: "sk.studentID") == nil)
     }
 
     @Test func studentIDIsCarriedByTheAppGroupMigration() {
@@ -60,13 +250,39 @@ private func makeStore() -> (SharedStore, UserDefaults, String) {
         #expect(store.mapURL == SharedStore.defaultMapURL)
         #expect(store.isUsingDefaultMapURL)
 
-        let custom = URL(string: "https://example.com/dates.json")!
-        store.mapURL = custom
-        #expect(store.mapURL == custom)
+        // Still honoured when it names an approved source, so an install that
+        // persisted one before the editor was removed keeps working.
+        let sameHost = "https://raw.githubusercontent.com/stevenson-space/shs/dev/dates.json"
+        defaults.set(sameHost, forKey: "sk.mapURL")
+        #expect(store.mapURL.absoluteString == sameHost)
         #expect(!store.isUsingDefaultMapURL)
 
         store.resetMapURL()
         #expect(store.mapURL == SharedStore.defaultMapURL)
+    }
+
+    @Test func mapURLFallsBackToTheDefaultForAnySourceNotOnTheAllowList() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        for raw in ["http://raw.githubusercontent.com/a/b.json",       // not HTTPS
+                    "https://evil.example.com/dates.json",             // wrong host
+                    "https://raw.githubusercontent.com:8443/a.json",   // odd port
+                    "https://user:pw@raw.githubusercontent.com/a.json", // credentials
+                    "file:///etc/passwd",
+                    "not a url at all"] {
+            defaults.set(raw, forKey: "sk.mapURL")
+            #expect(store.mapURL == SharedStore.defaultMapURL, "accepted \(raw)")
+        }
+    }
+
+    @Test func retiringACustomMapURLClearsIt() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("https://raw.githubusercontent.com/x/y.json", forKey: "sk.mapURL")
+        store.retireCustomMapURLIfNeeded()
+        #expect(defaults.object(forKey: "sk.mapURL") == nil)
     }
 
     @Test func tolerantDecodingOfOlderBlobs() throws {

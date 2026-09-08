@@ -14,6 +14,7 @@ struct StudentIDView: View {
     @State private var stage: StudentIDImportStage?
     @State private var importID: UUID?
     @State private var isScanning = false
+    @State private var removeFailed = false
     /// Set when the student asks for a different screenshot: the picker can only
     /// be presented once the import sheet has actually gone away.
     @State private var picksAgainOnDismiss = false
@@ -51,7 +52,8 @@ struct StudentIDView: View {
                                 Label("Replace Screenshot", systemImage: "photo.badge.arrow.down")
                             }
                             Button(role: .destructive) {
-                                model.removeStudentID()
+                                do { try model.removeStudentID() }
+                                catch { removeFailed = true }
                             } label: {
                                 Label("Remove ID", systemImage: "trash")
                             }
@@ -73,6 +75,11 @@ struct StudentIDView: View {
             if let card = model.studentID {
                 StudentIDScanView(card: card)
             }
+        }
+        .alert("Could not remove your ID", isPresented: $removeFailed) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your ID is still saved on this phone. Try again when the device is unlocked.")
         }
     }
 
@@ -262,5 +269,7 @@ struct StudentIDView: View {
 
 #Preview {
     StudentIDView()
-        .environment(AppModel(store: SharedStore(defaults: UserDefaults(suiteName: "student-id-preview")!)))
+        .environment(AppModel(store: SharedStore(
+            defaults: UserDefaults(suiteName: "student-id-preview")!,
+            secrets: InMemorySecretStore())))
 }

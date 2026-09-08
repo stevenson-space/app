@@ -58,6 +58,7 @@ final class AppModel {
     private var lastComputedDay: DayKey
 
     private var dayChangeObserver: NSObjectProtocol?
+    private var protectedDataObserver: NSObjectProtocol?
 
     // MARK: Time travel (DEBUG builds only)
 
@@ -115,16 +116,24 @@ final class AppModel {
         self.lunchMenu = lunchMenu
         self.lunchFetchMetadata = store.lunchFetchMetadata
 
-        let studentID = store.studentIDData.flatMap(StudentIDCard.decoded(from:))
+        // Both the card and its photo are protected while the device is locked,
+        // so a launch in that state legitimately reads nothing. Telling that
+        // apart from "no ID saved" matters: the orphan cleanup below would
+        // otherwise delete a photo whose card was merely unreadable.
+        let idRead = store.readStudentIDData()
+        let studentID = idRead.data.flatMap(StudentIDCard.decoded(from:))
         self.studentID = studentID
         self.studentIDPhotoHidden = store.studentIDPhotoHidden
-        // A photo with no card behind it is orphaned data; drop it rather than
-        // keeping a face on disk for an ID that no longer exists.
-        if studentID == nil {
-            photoStore.remove()
+        if studentID != nil {
+            photoStore.reapplyProtectionIfPresent()
+            self.studentIDPhoto = photoStore.loadData().flatMap(UIImage.init(data:))
+        } else if idRead == .unavailable {
             self.studentIDPhoto = nil
         } else {
-            self.studentIDPhoto = photoStore.loadData().flatMap(UIImage.init(data:))
+            // A photo with no card behind it is orphaned data; drop it rather
+            // than keeping a face on disk for an ID that no longer exists.
+            photoStore.remove()
+            self.studentIDPhoto = nil
         }
 
         self.lastComputedDay = today
@@ -144,6 +153,13 @@ final class AppModel {
             forName: .NSCalendarDayChanged, object: nil, queue: nil
         ) { [weak self] _ in
             Task { @MainActor [weak self] in self?.refreshDerived() }
+        }
+
+        protectedDataObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.protectedDataDidBecomeAvailableNotification,
+            object: nil, queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.reloadStudentIDIfUnread() }
         }
     }
 
@@ -328,22 +344,53 @@ final class AppModel {
 
     func saveStudentID(_ extraction: StudentIDExtraction) throws {
         let encoded = try extraction.card.encoded()
+        // The card and the photo are one thing to the student, so the photo
+        // write has to be undone if the card write fails below: the new face
+        // over the old card is worse than either import failing outright.
+        let previousPhoto = photoStore.loadData()
         if let jpeg = extraction.photoJPEG {
             try photoStore.save(jpeg)
         } else {
             photoStore.remove()
         }
-        store.studentIDData = encoded
+        do {
+            // Last, and throwing: a card the student was told was saved but which
+            // never reached the keychain would vanish at the next launch.
+            try store.setStudentIDData(encoded)
+        } catch {
+            if let previousPhoto {
+                _ = try? photoStore.save(previousPhoto)
+            } else {
+                photoStore.remove()
+            }
+            throw error
+        }
         studentID = extraction.card
         studentIDPhoto = extraction.photoJPEG.flatMap(UIImage.init(data:))
     }
 
-    func removeStudentID() {
-        store.studentIDData = nil
+    func removeStudentID() throws {
+        try store.setStudentIDData(nil)
         photoStore.remove()
         studentID = nil
         studentIDPhoto = nil
         setStudentIDPhotoHidden(false)
+    }
+
+    /// Picks up an ID that could not be read at launch because the device was
+    /// locked. Both the card and the photo are protected until first unlock, and
+    /// the app can be launched into the background before that happens.
+    private func reloadStudentIDIfUnread() {
+        // The hide-photo flag is in the App Group plist, which is as unreadable
+        // as the card itself before first unlock. Left alone it stays at the
+        // `false` that a locked launch read, and a photo the student chose to
+        // hide comes back for the rest of the session.
+        studentIDPhotoHidden = store.studentIDPhotoHidden
+        if studentID == nil {
+            studentID = store.studentIDData.flatMap(StudentIDCard.decoded(from:))
+        }
+        guard studentID != nil, studentIDPhoto == nil else { return }
+        studentIDPhoto = photoStore.loadData().flatMap(UIImage.init(data:))
     }
 
     /// School years roll over in August, so an ID imported last year is worth a
@@ -359,11 +406,10 @@ final class AppModel {
 
     var mapURL: URL { store.mapURL }
 
-    func setMapURL(_ url: URL) {
-        store.mapURL = url
-        invalidateETagAndResync()
-    }
-
+    /// There is no setter on purpose: the data-source editor was removed, so the
+    /// only supported source is the default one and the only move left is back
+    /// to it. Re-adding a setter means re-adding the allow-list check in
+    /// `SharedStore.isAllowedSource` at the call site too.
     func resetMapURL() {
         store.resetMapURL()
         invalidateETagAndResync()
@@ -456,6 +502,9 @@ final class AppModel {
 
     func handleScenePhase(_ phase: ScenePhase) {
         guard phase == .active else { return }
+        // A transient keychain error may not emit a protected-data notification;
+        // retry the launch-time read whenever the app returns to the foreground.
+        reloadStudentIDIfUnread()
         if today != lastComputedDay {
             refreshDerived()
         }

@@ -32,10 +32,12 @@ public struct StudentIDPhotoStore: Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = fileURL
         #if os(iOS)
-        // Encrypted at rest, but readable from the first unlock onward — a
-        // student pulling up their ID at a lunch line should never meet a card
-        // that will not load. Complete protection would do exactly that.
-        try jpeg.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        // The strongest class available: the file is unreadable whenever the
+        // screen is locked. The card is only ever shown in the foreground, on an
+        // unlocked device, so the student at the lunch line never notices — but
+        // a launch while locked will read nothing; AppModel preserves the file
+        // by gating cleanup on the card's protected keychain read instead.
+        try jpeg.write(to: url, options: [.atomic, .completeFileProtection])
         #else
         try jpeg.write(to: url, options: [.atomic])
         #endif
@@ -44,6 +46,14 @@ public struct StudentIDPhotoStore: Sendable {
 
     public func loadData() -> Data? {
         try? Data(contentsOf: fileURL)
+    }
+
+    /// Rewrites an existing photo with the current protection class.
+    public func reapplyProtectionIfPresent() {
+        #if os(iOS)
+        guard let data = loadData() else { return }
+        try? data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+        #endif
     }
 
     public func remove() {

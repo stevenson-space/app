@@ -17,7 +17,12 @@ import Vision
 public enum StudentIDExtractor {
 
     public static func extract(from imageData: Data) async throws -> StudentIDExtraction {
-        guard let image = normalizedImage(from: imageData) else {
+        let image: CGImage
+        do {
+            image = try normalizedImageResult(from: imageData)
+        } catch ImageNormalizationError.tooLarge {
+            throw StudentIDImportError.imageTooLarge
+        } catch {
             throw StudentIDImportError.unreadableImage
         }
         return try await extract(from: image)
@@ -320,19 +325,71 @@ public enum StudentIDExtractor {
 
     // MARK: - Decoding
 
+    /// The largest compressed file worth opening. A Student Profile screenshot
+    /// is a few megabytes; anything past this is not one, and refusing it costs
+    /// nothing because the decoder is never reached.
+    static let maxImageBytes = 40 * 1024 * 1024
+
+    /// The largest source image worth decoding, in pixels. Well past any phone
+    /// or tablet screenshot, and short of the sizes a decompression bomb needs
+    /// to matter: 120 MP would be ~480 MB of RGBA before anything else runs.
+    static let maxSourcePixels = 120_000_000
+
+    /// What the pipeline actually works on. Vision reads a barcode and a name
+    /// comfortably at this size, and it bounds every allocation downstream —
+    /// decode, face detection, OCR, and the crop — to roughly 64 MB.
+    static let maxWorkingDimension = 4096
+
+    private enum ImageNormalizationError: Error {
+        case unreadable
+        case tooLarge
+    }
+
     /// Decodes and, if the file carries an EXIF orientation, bakes it in — so
     /// every coordinate downstream lives in one space and no crop comes out
     /// sideways.
+    ///
+    /// Nothing is decoded until the source's declared dimensions have been read
+    /// and accepted, and the decode itself goes through ImageIO's thumbnail path
+    /// with a hard pixel cap. An oversized or malicious file is therefore
+    /// rejected, or downscaled, before it can allocate.
     static func normalizedImage(from data: Data) -> CGImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+        try? normalizedImageResult(from: data)
+    }
+
+    private static func normalizedImageResult(from data: Data) throws -> CGImage {
+        guard data.count <= maxImageBytes else { throw ImageNormalizationError.tooLarge }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            throw ImageNormalizationError.unreadable
+        }
 
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        guard let width = properties?[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties?[kCGImagePropertyPixelHeight] as? Int,
+              width > 0, height > 0 else { throw ImageNormalizationError.unreadable }
+        guard width.multipliedReportingOverflow(by: height).overflow == false,
+              width * height <= maxSourcePixels else {
+            throw ImageNormalizationError.tooLarge
+        }
+
+        // Thumbnail decoding never materializes the full-size image, so a file
+        // claiming modest dimensions cannot expand past the cap either.
+        // `withTransform` is deliberately off: `redrawn` below owns orientation,
+        // and one path for it keeps every downstream coordinate honest.
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxWorkingDimension,
+            kCGImageSourceShouldCacheImmediately: true,
+        ] as CFDictionary) else { throw ImageNormalizationError.unreadable }
+
         let raw = properties?[kCGImagePropertyOrientation] as? UInt32 ?? 1
         guard let orientation = CGImagePropertyOrientation(rawValue: raw), orientation != .up else {
             return image
         }
-        return redrawn(image, orientation: orientation)
+        guard let redrawn = redrawn(image, orientation: orientation) else {
+            throw ImageNormalizationError.unreadable
+        }
+        return redrawn
     }
 
     private static func redrawn(_ image: CGImage, orientation: CGImagePropertyOrientation) -> CGImage? {

@@ -14,7 +14,15 @@ public final class SharedStore: @unchecked Sendable {
     public static let defaultLunchMenuURL = URL(
         string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-menu.json")!
 
+    /// Hosts the schedule and lunch manifests. Every remote source the app is
+    /// allowed to reach lives here; nothing else is fetchable.
+    public static let allowedHosts: Set<String> = ["raw.githubusercontent.com"]
+
     private let defaults: UserDefaults
+    private let secrets: SecretStore
+    /// Where this app kept its preferences before the App Group suite existed.
+    /// A separate property only so tests can point it somewhere harmless.
+    private let legacyDefaults: UserDefaults
 
     private enum Keys {
         static let userConfig = "sk.userConfig"
@@ -37,18 +45,26 @@ public final class SharedStore: @unchecked Sendable {
     /// Every key the one-time App Group migration carries across.
     static var migratableKeys: [String] { Keys.all }
 
-    /// Test injection point.
-    public init(defaults: UserDefaults) {
+    /// Test injection point. Pass an `InMemorySecretStore` so tests never reach
+    /// the host's real keychain, and a scratch suite as `legacyDefaults` so
+    /// they never write to the host's standard defaults either.
+    public init(defaults: UserDefaults, secrets: SecretStore,
+                legacyDefaults: UserDefaults = .standard) {
         self.defaults = defaults
+        self.secrets = secrets
+        self.legacyDefaults = legacyDefaults
     }
 
     public convenience init() {
         if let suite = UserDefaults(suiteName: SharedStore.appGroupID) {
-            self.init(defaults: suite)
+            self.init(defaults: suite, secrets: KeychainSecretStore())
             migrateFromStandardIfNeeded()
         } else {
-            self.init(defaults: .standard)
+            self.init(defaults: .standard, secrets: KeychainSecretStore())
         }
+        // Order matters: the App Group migration must land any legacy blob in
+        // this suite before the keychain migration goes looking for it.
+        migrateStudentIDToKeychainIfNeeded()
         retireCustomMapURLIfNeeded()
     }
 
@@ -57,21 +73,85 @@ public final class SharedStore: @unchecked Sendable {
     /// active forever with no recovery path. Drop it once so upgraded installs
     /// return to the supported default source.
     func retireCustomMapURLIfNeeded() {
-        guard !defaults.bool(forKey: Keys.mapURLRetired) else { return }
+        // Clean up both stores even if an earlier launch already recorded the
+        // retirement. Otherwise a later migration pass could reintroduce the
+        // legacy value from the standard defaults suite.
+        if defaults.bool(forKey: Keys.mapURLRetired) {
+            defaults.removeObject(forKey: Keys.mapURL)
+            legacyDefaults.removeObject(forKey: Keys.mapURL)
+            return
+        }
         resetMapURL()
+        legacyDefaults.removeObject(forKey: Keys.mapURL)
         defaults.set(true, forKey: Keys.mapURLRetired)
     }
 
     /// Copies any pre-App-Group data from `.standard` into the suite, once.
+    /// The student ID is copied like everything else and deliberately not
+    /// deleted here: `migrateStudentIDToKeychainIfNeeded` drops both plaintext
+    /// copies together, once the keychain is known to hold the card.
     func migrateFromStandardIfNeeded() {
         guard !defaults.bool(forKey: Keys.migrated) else { return }
-        let standard = UserDefaults.standard
+        var copied = false
         for key in Keys.all where defaults.object(forKey: key) == nil {
-            if let value = standard.object(forKey: key) {
+            // A retired custom URL must never be copied back from the old
+            // suite. Other keys remain eligible for migration and retries.
+            if key == Keys.mapURL && defaults.bool(forKey: Keys.mapURLRetired) {
+                continue
+            }
+            if let value = legacyDefaults.object(forKey: key) {
                 defaults.set(value, forKey: key)
+                copied = true
             }
         }
-        defaults.set(true, forKey: Keys.migrated)
+        // A launch before first unlock reads the old plist as empty, which is
+        // indistinguishable from having nothing to migrate. Burning the
+        // one-shot flag there would strand the config, overrides and prefs in
+        // the old suite forever, so only a launch that actually carried
+        // something across closes the door. On a genuinely fresh install the
+        // loop keeps running — ten `object(forKey:)` reads, and the old suite
+        // is empty, so there is nothing left for it to resurrect.
+        if copied {
+            defaults.set(true, forKey: Keys.migrated)
+        }
+    }
+
+    /// The plaintext card, wherever an older version left it: this suite, or
+    /// the standard defaults from before the suite existed.
+    private var legacyStudentIDData: Data? {
+        defaults.data(forKey: Keys.studentID) ?? legacyDefaults.data(forKey: Keys.studentID)
+    }
+
+    /// Drops the plaintext card from every plist that could still hold one.
+    /// Only ever called once the keychain is known to have the bytes: the
+    /// standard-defaults copy is the last one an upgraded install has left.
+    private func clearPlaintextStudentID() {
+        defaults.removeObject(forKey: Keys.studentID)
+        legacyDefaults.removeObject(forKey: Keys.studentID)
+    }
+
+    /// Moves a student ID written by a version that kept it in `UserDefaults`
+    /// into the keychain, once.
+    ///
+    /// The plist copy is deleted only after the keychain write succeeds — on a
+    /// background launch with the device still locked the write fails, and the
+    /// card must survive until an unlocked launch can move it.
+    func migrateStudentIDToKeychainIfNeeded() {
+        guard let legacy = legacyStudentIDData else { return }
+        switch secrets.read(Keys.studentID) {
+        case .value:
+            // Already migrated; the plist copies are leftovers from a run whose
+            // cleanup did not finish — including an install upgraded by a
+            // version that cleared the suite but not the standard defaults.
+            clearPlaintextStudentID()
+        case .unavailable:
+            // Locked. Reading nothing here does not mean there is nothing there,
+            // so leave both copies alone and migrate on a later launch.
+            return
+        case .missing:
+            guard (try? secrets.write(legacy, for: Keys.studentID)) != nil else { return }
+            clearPlaintextStudentID()
+        }
     }
 
     // MARK: - Typed accessors
@@ -112,21 +192,46 @@ public final class SharedStore: @unchecked Sendable {
         set { encode(newValue, key: Keys.lunchFetchMetadata) }
     }
 
-    /// The student's ID card, as opaque bytes.
+    /// The student's ID card, as opaque bytes, in the keychain.
     ///
     /// Deliberately untyped here: the card model lives in StudentIDKit, and
-    /// ScheduleKit has no business depending on it. Keeping the key in this
-    /// store anyway means the ID rides along with everything else the day the
-    /// App Group entitlement lands and widgets need to read it.
-    public var studentIDData: Data? {
-        get { defaults.data(forKey: Keys.studentID) }
-        set {
-            if let newValue {
-                defaults.set(newValue, forKey: Keys.studentID)
-            } else {
-                defaults.removeObject(forKey: Keys.studentID)
-            }
+    /// ScheduleKit has no business depending on it. It is the one thing this
+    /// store keeps outside `UserDefaults`, because a preferences plist is
+    /// readable from a backup or an extracted container and carries the
+    /// student's number and name in the clear.
+    ///
+    /// Being device-only and unavailable while locked, a widget will not be able
+    /// to read it as-is; when the App Group entitlement lands, publish a
+    /// deliberately redacted view for that surface rather than moving this.
+    public func readStudentIDData() -> SecretReadResult {
+        let stored = secrets.read(Keys.studentID)
+        guard case .missing = stored, let legacy = legacyStudentIDData else {
+            return stored
         }
+        // The keychain definitively has nothing while the plist still holds a
+        // card, so the one-time move has not happened: the launch that would
+        // have run it met a locked device, or its write failed. Retry it now
+        // that something is actually asking for the card — `init()` runs the
+        // migration once per launch, which is no help to a process that started
+        // before first unlock.
+        if (try? secrets.write(legacy, for: Keys.studentID)) != nil {
+            clearPlaintextStudentID()
+        }
+        // Either way, serve the bytes the student still has. Reporting the card
+        // as missing would blank the ID tab for the rest of the session and let
+        // the launch-time orphan cleanup delete the photo that belongs to it.
+        return .value(legacy)
+    }
+
+    /// Nil for both "no card saved" and "cannot be read right now" — call
+    /// `readStudentIDData()` where the difference matters.
+    public var studentIDData: Data? { readStudentIDData().data }
+
+    public func setStudentIDData(_ data: Data?) throws {
+        try secrets.write(data, for: Keys.studentID)
+        // A blob left by a version that used the plist would otherwise outlive
+        // the removal and reappear at the next migration.
+        clearPlaintextStudentID()
     }
 
     /// A display preference; hiding the photo keeps the saved image available.
@@ -140,15 +245,30 @@ public final class SharedStore: @unchecked Sendable {
         set { encode(newValue, key: Keys.notificationPrefs) }
     }
 
-    /// The remote map URL — user-editable in Settings, resettable to default.
+    /// The remote map URL.
+    ///
+    /// Read-only: the in-app data-source editor was removed, so there is no
+    /// supported way to set this any more. A value left behind by an older
+    /// install — or written into the plist by hand — is honoured only if it
+    /// still points at an approved source, so a persisted URL cannot redirect
+    /// schedule requests somewhere the app would never choose itself.
     public var mapURL: URL {
-        get {
-            guard let raw = defaults.string(forKey: Keys.mapURL), let url = URL(string: raw) else {
-                return SharedStore.defaultMapURL
-            }
-            return url
+        guard let raw = defaults.string(forKey: Keys.mapURL),
+              let url = URL(string: raw),
+              SharedStore.isAllowedSource(url) else {
+            return SharedStore.defaultMapURL
         }
-        set { defaults.set(newValue.absoluteString, forKey: Keys.mapURL) }
+        return url
+    }
+
+    /// HTTPS, an approved host, no embedded credentials, and the default port.
+    public static func isAllowedSource(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https",
+              let host = url.host?.lowercased(),
+              allowedHosts.contains(host),
+              url.user == nil, url.password == nil,
+              url.port == nil || url.port == 443 else { return false }
+        return true
     }
 
     public var isUsingDefaultMapURL: Bool { mapURL == SharedStore.defaultMapURL }
