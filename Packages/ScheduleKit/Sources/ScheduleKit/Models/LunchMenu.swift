@@ -31,13 +31,17 @@ public struct LunchMenuDay: Equatable, Sendable {
     }
 }
 
-/// A validated four-week lunch rotation. The source format matches the
-/// website's `src/data/lunch-menu.json` manifest exactly.
+/// A validated lunch rotation, assembled from the per-station files the
+/// website publishes under `src/data/lunch-rotating` plus the rotation dates
+/// the bundled manifest carries.
 public struct LunchMenu: Equatable, Sendable {
     public let validFrom: DayKey
     public let validTo: DayKey
     public let semesterSwitch: DayKey
     public let offset: Int
+    /// How many weeks the rotation runs before repeating. Read from the
+    /// published station data, which has already changed from four to five.
+    public let rotationWeeks: Int
 
     let comfort: StationSchedule<String>
     let mindful: StationSchedule<String>
@@ -55,7 +59,7 @@ public struct LunchMenu: Equatable, Sendable {
               let elapsedDays = SchoolTime.calendar.dateComponents(
                 [.day], from: start, to: target).day else { return nil }
 
-        let week = (elapsedDays / 7 + offset) % 4
+        let week = (elapsedDays / 7 + offset) % rotationWeeks
         let weekdayIndex = weekday - 2 // Monday = 0, Friday = 4
         let semester = day < semesterSwitch ? 0 : 1
         let weekdayName = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][weekdayIndex]

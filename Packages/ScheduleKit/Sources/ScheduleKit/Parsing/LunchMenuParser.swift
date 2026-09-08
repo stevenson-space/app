@@ -36,16 +36,25 @@ public enum LunchMenuParser {
         guard validFrom <= semesterSwitch, semesterSwitch <= validTo else {
             throw LunchMenuParserError.invalid("semesterSwitch must be inside the valid range")
         }
-        guard (0..<4).contains(wire.offset) else {
-            throw LunchMenuParserError.invalid("offset must be in 0..<4")
+
+        // The rotation length is whatever the website publishes, not a fixed
+        // four: it has already changed once. Every station must agree on it,
+        // because a single week index addresses all of them.
+        let weeks = try rotationWeeks(wire.stations)
+        guard (0..<weeks).contains(wire.offset) else {
+            throw LunchMenuParserError.invalid("offset must be in 0..<\(weeks)")
         }
 
-        let comfort = try station(wire.stations.comfort, name: "comfort", validate: nonempty)
-        let mindful = try station(wire.stations.mindful, name: "mindful", validate: nonempty)
-        let sides = try station(wire.stations.sides, name: "sides", validate: pair)
-        let soup = try station(wire.stations.soup, name: "soup", validate: pair)
-        let international = try station(
-            wire.stations.international, name: "international", validate: nonempty)
+        let comfort = try station(wire.stations.comfort, name: "comfort",
+                                  weeks: weeks, validate: nonempty)
+        let mindful = try station(wire.stations.mindful, name: "mindful",
+                                  weeks: weeks, validate: nonempty)
+        let sides = try station(wire.stations.sides, name: "sides",
+                                weeks: weeks, validate: pair)
+        let soup = try station(wire.stations.soup, name: "soup",
+                               weeks: weeks, validate: pair)
+        let international = try station(wire.stations.international, name: "international",
+                                        weeks: weeks, validate: nonempty)
         guard wire.special.count == 2,
               wire.special.allSatisfy({ $0.count == 5 && $0.allSatisfy(nonempty) }) else {
             throw LunchMenuParserError.invalid("special must contain two semesters of five weekdays")
@@ -56,6 +65,7 @@ public enum LunchMenuParser {
             validTo: validTo,
             semesterSwitch: semesterSwitch,
             offset: wire.offset,
+            rotationWeeks: weeks,
             comfort: comfort,
             mindful: mindful,
             sides: sides,
@@ -88,20 +98,43 @@ public enum LunchMenuParser {
         return key
     }
 
+    /// The rotation length the manifest as a whole runs on. Read from the
+    /// stations rather than declared, since the published files carry no such
+    /// field, and rejected outright when they disagree.
+    private static func rotationWeeks(_ stations: WireStations) throws -> Int {
+        let counts = [
+            ("comfort", stations.comfort.weekCount),
+            ("mindful", stations.mindful.weekCount),
+            ("sides", stations.sides.weekCount),
+            ("soup", stations.soup.weekCount),
+            ("international", stations.international.weekCount),
+        ]
+        let weeks = counts[0].1
+        guard weeks > 0 else {
+            throw LunchMenuParserError.invalid("the rotation must contain at least one week")
+        }
+        if let mismatch = counts.first(where: { $0.1 != weeks }) {
+            throw LunchMenuParserError.invalid(
+                "\(mismatch.0) has \(mismatch.1) weeks but the rotation is \(weeks) weeks")
+        }
+        return weeks
+    }
+
     private static func station<Value: Decodable & Equatable & Sendable>(
-        _ wire: WireStation<Value>, name: String, validate: (Value) -> Bool
+        _ wire: WireStation<Value>, name: String, weeks: Int, validate: (Value) -> Bool
     ) throws -> StationSchedule<Value> {
         switch wire.values {
         case .weekly(let values):
-            guard values.count == 4, values.allSatisfy(validate) else {
-                throw LunchMenuParserError.invalid("\(name) weekly data must contain four valid entries")
+            guard values.count == weeks, values.allSatisfy(validate) else {
+                throw LunchMenuParserError.invalid(
+                    "\(name) weekly data must contain \(weeks) valid entries")
             }
             return StationSchedule(storage: .weekly(values))
         case .daily(let values):
-            guard values.count == 4,
+            guard values.count == weeks,
                   values.allSatisfy({ $0.count == 5 && $0.allSatisfy(validate) }) else {
                 throw LunchMenuParserError.invalid(
-                    "\(name) daily data must contain four weeks of five valid weekdays")
+                    "\(name) daily data must contain \(weeks) weeks of five valid weekdays")
             }
             return StationSchedule(storage: .daily(values))
         }
@@ -140,6 +173,13 @@ private struct WireStation<Value: Decodable>: Decodable {
     }
 
     let values: Values
+
+    var weekCount: Int {
+        switch values {
+        case .weekly(let values): return values.count
+        case .daily(let values): return values.count
+        }
+    }
 
     private enum CodingKeys: String, CodingKey {
         case cadence, data

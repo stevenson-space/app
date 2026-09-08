@@ -11,11 +11,19 @@ public final class SharedStore: @unchecked Sendable {
     public static let appGroupID = "group.shankar.Stevenson-Space-Companion-App"
     public static let defaultMapURL = URL(
         string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json")!
-    public static let defaultLunchMenuURL = URL(
-        string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-menu.json")!
+    /// The website publishes the lunch rotation as one file per station under
+    /// `src/data/lunch-rotating`. There is no consolidated manifest, so the app
+    /// fetches every station and assembles the manifest itself.
+    public static let lunchStationNames = [
+        "comfort", "international", "mindful", "sides", "soup", "special",
+    ]
 
-    /// Hosts the schedule and lunch manifests. Every remote source the app is
-    /// allowed to reach lives here; nothing else is fetchable.
+    public static func lunchStationURL(named name: String) -> URL {
+        URL(string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-rotating/\(name).json")!
+    }
+
+    /// Hosts the schedule manifest and the lunch station files. Every remote
+    /// source the app is allowed to reach lives here; nothing else is fetchable.
     public static let allowedHosts: Set<String> = ["raw.githubusercontent.com"]
 
     private let defaults: UserDefaults
