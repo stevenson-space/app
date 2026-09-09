@@ -6,8 +6,10 @@ import ScheduleKit
 struct StatusScreenView: View {
     @Environment(AppModel.self) private var model
 
+    let timeline: DayTimeline
+    let isLive: Bool
+
     var body: some View {
-        let timeline = model.todayTimeline
         let content = content(for: timeline)
 
         VStack(spacing: 18) {
@@ -33,9 +35,9 @@ struct StatusScreenView: View {
                     .foregroundStyle(.blue)
             }
 
-            if case .outsideYear = timeline.kind {
+            if isLive, case .outsideYear = timeline.kind {
                 summerCountdown
-            } else if let next = model.nextSchoolDay {
+            } else if isLive, let next = model.nextSchoolDay {
                 VStack(spacing: 6) {
                     Text("NEXT SCHOOL DAY")
                         .font(.caption2.weight(.bold))
@@ -83,8 +85,8 @@ struct StatusScreenView: View {
         switch timeline.kind {
         case .weekend:
             return Content(icon: "sun.max.fill", tint: .yellow,
-                           title: "It's the Weekend",
-                           message: "No school today.")
+                           title: isLive ? "It's the Weekend" : "Weekend",
+                           message: isLive ? "No school today." : "No school on this date.")
         case .breakDay(let label):
             let icon = label.localizedCaseInsensitiveContains("winter") ? "snowflake"
                 : label.localizedCaseInsensitiveContains("spring") ? "leaf.fill"
@@ -92,23 +94,27 @@ struct StatusScreenView: View {
             let tint: Color = label.localizedCaseInsensitiveContains("winter") ? .cyan : .green
             return Content(icon: icon, tint: tint,
                            title: label,
-                           message: "School's out — enjoy the break.")
+                           message: isLive ? "School's out — enjoy the break." : "No school during this break.")
         case .noSchool:
             return Content(icon: "moon.zzz.fill", tint: .indigo,
                            title: "No School",
-                           message: "Enjoy the day off.")
+                           message: isLive ? "Enjoy the day off." : "No school on this date.")
         case .asynchronous:
             return Content(icon: "laptopcomputer", tint: .blue,
                            title: "Asynchronous E-Learning Day",
-                           message: "There is no bell schedule today. Check your classes online for today's work.")
+                           message: isLive
+                                ? "There is no bell schedule today. Check your classes online for today's work."
+                                : "There is no bell schedule on this date. Classwork is online.")
         case .outsideYear:
             return Content(icon: "sun.horizon.fill", tint: .orange,
-                           title: "Summer Break",
-                           message: "School is out — no bell schedule right now.")
+                           title: isLive ? "Summer Break" : "Outside the School Calendar",
+                           message: isLive
+                                ? "School is out — no bell schedule right now."
+                                : "This date is outside the supported school years. No bell schedule is available.")
         case .unknownType(let name):
             return Content(icon: "questionmark.circle.fill", tint: .gray,
                            title: name,
-                           message: "The school calendar marks today as “\(name)”, but this version of the app doesn't have its bell schedule.")
+                           message: "The school calendar marks \(isLive ? "today" : "this date") as “\(name)”, but this version of the app doesn't have its bell schedule.")
         case .school:
             // Never routed here; HomeView shows the schedule for school days.
             return Content(icon: "clock", tint: .secondary,
