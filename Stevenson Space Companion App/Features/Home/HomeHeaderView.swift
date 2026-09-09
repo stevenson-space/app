@@ -5,21 +5,12 @@ import ScheduleKit
 /// anything else, with honesty badges for overrides and uncertain rotations.
 struct HomeHeaderView: View {
     @Environment(AppModel.self) private var model
+    let timeline: DayTimeline
 
     var body: some View {
-        let timeline = model.todayTimeline
         let isStandard = timeline.isStandardSchedule
 
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(TimeDisplay.dayLabel(timeline.day, relativeTo: model.today))
-                    .font(.title2.bold())
-                Spacer()
-                Text(TimeDisplay.shortDayLabel(timeline.day))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
             if isStandard {
                 HStack(spacing: 6) {
                     Image(systemName: "clock")
@@ -46,10 +37,10 @@ struct HomeHeaderView: View {
             badges
             dataFreshnessLine
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder private var badges: some View {
-        let timeline = model.todayTimeline
         HStack(spacing: 8) {
             if timeline.provenance == .override {
                 badge("Manual override", icon: "pencil", tint: .blue)
