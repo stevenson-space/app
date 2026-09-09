@@ -114,7 +114,7 @@ struct StatusScreenView: View {
         case .unknownType(let name):
             return Content(icon: "questionmark.circle.fill", tint: .gray,
                            title: name,
-                           message: "The school calendar marks this date as “\(name)”, but this version of the app doesn't have its bell schedule.")
+                           message: "The school calendar marks \(isLive ? "today" : "this date") as “\(name)”, but this version of the app doesn't have its bell schedule.")
         case .school:
             // Never routed here; HomeView shows the schedule for school days.
             return Content(icon: "clock", tint: .secondary,

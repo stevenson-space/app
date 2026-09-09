@@ -6,6 +6,7 @@ import ScheduleKit
 struct HomeHeaderView: View {
     @Environment(AppModel.self) private var model
     let timeline: DayTimeline
+    @State private var showsOverrideEditor = false
 
     var body: some View {
         let isStandard = timeline.isStandardSchedule
@@ -38,6 +39,16 @@ struct HomeHeaderView: View {
             dataFreshnessLine
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(isPresented: $showsOverrideEditor) {
+            NavigationStack {
+                OverrideEditorView(initialDay: timeline.day)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { showsOverrideEditor = false }
+                        }
+                    }
+            }
+        }
     }
 
     @ViewBuilder private var badges: some View {
@@ -47,7 +58,7 @@ struct HomeHeaderView: View {
             }
             if timeline.rotationUncertain {
                 Button {
-                    model.selectedTab = .settings
+                    showsOverrideEditor = true
                 } label: {
                     badge("Rotation unverified — tap to fix", icon: "questionmark.circle", tint: .orange)
                 }

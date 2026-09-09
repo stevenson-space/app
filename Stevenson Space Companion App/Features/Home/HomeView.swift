@@ -3,6 +3,7 @@ import ScheduleKit
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
     // nil follows the live day, including midnight and foreground rollovers.
     @State private var selectedDay: DayKey?
 
@@ -33,6 +34,11 @@ struct HomeView: View {
             .padding(.bottom, 24)
         }
         .background(Color(.systemGroupedBackground))
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                selectedDay = nil
+            }
+        }
         #if DEBUG
         .overlay(alignment: .bottom) {
             if model.isTimeTraveling {

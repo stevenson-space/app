@@ -7,6 +7,12 @@ struct HomeDayPicker: View {
     let select: (DayKey) -> Void
     @State private var showsCalendar = false
 
+    private var dateRange: ClosedRange<Date> {
+        let start = SchoolYearCatalog.years.first?.firstDay.date() ?? Date()
+        let end = SchoolYearCatalog.years.last?.lastDay.date(at: HourMinute(hour: 23, minute: 59)) ?? start
+        return start...max(start, end)
+    }
+
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
@@ -51,8 +57,12 @@ struct HomeDayPicker: View {
             NavigationStack {
                 ScrollView {
                     DatePicker("Schedule date", selection: Binding(
-                        get: { day.date() ?? today.date() ?? Date() },
-                        set: { select(DayKey(date: $0)) }), displayedComponents: .date)
+                        get: {
+                            let date = day.date() ?? today.date() ?? Date()
+                            return min(max(date, dateRange.lowerBound), dateRange.upperBound)
+                        },
+                        set: { select(DayKey(date: $0)) }),
+                               in: dateRange, displayedComponents: .date)
                         .datePickerStyle(.graphical)
                         .padding()
                 }
@@ -102,6 +112,7 @@ struct HomeDayPicker: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(StevensonPalette.accent)
+        .disabled(!dateRange.contains(day.advanced(by: offset).date() ?? .distantPast))
         .accessibilityLabel(title)
     }
 }

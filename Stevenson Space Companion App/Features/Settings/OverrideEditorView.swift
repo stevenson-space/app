@@ -8,6 +8,7 @@ import ScheduleKit
 struct OverrideEditorView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    var initialDay: DayKey? = nil
 
     @State private var selectedDate = Date()
     @State private var choice: Choice = .lateArrival
@@ -67,6 +68,8 @@ struct OverrideEditorView: View {
             Section {
                 DatePicker("Date", selection: $selectedDate,
                            in: dateRange, displayedComponents: .date)
+                    .environment(\.calendar, SchoolTime.calendar)
+                    .environment(\.timeZone, SchoolTime.timeZone)
                 Picker("Schedule", selection: $choice) {
                     ForEach(Choice.allCases) { option in
                         Text(option.label).tag(option)
@@ -99,9 +102,12 @@ struct OverrideEditorView: View {
         .onAppear {
             guard !initialized else { return }
             initialized = true
-            // Default to the app's "today" clamped into the school year.
-            let today = model.today.date() ?? Date()
-            selectedDate = min(max(today, dateRange.lowerBound), dateRange.upperBound)
+            // Use the requested day, or the app's "today", within the school year.
+            let date = (initialDay ?? model.today).date() ?? Date()
+            selectedDate = min(max(date, dateRange.lowerBound), dateRange.upperBound)
+            if initialDay != nil, model.timeline(for: selectedDay).rotationUncertain {
+                choice = .earlyDismissal
+            }
             prefill(for: DayKey(date: selectedDate))
         }
         .onChange(of: selectedDate) {
