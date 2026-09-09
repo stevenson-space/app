@@ -16,7 +16,10 @@ struct Stevenson_Space_Companion_AppApp: App {
             RootView()
                 .environment(model)
         }
-        .onChange(of: scenePhase) { _, phase in
+        // `initial: true` matters on a cold launch: when the scene is already
+        // active by the time this observer is installed, a change-only handler
+        // never fires and the app runs the whole session on cached data.
+        .onChange(of: scenePhase, initial: true) { _, phase in
             model.handleScenePhase(phase)
         }
     }
