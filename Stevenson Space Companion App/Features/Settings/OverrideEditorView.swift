@@ -105,8 +105,10 @@ struct OverrideEditorView: View {
             // Use the requested day, or the app's "today", within the school year.
             let date = (initialDay ?? model.today).date() ?? Date()
             selectedDate = min(max(date, dateRange.lowerBound), dateRange.upperBound)
-            if initialDay != nil, model.timeline(for: selectedDay).rotationUncertain {
+            let timeline = model.timeline(for: selectedDay)
+            if initialDay != nil, timeline.rotationUncertain {
                 choice = .earlyDismissal
+                rotation = timeline.rotation ?? .rotation1
             }
             prefill(for: DayKey(date: selectedDate))
         }
