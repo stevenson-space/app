@@ -10,7 +10,8 @@ struct HomeDayPicker: View {
     private var dateRange: ClosedRange<Date> {
         let start = SchoolYearCatalog.years.first?.firstDay.date() ?? Date()
         let end = SchoolYearCatalog.years.last?.lastDay.date(at: HourMinute(hour: 23, minute: 59)) ?? start
-        return start...max(start, end)
+        let current = today.date() ?? start
+        return min(start, current)...max(start, end, current)
     }
 
     var body: some View {
