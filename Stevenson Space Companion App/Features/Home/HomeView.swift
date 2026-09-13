@@ -66,6 +66,17 @@ struct HomeView: View {
             if region == 0 { isTimerCompact = false }
         }
         .background(Color(.systemGroupedBackground))
+        .overlay(alignment: .top) {
+            GeometryReader { geometry in
+                // Scroll views can draw into the safe area. Cover only the
+                // status-bar region while leaving the pinned timer below it.
+                Color(.systemGroupedBackground)
+                    .frame(height: geometry.safeAreaInsets.top)
+                    .offset(y: -geometry.safeAreaInsets.top)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
         .onChange(of: today) { _, _ in
             selectedDay = nil
         }
