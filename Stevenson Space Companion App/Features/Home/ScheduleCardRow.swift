@@ -7,6 +7,7 @@ struct ScheduleCardRow<Trailing: View>: View {
     let emoji: String
     let title: String
     let subtitle: String
+    var minimumHeight: CGFloat = 0
     var dimmed = false
     /// Tint of the "happening now" state; nil for every other card.
     var highlightTint: Color? = nil
@@ -36,6 +37,7 @@ struct ScheduleCardRow<Trailing: View>: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .frame(minHeight: minimumHeight)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(highlightTint.map { AnyShapeStyle($0.opacity(0.16)) }

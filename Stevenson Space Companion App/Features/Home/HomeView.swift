@@ -8,7 +8,7 @@ struct HomeView: View {
     @State private var selectedDay: DayKey?
     @State private var isTimerCompact = false
     @State private var viewportHeight: CGFloat = 0
-    @State private var headerBlockHeight: CGFloat = 0
+    @State private var timerHeaderHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
     private var today: DayKey { model.todayTimeline.day }
@@ -29,16 +29,13 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 22)
-                .onGeometryChange(for: CGFloat.self) { geometry in
-                    geometry.size.height
-                } action: { height in
-                    headerBlockHeight = height
-                }
 
                 if timeline.isSchoolDay {
                     if isToday {
                         Section {
-                            DayTimelineListView(timeline: timeline, isLive: true)
+                            DayTimelineListView(
+                                timeline: timeline, isLive: true,
+                                minimumHeight: max(viewportHeight - timerHeaderHeight - 24, 0))
                                 .padding(.horizontal, 16)
                         } header: {
                             HeroSection(isCompact: isTimerCompact)
@@ -47,6 +44,11 @@ struct HomeView: View {
                                 .padding(.bottom, 34)
                                 .frame(maxWidth: .infinity)
                                 .background(Color(.systemGroupedBackground))
+                                .onGeometryChange(for: CGFloat.self) { geometry in
+                                    geometry.size.height
+                                } action: { height in
+                                    timerHeaderHeight = height
+                                }
                         }
                     } else {
                         DayTimelineListView(timeline: timeline, isLive: false)
@@ -58,10 +60,6 @@ struct HomeView: View {
                 }
             }
             .padding(.bottom, 24)
-            // Even a short schedule must scroll the entire block above the timer
-            // offscreen so the compact section header can reach its pinned position.
-            .frame(minHeight: isToday && timeline.isSchoolDay ? viewportHeight + headerBlockHeight : nil,
-                   alignment: .top)
             .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86), value: isTimerCompact)
         }
         .onGeometryChange(for: CGFloat.self) { geometry in
