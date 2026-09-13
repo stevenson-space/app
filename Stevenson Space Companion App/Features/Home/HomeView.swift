@@ -3,8 +3,11 @@ import ScheduleKit
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     // nil follows the live day, including midnight and foreground rollovers.
     @State private var selectedDay: DayKey?
+    @State private var isTimerCompact = false
+    @State private var viewportHeight: CGFloat = 0
 
     private var today: DayKey { model.todayTimeline.day }
     private var day: DayKey { selectedDay ?? today }
@@ -14,16 +17,27 @@ struct HomeView: View {
         let timeline = isToday ? model.todayTimeline : model.timeline(for: day)
 
         ScrollView {
-            VStack(spacing: 22) {
-                HomeDayPicker(day: day, today: today, select: selectDay)
+            LazyVStack(spacing: 22, pinnedViews: [.sectionHeaders]) {
+                VStack(spacing: 22) {
+                    HomeDayPicker(day: day, today: today, select: selectDay)
+                    if timeline.isSchoolDay {
+                        HomeHeaderView(timeline: timeline)
+                    }
+                }
 
                 if timeline.isSchoolDay {
-                    HomeHeaderView(timeline: timeline)
                     if isToday {
-                        HeroSection()
-                            .padding(.top, 6)
+                        Section {
+                            DayTimelineListView(timeline: timeline, isLive: true)
+                        } header: {
+                            HeroSection(isCompact: isTimerCompact)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity)
+                                .background(Color(.systemGroupedBackground))
+                        }
+                    } else {
+                        DayTimelineListView(timeline: timeline, isLive: false)
                     }
-                    DayTimelineListView(timeline: timeline, isLive: isToday)
                 } else {
                     StatusScreenView(timeline: timeline, isLive: isToday)
                 }
@@ -31,6 +45,25 @@ struct HomeView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 24)
+            // Preserve a small scroll range on short schedules and large screens
+            // so collapsing cannot clamp straight back to the expanded state.
+            .frame(minHeight: isToday && timeline.isSchoolDay ? viewportHeight + 34 : nil,
+                   alignment: .top)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isTimerCompact)
+        }
+        .onGeometryChange(for: CGFloat.self) { geometry in
+            geometry.size.height
+        } action: { height in
+            viewportHeight = height
+        }
+        .onScrollGeometryChange(for: Int.self) { geometry in
+            let offset = geometry.contentOffset.y + geometry.contentInsets.top
+            return offset <= 0 ? 0 : (offset > 32 ? 2 : 1)
+        } action: { _, region in
+            // Keep the compact header until the top is reached, even if its
+            // smaller height causes the scroll view to clamp its offset.
+            if region == 2 { isTimerCompact = true }
+            if region == 0 { isTimerCompact = false }
         }
         .background(Color(.systemGroupedBackground))
         .onChange(of: today) { _, _ in
