@@ -49,7 +49,7 @@ struct HomeView: View {
             // so collapsing cannot clamp straight back to the expanded state.
             .frame(minHeight: isToday && timeline.isSchoolDay ? viewportHeight + 34 : nil,
                    alignment: .top)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isTimerCompact)
+            .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86), value: isTimerCompact)
         }
         .onGeometryChange(for: CGFloat.self) { geometry in
             geometry.size.height
