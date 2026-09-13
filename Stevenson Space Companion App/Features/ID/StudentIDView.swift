@@ -134,7 +134,7 @@ struct StudentIDView: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 step(1, "Open Infinite Campus.")
-                step(2, "Screenshot the page, including your student details and barcode.")
+                step(2, "Screenshot the homepage, including your student details and barcode.")
                 step(3, "Import it below.")
             }
             .padding(16)
