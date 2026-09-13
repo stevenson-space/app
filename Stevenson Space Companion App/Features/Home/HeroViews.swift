@@ -72,11 +72,19 @@ struct HeroSection: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    var isCompact = false
+
     var body: some View {
         let pref = model.config.timeFormat
 
         ZStack {
-            heroContent(pref: pref)
+            Group {
+                if isCompact {
+                    compactContent(pref: pref)
+                } else {
+                    heroContent(pref: pref)
+                }
+            }
                 .id(model.currentSpanID)
                 .transition(heroTransition)
         }
@@ -128,6 +136,59 @@ struct HeroSection: View {
             // to full-screen status views.
             EmptyView()
         }
+    }
+
+    @ViewBuilder
+    private func compactContent(pref: TimeFormatPref) -> some View {
+        switch model.currentState {
+        case .beforeSchool(let first):
+            compactCountdown(target: first.start, label: "until school starts", tint: .blue)
+        case .inBlock(let current, _):
+            compactCountdown(target: current.end, label: heroLabel(for: current, pref: pref),
+                             tint: ScheduleStyle.tint(for: current.role))
+        case .passing(_, let to, let kind):
+            compactCountdown(target: to.start,
+                             label: "\(kind == .intraPeriod ? "Switching halves" : "Passing") · \(to.displayName)\(roomSuffix(to))",
+                             tint: .orange)
+        case .afterSchool:
+            Label("Done for today", systemImage: "checkmark.circle.fill")
+                .font(.headline)
+                .foregroundStyle(.green)
+        default:
+            EmptyView()
+        }
+    }
+
+    private func compactCountdown(target: Date, label: String, tint: Color) -> some View {
+        TimelineView(.animation(minimumInterval: 1.0)) { context in
+            let remaining = max(target.timeIntervalSince(context.date.addingTimeInterval(model.displayOffset)), 0)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    compactDigits(remaining, tint: tint)
+                    Text(label)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                VStack(spacing: 4) {
+                    compactDigits(remaining, tint: tint)
+                    Text(label)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(label)")
+        }
+    }
+
+    private func compactDigits(_ remaining: TimeInterval, tint: Color) -> some View {
+        Text(TimeDisplay.countdown(remaining))
+            .font(.system(.title2, design: .rounded, weight: .bold))
+            .monospacedDigit()
+            .foregroundStyle(tint)
+            .contentTransition(.numericText(countsDown: true))
     }
 
     private var heroTransition: AnyTransition {
