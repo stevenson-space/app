@@ -2,7 +2,6 @@ import PhotosUI
 import ScheduleKit
 import SwiftUI
 import StudentIDKit
-import UniformTypeIdentifiers
 
 /// The ID tab: import a Student Profile screenshot once, then have a clean,
 /// scannable card two taps away for the rest of the year.
@@ -126,8 +125,7 @@ struct StudentIDView: View {
             VStack(spacing: 6) {
                 Text("Add your student ID")
                     .font(.title2.weight(.bold))
-                Text("Import one screenshot from Infinite Campus and the app rebuilds "
-                     + "your ID here, sharp and ready to scan.")
+                Text("Import a screenshot from Infinite Campus to create a sharp, scannable ID.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -135,34 +133,27 @@ struct StudentIDView: View {
             .padding(.horizontal, 8)
 
             VStack(alignment: .leading, spacing: 14) {
-                step(1, "Open Infinite Campus and go to Student Profile.")
-                step(2, "Screenshot the page, including the barcode.")
-                step(3, "Import it below. Your name and number are read from it.")
+                step(1, "Open Infinite Campus.")
+                step(2, "Screenshot the page, including your student details and barcode.")
+                step(3, "Import it below.")
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color(.secondarySystemGroupedBackground)))
 
-            VStack(spacing: 10) {
-                Button {
-                    isPickerPresented = true
-                } label: {
-                    Label("Choose Screenshot", systemImage: "photo.on.rectangle")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(StevensonPalette.accent)
-
-                PasteButton(supportedContentTypes: [.image], payloadAction: paste)
-                    .buttonBorderShape(.capsule)
-                    .labelStyle(.titleAndIcon)
+            Button {
+                isPickerPresented = true
+            } label: {
+                Label("Choose Screenshot", systemImage: "photo.on.rectangle")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
             }
+            .buttonStyle(.borderedProminent)
+            .tint(StevensonPalette.accent)
 
-            Text("Nothing leaves your phone. The screenshot itself is not saved \u{2014} "
-                 + "only your name, number, grade, school year, barcode details, import date, and photo.")
+            Text("Nothing leaves your phone. Your ID data is stored securely in the app.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -216,21 +207,6 @@ struct StudentIDView: View {
                 return
             }
             await extract(from: data, importID: id)
-        }
-    }
-
-    private func paste(_ providers: [NSItemProvider]) {
-        guard let provider = providers.first else { return }
-        let id = beginImport()
-        _ = provider.loadDataRepresentation(for: .image) { data, _ in
-            Task { @MainActor in
-                guard importID == id else { return }
-                guard let data else {
-                    stage = .failed(StudentIDImportError.unreadableImage.description)
-                    return
-                }
-                await extract(from: data, importID: id)
-            }
         }
     }
 
