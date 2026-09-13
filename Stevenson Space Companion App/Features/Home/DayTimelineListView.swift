@@ -9,6 +9,7 @@ struct DayTimelineListView: View {
 
     let timeline: DayTimeline
     let isLive: Bool
+    var minimumHeight: CGFloat = 0
 
     var body: some View {
         if isLive {
@@ -42,6 +43,8 @@ struct DayTimelineListView: View {
                     emoji: ScheduleStyle.emoji(for: block, config: config),
                     title: block.displayName,
                     subtitle: subtitle(for: block, pref: pref),
+                    minimumHeight: max(0, (minimumHeight - CGFloat(max(blocks.count - 1, 0)) * 8)
+                                       / CGFloat(max(blocks.count, 1))),
                     dimmed: now.map { $0 >= block.end } ?? false,
                     highlightTint: isCurrent ? ScheduleStyle.tint(for: block.role) : nil
                 ) {
