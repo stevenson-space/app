@@ -7,14 +7,16 @@ days the normal times are wrong (Late Arrival, finals, assemblies, e-learning da
 ## Architecture
 
 ```text
-Packages/ScheduleKit/          All schedule logic — no UI, no clock access.
+Packages/ScheduleKit/          Schedule logic and shared presentation helpers.
   Sources/ScheduleKit/
     Models/                    PeriodID, DayKey, Block, BellSchedule, UserConfig, DayTimeline…
     Catalog/                   Bundled bell tables + school-year boundaries
     Parsing/                   schedule-dates.json and lunch-manifest parsers
     Resolution/                resolveDay(...) priority chain + momentState(at:)
     Sync/                      Schedule (ETag) and lunch fetches, last-good cache semantics
-    Storage/                   App-Group-ready SharedStore + Keychain SecretStore
+    Storage/                   App Group store + read-only widget snapshot + Keychain SecretStore
+    Presentation/              Shared role colors, emoji, and time formatting
+    Widgets/                   Pure seven-day timeline planner
     Notifications/             Pure NotificationPlanner (56 alerts + 1 refresh reminder)
     Resources/                 bell-schedules.json, lunch-menu.json
   Tests/ScheduleKitTests/      The quality gate — run with `swift test`
@@ -27,10 +29,10 @@ Packages/StudentIDKit/         Student ID logic — no UI.
     StudentIDPhotoStore.swift  The cropped headshot, on disk with complete file protection
   Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
 Stevenson Space Companion App/ SwiftUI app target: Home, Lunch, ID, Settings
+ScheduleWidgets/              Small, medium, and rectangular WidgetKit views
 ```
 
-Two pure functions are the heart of everything; every surface (and the future
-widgets/Live Activity) must go through them so all surfaces agree:
+Two pure functions are the heart of everything; the app and widgets must go through them so all surfaces agree:
 
 ```swift
 resolveDay(day, inputs:)          // date → personalized DayTimeline
@@ -48,6 +50,13 @@ Home shows today's timeline with a countdown card that stays pinned while the
 schedule scrolls. The day picker steps a day at a time or jumps to any date in
 the school years the catalog knows, so students can check tomorrow's (or next
 week's) schedule before it arrives.
+
+## Schedule widgets
+
+Small and medium Home Screen widgets plus a rectangular Lock Screen widget show
+bounded system countdowns, personalized periods, passing, and the next school day.
+They read the app's last successful cache through the App Group; no additional
+networking is required. See [widget behavior and validation](docs/schedule-widgets.md).
 
 ## The Lunch tab
 
@@ -133,6 +142,6 @@ redirects included.
 
 ## Deferred (architecture is ready for them)
 
-Widgets and Live Activities (ScheduleKit + SharedStore are App-Group-ready; add
-the entitlement + extension targets, and move the student ID photo into the group
-container), BGAppRefresh, ICS hint layer.
+Live Activities and Dynamic Island remain deferred. Their requirements and the
+suspended-transition prerequisite are recorded in [the widget notes](docs/schedule-widgets.md).
+BGAppRefresh and the ICS hint layer are also deferred.

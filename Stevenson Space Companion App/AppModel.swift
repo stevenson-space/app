@@ -3,6 +3,7 @@ import SwiftUI
 import Observation
 import ScheduleKit
 import StudentIDKit
+import WidgetKit
 
 /// Root observable store. Owns the resolver inputs (persisted via SharedStore),
 /// derives today's timeline, and coordinates sync + notifications. All schedule
@@ -18,6 +19,8 @@ enum RootTab: Hashable {
 @MainActor
 final class AppModel {
     var selectedTab: RootTab = .home
+    private(set) var homeTodayRequest = 0
+    private var scheduleDataReady = false
 
     let store: SharedStore
     let catalog: BellScheduleCatalog
@@ -76,6 +79,9 @@ final class AppModel {
 
     init(store: SharedStore = SharedStore()) {
         self.store = store
+        if UIApplication.shared.isProtectedDataAvailable {
+            store.prepareScheduleDataForWidgets()
+        }
         do {
             self.catalog = try BellScheduleCatalog.loadBundled()
         } catch {
@@ -149,6 +155,9 @@ final class AppModel {
         self.nextSchoolDay = cachedNextSchoolDay(after: today)
         updateCurrentState()
 
+        scheduleDataReady = UIApplication.shared.isProtectedDataAvailable
+        if scheduleDataReady { reloadScheduleWidgets() }
+
         dayChangeObserver = NotificationCenter.default.addObserver(
             forName: .NSCalendarDayChanged, object: nil, queue: nil
         ) { [weak self] _ in
@@ -159,7 +168,10 @@ final class AppModel {
             forName: UIApplication.protectedDataDidBecomeAvailableNotification,
             object: nil, queue: nil
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.reloadStudentIDIfUnread() }
+            Task { @MainActor [weak self] in
+                self?.prepareWidgetDataIfNeeded()
+                self?.reloadStudentIDIfUnread()
+            }
         }
     }
 
@@ -303,6 +315,7 @@ final class AppModel {
         store.userConfig = updated
         refreshDerived()
         rescheduleNotifications()
+        reloadScheduleWidgets()
     }
 
     func updatePrefs(_ transform: (inout NotificationPrefs) -> Void) {
@@ -326,6 +339,7 @@ final class AppModel {
         store.overrides = overrides
         refreshDerived()
         rescheduleNotifications()
+        reloadScheduleWidgets()
     }
 
     func removeOverride(day: DayKey) {
@@ -333,6 +347,7 @@ final class AppModel {
         store.overrides = overrides
         refreshDerived()
         rescheduleNotifications()
+        reloadScheduleWidgets()
     }
 
     // MARK: - Student ID
@@ -454,6 +469,7 @@ final class AppModel {
         // Throttling runs on the real clock even while time-traveling.
         let result = await syncService.refresh(force: force, now: Date())
         fetchMetadata = store.fetchMetadata
+        if result == .updated || result == .notModified { reloadScheduleWidgets() }
         if result == .updated, let cached = store.cachedMapData {
             map = try? ScheduleDatesParser.parse(cached)
             refreshDerived()
@@ -504,6 +520,7 @@ final class AppModel {
         guard phase == .active else { return }
         // A transient keychain error may not emit a protected-data notification;
         // retry the launch-time read whenever the app returns to the foreground.
+        prepareWidgetDataIfNeeded()
         reloadStudentIDIfUnread()
         if today != lastComputedDay {
             refreshDerived()
@@ -518,6 +535,36 @@ final class AppModel {
     var isDataStale: Bool {
         guard let lastSuccess = fetchMetadata.lastSuccess else { return store.cachedMapData == nil }
         return now().timeIntervalSince(lastSuccess) > 7 * 24 * 3600
+    }
+
+    // MARK: - Widgets
+
+    private func reloadScheduleWidgets() {
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetTimelinePlanner.kind)
+    }
+
+    private func prepareWidgetDataIfNeeded() {
+        guard !scheduleDataReady, UIApplication.shared.isProtectedDataAvailable else { return }
+        store.prepareScheduleDataForWidgets()
+        config = store.userConfig
+        overrides = store.overrides
+        prefs = store.notificationPrefs
+        map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
+        fetchMetadata = store.fetchMetadata
+        scheduleDataReady = true
+        refreshDerived()
+        rescheduleNotifications()
+        reloadScheduleWidgets()
+    }
+
+    func openWidgetURL(_ url: URL) {
+        guard WidgetTimelinePlanner.isHomeURL(url) else { return }
+        #if DEBUG
+        timeTravelOffset = 0
+        #endif
+        refreshDerived()
+        selectedTab = .home
+        homeTodayRequest += 1
     }
 
     // MARK: - Notifications
