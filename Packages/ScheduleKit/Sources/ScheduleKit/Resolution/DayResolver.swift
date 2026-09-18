@@ -23,6 +23,12 @@ public struct ResolverInputs: Sendable {
     }
 }
 
+/// How consecutive free blocks appear in the state-machine timeline.
+public enum FreePeriodGrouping: Sendable {
+    case combined
+    case separate
+}
+
 /// Resolution priority:
 /// 1. Manual override for the date
 /// 2. Remote map entry (wins even outside school-year bounds — summer sessions)
@@ -32,6 +38,7 @@ public struct ResolverInputs: Sendable {
 /// 6. In-session weekday → Standard, by design (not a guess)
 public func resolveDay(_ day: DayKey,
                        inputs: ResolverInputs,
+                       freePeriodGrouping: FreePeriodGrouping = .combined,
                        calendar: Calendar = SchoolTime.calendar) -> DayTimeline {
     let year = inputs.years.first { $0.contains(day) }
     let labeledDay = year?.labeledDays[day]
@@ -43,7 +50,8 @@ public func resolveDay(_ day: DayKey,
             let uncertain = family == .earlyDismissal && rotation == nil
             return schoolTimeline(day: day, family: family, rotation: rotation,
                                   provenance: .override, rotationUncertain: uncertain,
-                                  labeledDay: labeledDay, inputs: inputs, calendar: calendar)
+                                  labeledDay: labeledDay, inputs: inputs,
+                                  freePeriodGrouping: freePeriodGrouping, calendar: calendar)
         case .noSchool:
             return bareTimeline(day: day, kind: .noSchool, label: "No School",
                                 note: labeledDay, provenance: .override)
@@ -64,7 +72,8 @@ public func resolveDay(_ day: DayKey,
             }
             return schoolTimeline(day: day, family: family, rotation: rotation,
                                   provenance: .remoteMap, rotationUncertain: uncertain,
-                                  labeledDay: labeledDay, inputs: inputs, calendar: calendar)
+                                  labeledDay: labeledDay, inputs: inputs,
+                                  freePeriodGrouping: freePeriodGrouping, calendar: calendar)
         case .noSchool:
             return bareTimeline(day: day, kind: .noSchool, label: "No School",
                                 note: labeledDay, provenance: .remoteMap)
@@ -98,7 +107,8 @@ public func resolveDay(_ day: DayKey,
     // 6. Unlisted in-session weekday: Standard by design.
     return schoolTimeline(day: day, family: .standard, rotation: nil,
                           provenance: .defaultStandard, rotationUncertain: false,
-                          labeledDay: labeledDay, inputs: inputs, calendar: calendar)
+                          labeledDay: labeledDay, inputs: inputs,
+                          freePeriodGrouping: freePeriodGrouping, calendar: calendar)
 }
 
 /// Finals rotation from a date's position in its map span, counting school
@@ -128,7 +138,7 @@ private func bareTimeline(day: DayKey, kind: DayKind, label: String,
 private func schoolTimeline(day: DayKey, family: BellFamily, rotation: EDRotation?,
                             provenance: Provenance, rotationUncertain: Bool,
                             labeledDay: String?, inputs: ResolverInputs,
-                            calendar: Calendar) -> DayTimeline {
+                            freePeriodGrouping: FreePeriodGrouping, calendar: Calendar) -> DayTimeline {
     guard let schedule = inputs.catalog.schedule(family: family, rotation: rotation) else {
         // A bell family with no bundled table is a data bug; degrade honestly.
         return bareTimeline(day: day, kind: .unknownType(name: family.displayName),
@@ -149,7 +159,7 @@ private func schoolTimeline(day: DayKey, family: BellFamily, rotation: EDRotatio
         provenance: provenance,
         rotationUncertain: rotationUncertain,
         blocks: blocks,
-        moments: buildMoments(from: blocks))
+        moments: buildMoments(from: blocks, freePeriodGrouping: freePeriodGrouping))
 }
 
 // MARK: - Standard-day template
@@ -371,13 +381,14 @@ private func makeBlock(for block: Block, role: BlockRole, namingID: PeriodID? = 
 /// into a single span, so "Free until 1:46 PM" replaces counting down an
 /// unattended class. The trailing gap before the next attended block stays a
 /// normal passing period.
-func buildMoments(from blocks: [ResolvedBlock]) -> [ResolvedSpan] {
+func buildMoments(from blocks: [ResolvedBlock],
+                  freePeriodGrouping: FreePeriodGrouping = .combined) -> [ResolvedSpan] {
     var moments: [ResolvedSpan] = []
     var index = 0
 
     while index < blocks.count {
         let block = blocks[index]
-        if block.role == .free {
+        if block.role == .free, freePeriodGrouping == .combined {
             var run = [block]
             while index + 1 < blocks.count, blocks[index + 1].role == .free {
                 index += 1

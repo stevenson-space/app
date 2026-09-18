@@ -55,9 +55,8 @@ public struct ResolvedBlock: Identifiable, Hashable, Sendable {
     }
 }
 
-/// What the state machine walks: blocks, with runs of consecutive free blocks
-/// (and the gaps between them) merged into single spans so the countdown never
-/// counts down a class the user doesn't attend.
+/// What the state machine walks. By default consecutive free blocks and their
+/// gaps merge into single spans; widgets request separate spans for each block.
 public struct ResolvedSpan: Identifiable, Hashable, Sendable {
     public let id: String
     public let role: BlockRole
@@ -121,7 +120,7 @@ public struct DayTimeline: Hashable, Sendable {
     public let rotationUncertain: Bool
     /// Display list (every personalized block, including both halves of a split).
     public let blocks: [ResolvedBlock]
-    /// State-machine list (free runs merged).
+    /// State-machine list (free runs merged by default, separate for widgets).
     public let moments: [ResolvedSpan]
 
     public init(day: DayKey, kind: DayKind, family: BellFamily?, rotation: EDRotation?,

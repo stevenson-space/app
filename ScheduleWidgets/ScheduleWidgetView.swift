@@ -1,0 +1,199 @@
+import ScheduleKit
+import SwiftUI
+import WidgetKit
+
+struct ScheduleWidgetView: View {
+    let entry: ScheduleWidgetEntry
+    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var timerSize = 42
+
+    private var rectangular: Bool { family == .accessoryRectangular }
+    private var medium: Bool { family == .systemMedium }
+    private var format: TimeFormatPref { entry.config.timeFormat }
+
+    var body: some View {
+        Group {
+            if let schedule = entry.schedule {
+                if let focus = schedule.focus {
+                    active(schedule, focus: focus)
+                } else {
+                    resting(schedule)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Open Stevenson Space", systemImage: "calendar.badge.exclamationmark")
+                        .font(.headline)
+                    Text("Open the app to share your schedule.")
+                        .font(.caption)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .accessibilityHint("Opens today’s schedule in Stevenson Space")
+    }
+
+    private func accent(_ schedule: WidgetScheduleEntry, focus: ResolvedBlock) -> Color {
+        guard renderingMode == .fullColor, contrast != .increased else { return .primary }
+        if case .passing = schedule.state { return .orange }
+        return ScheduleStyle.tint(for: focus.role)
+    }
+
+    private func caption(_ schedule: WidgetScheduleEntry) -> String {
+        switch schedule.state {
+        case .beforeSchool: return schedule.isLeadIn ? "School starts in" : schedule.timeline.scheduleLabel
+        case .passing: return "Passing · starts in"
+        default: return "Period ends in"
+        }
+    }
+
+    private func active(_ schedule: WidgetScheduleEntry, focus: ResolvedBlock) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: rectangular || typeSize.isAccessibilitySize ? 1 : 5) {
+                Text(caption(schedule))
+                    .font(rectangular ? .caption2 : .caption.weight(.semibold))
+                    .foregroundStyle(accent(schedule, focus: focus))
+                    .widgetAccentable()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if let interval = schedule.countdownInterval {
+                    Text(timerInterval: interval, countsDown: true)
+                        .font(rectangular ? .title2.weight(.bold) : .system(size: min(timerSize, 54), weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .contentTransition(.identity)
+                } else {
+                    Text(TimeDisplay.time(focus.start, format))
+                        .font(rectangular ? .title3.bold() : .title.bold())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                }
+                periodName(focus)
+                    .font(rectangular ? .caption.weight(.semibold) : .headline)
+                    .lineLimit(rectangular || typeSize.isAccessibilitySize ? 1 : 2)
+                if typeSize.isAccessibilitySize {
+                    if !rectangular, let room = focus.room {
+                        Text("Room \(room)").font(.caption2).lineLimit(1)
+                    }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        Text(details(focus))
+                        if let room = focus.room { Text("Room \(room)") }
+                        Text(TimeDisplay.range(focus.start, focus.end, format))
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+                if schedule.isLeadIn, !medium, !rectangular, !typeSize.isAccessibilitySize {
+                    Text(schedule.timeline.scheduleLabel)
+                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
+
+            if medium {
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    if let next = schedule.upcoming {
+                        Text("UP NEXT").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                        periodName(next).font(.subheadline.weight(.semibold)).lineLimit(3)
+                        if let room = next.room { Text("Room \(room)").font(.caption).lineLimit(1) }
+                        Text(TimeDisplay.time(next.start, format)).font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("LAST PERIOD").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                        Text("School finishes at \(TimeDisplay.time(focus.end, format))")
+                            .font(.subheadline).lineLimit(3)
+                    }
+                    Text(schedule.timeline.scheduleLabel).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func periodName(_ block: ResolvedBlock) -> Text {
+        Text("\(ScheduleStyle.emoji(for: block, config: entry.config)) \(block.displayName)")
+    }
+
+    private func details(_ block: ResolvedBlock) -> String {
+        let range = TimeDisplay.range(block.start, block.end, format)
+        return block.room.map { "Room \($0) · \(range)" } ?? range
+    }
+
+    private func resting(_ schedule: WidgetScheduleEntry) -> some View {
+        VStack(alignment: .leading, spacing: rectangular ? 2 : 8) {
+            Text(status(schedule))
+                .font(rectangular ? .headline : .title3.bold())
+                .lineLimit(rectangular ? 1 : 2)
+                .minimumScaleFactor(0.8)
+            if case .unknownSchedule(let name) = schedule.state {
+                Text(name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            if let next = schedule.nextSchoolDay, let start = next.firstBell {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(TimeDisplay.shortDayLabel(next.day))
+                        .font(rectangular ? .caption : .subheadline.weight(.semibold))
+                    Text("\(next.scheduleLabel) · \(TimeDisplay.time(start, format))")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(rectangular ? 1 : 2)
+                }
+            } else {
+                Text("No upcoming school day available")
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+        }
+    }
+
+    private func status(_ schedule: WidgetScheduleEntry) -> String {
+        switch schedule.state {
+        case .afterSchool: return schedule.isFinished ? "School finished" : "Next school day"
+        case .unknownSchedule: return "Schedule unavailable"
+        case .asynchronous: return "Asynchronous learning"
+        default: return schedule.timeline.scheduleLabel
+        }
+    }
+}
+
+#Preview("Small · long name", as: .systemSmall) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true)
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 21), room: nil)
+    ScheduleProvider.example(at: HourMinute(hour: 8, minute: 15))
+    ScheduleProvider.example(at: HourMinute(hour: 15, minute: 25))
+    ScheduleProvider.example(at: HourMinute(hour: 15, minute: 30))
+}
+
+#Preview("Medium", as: .systemMedium) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.example
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 21))
+}
+
+#Preview("Lock Screen", as: .accessoryRectangular) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true, room: nil)
+    ScheduleProvider.example(at: HourMinute(hour: 8, minute: 15))
+}
+
+// PreviewProvider supports explicit WidgetPreviewContext for layout variants.
+struct ScheduleLayoutPreviews: PreviewProvider {
+    static var previews: some View {
+        ForEach([WidgetFamily.systemSmall, .systemMedium, .accessoryRectangular], id: \.self) { family in
+            ScheduleWidgetView(entry: ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true, room: nil))
+                .containerBackground(.background, for: .widget)
+                .environment(\.dynamicTypeSize, .accessibility1)
+                .preferredColorScheme(.dark)
+                .previewContext(WidgetPreviewContext(family: family))
+                .previewDisplayName("Large text · dark · \(family)")
+        }
+    }
+}
