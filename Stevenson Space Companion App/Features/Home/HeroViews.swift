@@ -72,11 +72,21 @@ struct HeroSection: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    var isCompact = false
+
     var body: some View {
         let pref = model.config.timeFormat
 
         ZStack {
-            heroContent(pref: pref)
+            Group {
+                if isCompact {
+                    compactContent(pref: pref)
+                        .transition(collapseTransition)
+                } else {
+                    heroContent(pref: pref)
+                        .transition(.opacity)
+                }
+            }
                 .id(model.currentSpanID)
                 .transition(heroTransition)
         }
@@ -128,6 +138,100 @@ struct HeroSection: View {
             // to full-screen status views.
             EmptyView()
         }
+    }
+
+    @ViewBuilder
+    private func compactContent(pref: TimeFormatPref) -> some View {
+        switch model.currentState {
+        case .beforeSchool(let first):
+            compactCountdown(target: first.start, label: "until school starts", tint: .blue,
+                             start: first.start.addingTimeInterval(-3600), icon: "sunrise.fill")
+        case .inBlock(let current, _):
+            compactCountdown(target: current.end, label: heroLabel(for: current, pref: pref),
+                             tint: ScheduleStyle.tint(for: current.role), start: current.start)
+        case .passing(_, let to, let kind):
+            compactCountdown(target: to.start,
+                             label: "\(kind == .intraPeriod ? "Switching halves" : "Passing") · \(to.displayName)\(roomSuffix(to))",
+                             tint: .orange, icon: "figure.walk")
+        case .afterSchool:
+            Label("Done for today", systemImage: "checkmark.circle.fill")
+                .font(.headline)
+                .foregroundStyle(.green)
+        default:
+            EmptyView()
+        }
+    }
+
+    private var collapseTransition: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.92, anchor: .top))
+    }
+
+    private func compactCountdown(target: Date, label: String, tint: Color,
+                                  start: Date? = nil, icon: String = "clock.fill") -> some View {
+        TimelineView(.animation(minimumInterval: 1.0)) { context in
+            let remaining = max(target.timeIntervalSince(context.date.addingTimeInterval(model.displayOffset)), 0)
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().stroke(tint.opacity(0.16), lineWidth: 3)
+                    if let start {
+                        let duration = max(target.timeIntervalSince(start), 1)
+                        Circle()
+                            .trim(from: 0, to: min(max(1 - remaining / duration, 0), 1))
+                            .stroke(tint.gradient, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                    }
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(tint)
+                }
+                .frame(width: 36, height: 36)
+                .accessibilityHidden(true)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        compactDigits(remaining, tint: tint)
+                        Text(label)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        compactDigits(remaining, tint: tint)
+                        Text(label)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(LinearGradient(colors: [tint.opacity(0.12), tint.opacity(0.025)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .strokeBorder(tint.opacity(0.18), lineWidth: 0.75)
+                    }
+                    .shadow(color: tint.opacity(0.08), radius: 10, y: 4)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(label)")
+        }
+    }
+
+    private func compactDigits(_ remaining: TimeInterval, tint: Color) -> some View {
+        Text(TimeDisplay.countdown(remaining))
+            .font(.system(.title2, design: .rounded, weight: .bold))
+            .monospacedDigit()
+            .foregroundStyle(tint)
+            .contentTransition(.numericText(countsDown: true))
     }
 
     private var heroTransition: AnyTransition {
