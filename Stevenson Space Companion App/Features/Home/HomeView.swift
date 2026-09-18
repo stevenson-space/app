@@ -8,7 +8,7 @@ struct HomeView: View {
     @State private var selectedDay: DayKey?
     @State private var isTimerCompact = false
     @State private var viewportHeight: CGFloat = 0
-    @State private var timerHeaderHeight: CGFloat = 0
+    @State private var compactHeaderHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
     private var today: DayKey { model.todayTimeline.day }
@@ -33,9 +33,11 @@ struct HomeView: View {
                 if timeline.isSchoolDay {
                     if isToday {
                         Section {
+                            // Fill the compact viewport with cards rather than a blank
+                            // footer, while retaining enough scroll range for pinning.
                             DayTimelineListView(
                                 timeline: timeline, isLive: true,
-                                minimumHeight: max(viewportHeight - timerHeaderHeight - 24, 0))
+                                minimumHeight: max(viewportHeight - compactHeaderHeight - 24, 0))
                                 .padding(.horizontal, 16)
                         } header: {
                             HeroSection(isCompact: isTimerCompact)
@@ -44,10 +46,19 @@ struct HomeView: View {
                                 .padding(.bottom, 34)
                                 .frame(maxWidth: .infinity)
                                 .background(Color(.systemGroupedBackground))
-                                .onGeometryChange(for: CGFloat.self) { geometry in
-                                    geometry.size.height
-                                } action: { height in
-                                    timerHeaderHeight = height
+                                .background {
+                                    HeroSection(isCompact: true)
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 12)
+                                        .padding(.bottom, 34)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .hidden()
+                                        .accessibilityHidden(true)
+                                        .onGeometryChange(for: CGFloat.self) { geometry in
+                                            geometry.size.height
+                                        } action: { height in
+                                            compactHeaderHeight = height
+                                        }
                                 }
                         }
                     } else {
