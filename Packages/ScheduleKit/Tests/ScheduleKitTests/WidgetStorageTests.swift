@@ -149,6 +149,131 @@ private struct WidgetMigrationRefusingSecrets: SecretStore {
         #expect(!defaults.bool(forKey: "sk.privateSuiteMigrated"))
     }
 
+    @Test(arguments: [false, true])
+    func removalPreservesKeychainUntilPrivateCleanupSucceeds(corruptPlist: Bool) throws {
+        let name = "widget-removal-\(UUID())"
+        let legacyName = "widget-removal-standard-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        let legacy = try #require(UserDefaults(suiteName: legacyName))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("legacy-\(UUID())")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("preferences.plist")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: directory)
+            defaults.removePersistentDomain(forName: name)
+            legacy.removePersistentDomain(forName: legacyName)
+        }
+        let identity = Data("legacy identity".utf8)
+        let values: [String: Any] = ["sk.studentID": identity, "unrelated": "preserved"]
+        let original = try PropertyListSerialization.data(fromPropertyList: values, format: .binary, options: 0)
+        try original.write(to: file)
+        let secrets = InMemorySecretStore(storage: ["sk.studentID": identity])
+        let store = SharedStore(defaults: defaults, secrets: secrets, legacyDefaults: legacy)
+        // Discover the private file while migration cannot clear it yet.
+        secrets.isUnavailable = true
+        store.migrateFromPrivateSuiteIfNeeded(fileURL: file)
+        secrets.isUnavailable = false
+        defaults.set(identity, forKey: "sk.studentID")
+        legacy.set(identity, forKey: "sk.studentID")
+
+        if corruptPlist {
+            try Data("invalid plist".utf8).write(to: file)
+        } else {
+            // Reading still works, but the atomic replacement cannot be written.
+            try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+        }
+        #expect(throws: (any Error).self) { try store.setStudentIDData(nil) }
+        #expect(secrets.read("sk.studentID") == .value(identity))
+        #expect(store.readStudentIDData() == .value(identity))
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+        #expect(legacy.object(forKey: "sk.studentID") == nil)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+        try original.write(to: file)
+        try store.setStudentIDData(nil)
+        let cleaned = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: file), format: nil)
+            as? [String: Any])
+        #expect(cleaned["sk.studentID"] == nil)
+        #expect(cleaned["unrelated"] as? String == "preserved")
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+        #expect(legacy.object(forKey: "sk.studentID") == nil)
+        #expect(store.readStudentIDData() == .missing)
+        store.migrateFromPrivateSuiteIfNeeded(fileURL: file)
+        #expect(store.readStudentIDData() == .missing)
+        #expect(secrets.read("sk.studentID") == .missing)
+    }
+
+    enum IdentityCleanupOperation: CaseIterable {
+        case save, migrateMissing, migrateExisting, read
+    }
+
+    @Test(arguments: IdentityCleanupOperation.allCases, [false, true])
+    func committedIdentitySurvivesPrivateCleanupFailure(operation: IdentityCleanupOperation,
+                                                       corruptPlist: Bool) throws {
+        let name = "identity-cleanup-\(UUID())"
+        let legacyName = "identity-cleanup-standard-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        let legacy = try #require(UserDefaults(suiteName: legacyName))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("legacy-\(UUID())")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("preferences.plist")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: directory)
+            defaults.removePersistentDomain(forName: name)
+            legacy.removePersistentDomain(forName: legacyName)
+        }
+        let oldIdentity = Data("old identity".utf8)
+        let newIdentity = Data("new identity".utf8)
+        let original = try PropertyListSerialization.data(
+            fromPropertyList: ["sk.studentID": oldIdentity, "unrelated": "preserved"],
+            format: .binary, options: 0)
+        try original.write(to: file)
+        let secrets = InMemorySecretStore()
+        let store = SharedStore(defaults: defaults, secrets: secrets, legacyDefaults: legacy)
+        secrets.isUnavailable = true
+        store.migrateFromPrivateSuiteIfNeeded(fileURL: file)
+        secrets.isUnavailable = false
+        defaults.set(oldIdentity, forKey: "sk.studentID")
+        legacy.set(oldIdentity, forKey: "sk.studentID")
+        if corruptPlist {
+            try Data("invalid plist".utf8).write(to: file)
+        } else {
+            try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+        }
+
+        var expectedIdentity = oldIdentity
+        switch operation {
+        case .save:
+            try secrets.write(oldIdentity, for: "sk.studentID")
+            try store.setStudentIDData(newIdentity)
+            expectedIdentity = newIdentity
+        case .migrateMissing:
+            store.migrateStudentIDToKeychainIfNeeded()
+        case .migrateExisting:
+            try secrets.write(newIdentity, for: "sk.studentID")
+            store.migrateStudentIDToKeychainIfNeeded()
+            expectedIdentity = newIdentity
+        case .read:
+            #expect(store.readStudentIDData() == .value(oldIdentity))
+        }
+        #expect(secrets.read("sk.studentID") == .value(expectedIdentity))
+        #expect(defaults.object(forKey: "sk.studentID") == nil)
+        #expect(legacy.object(forKey: "sk.studentID") == nil)
+        #expect(try Data(contentsOf: file) == (corruptPlist ? Data("invalid plist".utf8) : original))
+
+        // A later migration retries private cleanup without replacing the saved card.
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+        try original.write(to: file)
+        store.migrateStudentIDToKeychainIfNeeded()
+        let cleaned = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: file), format: nil)
+            as? [String: Any])
+        #expect(cleaned["sk.studentID"] == nil)
+        #expect(cleaned["unrelated"] as? String == "preserved")
+        #expect(store.readStudentIDData() == .value(expectedIdentity))
+    }
+
     @Test func freshSnapshotsSeeConfigurationAndOverrideChanges() throws {
         let name = "widget-reload-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: name))

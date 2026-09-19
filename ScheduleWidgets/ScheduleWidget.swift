@@ -30,7 +30,7 @@ struct ScheduleProvider: TimelineProvider {
             }, plan.reloadAfter)
         } catch {
             return ([ScheduleWidgetEntry(date: now, schedule: nil, config: UserConfig())],
-                    DayKey(date: now).advanced(by: 1).date()!)
+                    now.addingTimeInterval(15 * 60))
         }
     }
 

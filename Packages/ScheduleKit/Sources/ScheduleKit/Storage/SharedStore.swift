@@ -210,21 +210,34 @@ public final class SharedStore: @unchecked Sendable {
     }
 
     private var privateSuiteValues: [String: Any]? {
-        guard let url = legacyPrivateSuiteURL, let data = try? Data(contentsOf: url) else { return nil }
-        return (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any]
+        try? readPrivateSuiteValues()
+    }
+
+    private func readPrivateSuiteValues() throws -> [String: Any]? {
+        guard let url = legacyPrivateSuiteURL else { return nil }
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch CocoaError.fileReadNoSuchFile {
+            return nil
+        }
+        guard let values = try PropertyListSerialization.propertyList(from: data, format: nil)
+            as? [String: Any] else {
+            throw CocoaError(.propertyListReadCorrupt)
+        }
+        return values
     }
 
     /// Drops the plaintext card from every plist that could still hold one.
-    /// Only ever called once the keychain is known to have the bytes: the
-    /// standard-defaults copy is the last one an upgraded install has left.
-    private func clearPlaintextStudentID() {
+    /// Migration calls this after saving to the keychain; explicit removal must
+    /// finish this cleanup before deleting the keychain value.
+    private func clearPlaintextStudentID() throws {
         defaults.removeObject(forKey: Keys.studentID)
         legacyDefaults.removeObject(forKey: Keys.studentID)
-        if let url = legacyPrivateSuiteURL, var values = privateSuiteValues {
-            values.removeValue(forKey: Keys.studentID)
-            if let data = try? PropertyListSerialization.data(fromPropertyList: values, format: .binary, options: 0) {
-                try? data.write(to: url, options: .atomic)
-            }
+        if let url = legacyPrivateSuiteURL, var values = try readPrivateSuiteValues(),
+           values.removeValue(forKey: Keys.studentID) != nil {
+            let data = try PropertyListSerialization.data(fromPropertyList: values, format: .binary, options: 0)
+            try data.write(to: url, options: .atomic)
         }
     }
 
@@ -241,14 +254,14 @@ public final class SharedStore: @unchecked Sendable {
             // Already migrated; the plist copies are leftovers from a run whose
             // cleanup did not finish — including an install upgraded by a
             // version that cleared the suite but not the standard defaults.
-            clearPlaintextStudentID()
+            try? clearPlaintextStudentID()
         case .unavailable:
             // Locked. Reading nothing here does not mean there is nothing there,
             // so leave both copies alone and migrate on a later launch.
             return
         case .missing:
             guard (try? secrets.write(legacy, for: Keys.studentID)) != nil else { return }
-            clearPlaintextStudentID()
+            try? clearPlaintextStudentID()
         }
     }
 
@@ -312,7 +325,7 @@ public final class SharedStore: @unchecked Sendable {
         // migration once per launch, which is no help to a process that started
         // before first unlock.
         if (try? secrets.write(legacy, for: Keys.studentID)) != nil {
-            clearPlaintextStudentID()
+            try? clearPlaintextStudentID()
         }
         // Either way, serve the bytes the student still has. Reporting the card
         // as missing would blank the ID tab for the rest of the session and let
@@ -325,10 +338,18 @@ public final class SharedStore: @unchecked Sendable {
     public var studentIDData: Data? { readStudentIDData().data }
 
     public func setStudentIDData(_ data: Data?) throws {
-        try secrets.write(data, for: Keys.studentID)
+        if let data {
+            try secrets.write(data, for: Keys.studentID)
+            // The card is committed. A cleanup failure must not report a failed
+            // save and cause the caller to restore the previous card's photo.
+            try? clearPlaintextStudentID()
+            return
+        }
         // A blob left by a version that used the plist would otherwise outlive
-        // the removal and reappear at the next migration.
-        clearPlaintextStudentID()
+        // the removal and reappear at the next migration. Keep the keychain copy
+        // until every plaintext copy has been cleared successfully.
+        try clearPlaintextStudentID()
+        try secrets.write(nil, for: Keys.studentID)
     }
 
     /// A display preference; hiding the photo keeps the saved image available.
