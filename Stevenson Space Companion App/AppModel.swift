@@ -85,7 +85,8 @@ final class AppModel {
         // The app clock starts in real time on launch; clear the widget clock too.
         store.widgetTimeTravelOffset = 0
         #endif
-        if UIApplication.shared.isProtectedDataAvailable {
+        let preparedScheduleData = UIApplication.shared.isProtectedDataAvailable
+        if preparedScheduleData {
             store.prepareScheduleDataForWidgets()
         }
         do {
@@ -106,26 +107,12 @@ final class AppModel {
         let config = store.userConfig
         let overrides = store.overrides
         let map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
-        let cachedLunchMenu = store.cachedLunchMenuData.flatMap { try? LunchMenuParser.parse($0) }
-        let bundledLunchMenu = try? LunchMenuParser.loadBundled()
-        let lunchMenu: LunchMenu?
-        if let cachedLunchMenu,
-           cachedLunchMenu.validFrom <= today, today <= cachedLunchMenu.validTo {
-            lunchMenu = cachedLunchMenu
-        } else if let bundledLunchMenu,
-                  bundledLunchMenu.validFrom <= today, today <= bundledLunchMenu.validTo {
-            lunchMenu = bundledLunchMenu
-        } else {
-            lunchMenu = [cachedLunchMenu, bundledLunchMenu]
-                .compactMap { $0 }
-                .max { $0.validTo < $1.validTo }
-        }
         self.config = config
         self.overrides = overrides
         self.map = map
         self.prefs = store.notificationPrefs
         self.fetchMetadata = store.fetchMetadata
-        self.lunchMenu = lunchMenu
+        self.lunchMenu = Self.loadLunchMenu(from: store, on: today)
         self.lunchFetchMetadata = store.lunchFetchMetadata
 
         // Both the card and its photo are protected while the device is locked,
@@ -161,7 +148,7 @@ final class AppModel {
         self.nextSchoolDay = cachedNextSchoolDay(after: today)
         updateCurrentState()
 
-        scheduleDataReady = UIApplication.shared.isProtectedDataAvailable
+        scheduleDataReady = preparedScheduleData
         if scheduleDataReady { reloadScheduleWidgets() }
 
         dayChangeObserver = NotificationCenter.default.addObserver(
@@ -178,6 +165,22 @@ final class AppModel {
                 self?.prepareWidgetDataIfNeeded()
                 self?.reloadStudentIDIfUnread()
             }
+        }
+    }
+
+    private static func loadLunchMenu(from store: SharedStore, on today: DayKey) -> LunchMenu? {
+        let cachedLunchMenu = store.cachedLunchMenuData.flatMap { try? LunchMenuParser.parse($0) }
+        let bundledLunchMenu = try? LunchMenuParser.loadBundled()
+        if let cachedLunchMenu,
+           cachedLunchMenu.validFrom <= today, today <= cachedLunchMenu.validTo {
+            return cachedLunchMenu
+        } else if let bundledLunchMenu,
+                  bundledLunchMenu.validFrom <= today, today <= bundledLunchMenu.validTo {
+            return bundledLunchMenu
+        } else {
+            return [cachedLunchMenu, bundledLunchMenu]
+                .compactMap { $0 }
+                .max { $0.validTo < $1.validTo }
         }
     }
 
@@ -557,6 +560,8 @@ final class AppModel {
         prefs = store.notificationPrefs
         map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
         fetchMetadata = store.fetchMetadata
+        lunchMenu = Self.loadLunchMenu(from: store, on: DayKey(date: Date()))
+        lunchFetchMetadata = store.lunchFetchMetadata
         scheduleDataReady = true
         refreshDerived()
         rescheduleNotifications()
