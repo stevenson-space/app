@@ -118,8 +118,11 @@ struct ScheduleWidgetView: View {
         }
     }
 
-    private func periodName(_ block: ResolvedBlock) -> Text {
-        Text("\(ScheduleStyle.emoji(for: block, config: entry.config)) \(block.displayName)")
+    private func periodName(_ block: ResolvedBlock) -> some View {
+        WidgetPeriodName(
+            emoji: ScheduleStyle.emoji(for: block, config: entry.config),
+            name: block.displayName
+        )
     }
 
     private func details(_ block: ResolvedBlock) -> String {
@@ -232,6 +235,49 @@ struct ScheduleWidgetView: View {
         case .asynchronous: return "Asynchronous learning"
         default: return schedule.timeline.scheduleLabel
         }
+    }
+}
+
+private struct WidgetPeriodName: View {
+    let emoji: String
+    let name: String
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.font) private var font
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.legibilityWeight) private var legibilityWeight
+    @Environment(\.displayScale) private var displayScale
+
+    var body: some View {
+        if renderingMode == .accented, let image = emojiImage {
+            // Both views use the same font and line height, so their first
+            // lines align even when the name wraps onto additional lines.
+            HStack(alignment: .top, spacing: 0) {
+                Image(uiImage: image)
+                    .widgetAccentedRenderingMode(.desaturated)
+                Text(" \(name)")
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("\(emoji) \(name)"))
+        } else {
+            Text("\(emoji) \(name)")
+        }
+    }
+
+    private var emojiImage: UIImage? {
+        // Accented mode treats text (including emoji) as a monochrome mask.
+        // WidgetKit's image-only desaturated mode preserves luminance detail
+        // in the system tint. Rasterize just the glyph at its displayed size,
+        // keeping widget archives small.
+        let renderer = ImageRenderer(content:
+            Text(emoji)
+                .font(font)
+                .environment(\.dynamicTypeSize, typeSize)
+                .environment(\.legibilityWeight, legibilityWeight)
+                .fixedSize()
+        )
+        renderer.scale = displayScale
+        return renderer.uiImage
     }
 }
 
