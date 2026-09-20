@@ -7,12 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        A19000000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A19000000000000000000002; };
 		905622C1300F25D400F40B5E /* ScheduleKit in Frameworks */ = {isa = PBXBuildFile; productRef = 905622C0300F25D400F40B5E /* ScheduleKit */; };
 		90563A01300F25D400F40B5E /* StudentIDKit in Frameworks */ = {isa = PBXBuildFile; productRef = 90563A02300F25D400F40B5E /* StudentIDKit */; };
+		A18000000000000000000008 = {isa = PBXBuildFile; productRef = A18000000000000000000007; };
+		A1800000000000000000000A = {isa = PBXBuildFile; fileRef = A18000000000000000000001; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+        A1800000000000000000000B = {isa = PBXContainerItemProxy; containerPortal = 905622A0300F25D400F40B5E; proxyType = 1; remoteGlobalIDString = A18000000000000000000003; remoteInfo = ScheduleWidgets; };
+/* End PBXContainerItemProxy section */
+/* Begin PBXTargetDependency section */
+        A1800000000000000000000C = {isa = PBXTargetDependency; target = A18000000000000000000003; targetProxy = A1800000000000000000000B; };
+/* End PBXTargetDependency section */
+/* Begin PBXCopyFilesBuildPhase section */
+        A18000000000000000000009 /* Embed App Extensions */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (A1800000000000000000000A, ); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+        A19000000000000000000002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Stevenson Space Companion App/Assets.xcassets"; sourceTree = SOURCE_ROOT; };
 		905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Stevenson Space Companion App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A18000000000000000000001 = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScheduleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -21,6 +36,7 @@
 			path = "Stevenson Space Companion App";
 			sourceTree = "<group>";
 		};
+		A18000000000000000000002 = {isa = PBXFileSystemSynchronizedRootGroup; path = ScheduleWidgets; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,12 +49,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A18000000000000000000005 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A18000000000000000000008,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		9056229F300F25D400F40B5E = {
 			isa = PBXGroup;
 			children = (
+                A19000000000000000000002 /* Shared widget assets */,
+				A18000000000000000000002 /* ScheduleWidgets */,
 				905622AA300F25D400F40B5E /* Stevenson Space Companion App */,
 				905622A9300F25D400F40B5E /* Products */,
 			);
@@ -48,6 +67,7 @@
 			isa = PBXGroup;
 			children = (
 				905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */,
+                A18000000000000000000001,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -62,10 +82,12 @@
 				905622A4300F25D400F40B5E /* Sources */,
 				905622A5300F25D400F40B5E /* Frameworks */,
 				905622A6300F25D400F40B5E /* Resources */,
+                A18000000000000000000009 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+                A1800000000000000000000C,
 			);
 			fileSystemSynchronizedGroups = (
 				905622AA300F25D400F40B5E /* Stevenson Space Companion App */,
@@ -79,6 +101,19 @@
 			productReference = 905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A18000000000000000000003 /* ScheduleWidgets */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = A1800000000000000000000F;
+            buildPhases = (A18000000000000000000004, A18000000000000000000005, A18000000000000000000006, );
+            buildRules = ();
+            dependencies = ();
+            fileSystemSynchronizedGroups = (A18000000000000000000002, );
+            name = ScheduleWidgets;
+            packageProductDependencies = (A18000000000000000000007, );
+            productName = ScheduleWidgets;
+            productReference = A18000000000000000000001;
+            productType = "com.apple.product-type.app-extension";
+        };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -89,8 +124,10 @@
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+                    A18000000000000000000003 = {CreatedOnToolsVersion = 27.0; SystemCapabilities = {com.apple.ApplicationGroups.iOS = {enabled = 1; }; }; };
 					905622A7300F25D400F40B5E = {
 						CreatedOnToolsVersion = 26.6;
+                        SystemCapabilities = {com.apple.ApplicationGroups.iOS = {enabled = 1; }; };
 					};
 				};
 			};
@@ -112,6 +149,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+                A18000000000000000000003 /* ScheduleWidgets */,
 				905622A7300F25D400F40B5E /* Stevenson Space Companion App */,
 			);
 		};
@@ -125,6 +163,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A18000000000000000000006 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A19000000000000000000001, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -135,6 +174,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A18000000000000000000004 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -265,6 +305,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+                CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
+                INFOPLIST_FILE = Config/AppInfo.plist;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S3Y69M4V3C;
 				ENABLE_PREVIEWS = YES;
@@ -298,6 +340,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+                CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
+                INFOPLIST_FILE = Config/AppInfo.plist;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S3Y69M4V3C;
 				ENABLE_PREVIEWS = YES;
@@ -325,6 +369,52 @@
 			};
 			name = Release;
 		};
+        A1800000000000000000000D = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                APPLICATION_EXTENSION_API_ONLY = YES;
+                CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
+                CODE_SIGN_STYLE = Automatic;
+                CURRENT_PROJECT_VERSION = 1;
+                DEVELOPMENT_TEAM = S3Y69M4V3C;
+                GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = Config/WidgetInfo.plist;
+                INFOPLIST_KEY_CFBundleDisplayName = "School Schedule";
+                IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
+                MARKETING_VERSION = 1.0;
+                PRODUCT_BUNDLE_IDENTIFIER = "shankar.Stevenson-Space-Companion-App.ScheduleWidgets";
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SKIP_INSTALL = YES;
+                SWIFT_EMIT_LOC_STRINGS = YES;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+        A1800000000000000000000E = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                APPLICATION_EXTENSION_API_ONLY = YES;
+                CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
+                CODE_SIGN_STYLE = Automatic;
+                CURRENT_PROJECT_VERSION = 1;
+                DEVELOPMENT_TEAM = S3Y69M4V3C;
+                GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = Config/WidgetInfo.plist;
+                INFOPLIST_KEY_CFBundleDisplayName = "School Schedule";
+                IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
+                MARKETING_VERSION = 1.0;
+                PRODUCT_BUNDLE_IDENTIFIER = "shankar.Stevenson-Space-Companion-App.ScheduleWidgets";
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SKIP_INSTALL = YES;
+                SWIFT_EMIT_LOC_STRINGS = YES;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Release;
+        };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -346,6 +436,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+        A1800000000000000000000F = {isa = XCConfigurationList; buildConfigurations = (A1800000000000000000000D, A1800000000000000000000E, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -368,6 +459,7 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = StudentIDKit;
 		};
+        A18000000000000000000007 = {isa = XCSwiftPackageProductDependency; productName = ScheduleKit; };
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 905622A0300F25D400F40B5E /* Project object */;

@@ -20,6 +20,7 @@ struct RootView: View {
                 SettingsView()
             }
         }
+        .onOpenURL { model.openWidgetURL($0) }
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             // One app-wide 1 Hz heartbeat: flips block boundaries and catches
