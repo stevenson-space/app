@@ -151,7 +151,13 @@ public final class SharedStore: @unchecked Sendable {
             // and documented Standard fallback, just like the main app.
             map = nil
         }
+        #if DEBUG
+        var snapshot = SharedScheduleData(config: config, overrides: overrides, map: map)
+        snapshot.widgetClock = WidgetDebugClock(offset: defaults.double(forKey: widgetTimeTravelKey))
+        return snapshot
+        #else
         return SharedScheduleData(config: config, overrides: overrides, map: map)
+        #endif
     }
 
     /// The in-app data-source editor (the only way to set or reset a custom
@@ -266,6 +272,15 @@ public final class SharedStore: @unchecked Sendable {
     }
 
     // MARK: - Typed accessors
+
+    #if DEBUG
+    private static let widgetTimeTravelKey = "sk.debug.widgetTimeTravelOffset"
+
+    public var widgetTimeTravelOffset: TimeInterval {
+        get { WidgetDebugClock(offset: defaults.double(forKey: Self.widgetTimeTravelKey)).offset }
+        set { defaults.set(WidgetDebugClock(offset: newValue).offset, forKey: Self.widgetTimeTravelKey) }
+    }
+    #endif
 
     public var userConfig: UserConfig {
         get { decode(UserConfig.self, key: Keys.userConfig) ?? UserConfig() }
@@ -451,6 +466,9 @@ public struct SharedScheduleData: Sendable {
     public let config: UserConfig
     public let overrides: [DayOverride]
     public let map: DayTypeMap?
+    #if DEBUG
+    public var widgetClock = WidgetDebugClock()
+    #endif
 
     public func resolverInputs(catalog: BellScheduleCatalog) -> ResolverInputs {
         ResolverInputs(map: map,
