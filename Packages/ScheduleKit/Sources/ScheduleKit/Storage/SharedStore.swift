@@ -49,7 +49,7 @@ public final class SharedStore: @unchecked Sendable {
         static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
                           notificationPrefs, mapURL, lunchMenuData,
-                          lunchFetchMetadata, studentID, studentIDPhotoHidden]
+                          lunchFetchMetadata, studentIDPhotoHidden]
     }
 
     /// Every key the one-time App Group migration carries across.
@@ -75,8 +75,8 @@ public final class SharedStore: @unchecked Sendable {
         } else {
             self.init(defaults: .standard, secrets: KeychainSecretStore())
         }
-        // Order matters: the App Group migration must land any legacy blob in
-        // this suite before the keychain migration goes looking for it.
+        // Identity is read directly from legacy storage, never staged in the
+        // App Group while waiting for the keychain to become available.
         migrateStudentIDToKeychainIfNeeded()
         retireCustomMapURLIfNeeded()
     }
@@ -92,7 +92,7 @@ public final class SharedStore: @unchecked Sendable {
               var values = (try? PropertyListSerialization.propertyList(from: data, format: nil))
                 as? [String: Any] else { return }
         legacyPrivateSuiteURL = url
-        for key in Keys.all where key != Keys.studentID && defaults.object(forKey: key) == nil {
+        for key in Keys.all where defaults.object(forKey: key) == nil {
             if let value = values[key] { defaults.set(value, forKey: key) }
         }
         // Keep identity in the app's keychain; never copy it into the App Group.
@@ -117,6 +117,7 @@ public final class SharedStore: @unchecked Sendable {
     public func prepareScheduleDataForWidgets() {
         migrateFromPrivateSuiteIfNeeded()
         migrateFromStandardIfNeeded()
+        migrateStudentIDToKeychainIfNeeded()
         retireCustomMapURLIfNeeded()
         defaults.set(true, forKey: Keys.widgetDataReady)
     }
@@ -178,10 +179,9 @@ public final class SharedStore: @unchecked Sendable {
         defaults.set(true, forKey: Keys.mapURLRetired)
     }
 
-    /// Copies any pre-App-Group data from `.standard` into the suite, once.
-    /// The student ID is copied like everything else and deliberately not
-    /// deleted here: `migrateStudentIDToKeychainIfNeeded` drops both plaintext
-    /// copies together, once the keychain is known to hold the card.
+    /// Copies non-secret pre-App-Group data from `.standard` into the suite.
+    /// The student ID stays private until `migrateStudentIDToKeychainIfNeeded`
+    /// moves it directly from legacy storage into the keychain.
     func migrateFromStandardIfNeeded() {
         guard !defaults.bool(forKey: Keys.migrated) else { return }
         var copied = false
@@ -201,7 +201,7 @@ public final class SharedStore: @unchecked Sendable {
         // one-shot flag there would strand the config, overrides and prefs in
         // the old suite forever, so only a launch that actually carried
         // something across closes the door. On a genuinely fresh install the
-        // loop keeps running — ten `object(forKey:)` reads, and the old suite
+        // loop keeps running — nine `object(forKey:)` reads, and the old suite
         // is empty, so there is nothing left for it to resurrect.
         if copied {
             defaults.set(true, forKey: Keys.migrated)

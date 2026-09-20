@@ -8,6 +8,13 @@ public struct WidgetScheduleEntry: Sendable {
     public let state: MomentState
     public let nextSchoolDay: DayTimeline?
 
+    public init(date: Date, timeline: DayTimeline, state: MomentState, nextSchoolDay: DayTimeline?) {
+        self.date = date
+        self.timeline = timeline
+        self.state = state
+        self.nextSchoolDay = nextSchoolDay
+    }
+
     public var isLeadIn: Bool {
         guard case .beforeSchool(let first) = state else { return false }
         return date >= first.start.addingTimeInterval(-15 * 60)

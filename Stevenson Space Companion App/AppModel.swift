@@ -475,7 +475,7 @@ final class AppModel {
         // Throttling runs on the real clock even while time-traveling.
         let result = await syncService.refresh(force: force, now: Date())
         fetchMetadata = store.fetchMetadata
-        if result == .updated || result == .notModified { reloadScheduleWidgets() }
+        if result == .updated { reloadScheduleWidgets() }
         if result == .updated, let cached = store.cachedMapData {
             map = try? ScheduleDatesParser.parse(cached)
             refreshDerived()

@@ -248,6 +248,16 @@ private struct WidgetPeriodName: View {
     @Environment(\.legibilityWeight) private var legibilityWeight
     @Environment(\.displayScale) private var displayScale
 
+    private struct EmojiImageKey: Hashable {
+        let emoji: String
+        let font: Font?
+        let typeSize: DynamicTypeSize
+        let legibilityWeight: LegibilityWeight?
+        let displayScale: CGFloat
+    }
+
+    @MainActor private static var emojiImages: [EmojiImageKey: UIImage] = [:]
+
     var body: some View {
         if renderingMode == .accented, let image = emojiImage {
             // Both views use the same font and line height, so their first
@@ -265,6 +275,9 @@ private struct WidgetPeriodName: View {
     }
 
     private var emojiImage: UIImage? {
+        let key = EmojiImageKey(emoji: emoji, font: font, typeSize: typeSize,
+                                legibilityWeight: legibilityWeight, displayScale: displayScale)
+        if let image = Self.emojiImages[key] { return image }
         // Accented mode treats text (including emoji) as a monochrome mask.
         // WidgetKit's image-only desaturated mode preserves luminance detail
         // in the system tint. Rasterize just the glyph at its displayed size,
@@ -277,7 +290,12 @@ private struct WidgetPeriodName: View {
                 .fixedSize()
         )
         renderer.scale = displayScale
-        return renderer.uiImage
+        guard let image = renderer.uiImage else { return nil }
+        // Reuse glyphs across timeline entries, with a bound for long-lived
+        // preview processes that cycle through fonts and accessibility sizes.
+        if Self.emojiImages.count >= 64 { Self.emojiImages.removeAll(keepingCapacity: true) }
+        Self.emojiImages[key] = image
+        return image
     }
 }
 
