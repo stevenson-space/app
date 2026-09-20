@@ -34,6 +34,14 @@ struct ScheduleProvider: TimelineProvider {
         }
     }
 
+    static var weekendExample: ScheduleWidgetEntry {
+        let now = DayKey(year: 2026, month: 9, day: 19).date(at: HourMinute(hour: 12, minute: 0))!
+        let catalog = try! BellScheduleCatalog.loadBundled()
+        let config = UserConfig()
+        let plan = WidgetTimelinePlanner.plan(from: now, inputs: ResolverInputs(config: config, catalog: catalog))
+        return ScheduleWidgetEntry(date: now, schedule: plan.entries[0], config: config)
+    }
+
     static var example: ScheduleWidgetEntry {
         example(at: HourMinute(hour: 9, minute: 0))
     }
@@ -55,7 +63,7 @@ struct ScheduleWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetTimelinePlanner.kind, provider: ScheduleProvider()) { entry in
             ScheduleWidgetView(entry: entry)
-                .containerBackground(.background, for: .widget)
+                .containerBackground(for: .widget) { ScheduleWidgetBackground(entry: entry) }
                 .widgetURL(WidgetTimelinePlanner.homeURL)
         }
         .configurationDisplayName("School Schedule")
