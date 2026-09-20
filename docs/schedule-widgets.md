@@ -38,6 +38,16 @@ after configuration/override mutations, successful schedule refreshes, and first
 publication after migration/unlock. Widgets respect system appearance/tint and
 contrast; schedule colors, emoji, and 12/24-hour formatting share the app's helpers.
 
+In accented rendering (including clear and tinted Home Screen appearances),
+period emoji are rendered as small images with `widgetAccentedRenderingMode(.desaturated)`.
+WidgetKit treats text emoji as monochrome masks; its image-only modifier maps
+image luminance to transparency, preserving details in the system tint instead
+of producing a solid silhouette. Only the emoji is rasterized, using the
+label's font, Dynamic Type size, legibility weight, and display scale. Period names
+remain text, and VoiceOver receives the original combined emoji/name label.
+Other rendering modes retain the inline text label. This follows Apple's
+recommendation to use desaturated images for a cohesive accented appearance.
+
 Apple controls update cadence and can delay both rendering and timeline switches.
 A cache only changes when the main app refreshes it. No widget networking or new
 backend is introduced.
@@ -121,6 +131,11 @@ locked and Xcode's widget preview timed out. For the rendering regression, check
 both small and medium widgets on a weekend, then set and remove a bell-schedule
 override for today; verify the off-day logo and schedule replace each other.
 
+Emoji rendering validation (September 20, 2026): the app and embedded widget
+extension build with Xcode 27 for the iOS Simulator. The widget preview timed out;
+clear/tinted rendering, long-name layout, Dynamic Type, and VoiceOver still need
+on-device verification for both current and upcoming periods.
+
 ## Deferred Live Activity requirements
 
 Future work must retain app-open initiation, the actual first bell's 15-minute
@@ -135,3 +150,5 @@ planning implementation. No ActivityKit or Dynamic Island UI ships in this versi
 - [Bounded timer text](https://developer.apple.com/documentation/swiftui/text/init(timerinterval:pausetime:countsdown:showshours:))
 - [Configuring App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups)
 - [Preparing image thumbnails](https://developer.apple.com/documentation/uikit/uiimage/preparingthumbnail(of:))
+- [Configuring accented image rendering](https://developer.apple.com/documentation/swiftui/image/widgetaccentedrenderingmode(_:))
+- [Optimizing widgets for accented rendering and Liquid Glass](https://developer.apple.com/documentation/widgetkit/optimizing-your-widget-for-accented-rendering-mode-and-liquid-glass)
