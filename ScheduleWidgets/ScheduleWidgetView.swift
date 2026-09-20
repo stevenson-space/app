@@ -126,7 +126,72 @@ struct ScheduleWidgetView: View {
         return block.room.map { "Room \($0) · \(range)" } ?? range
     }
 
+    @ViewBuilder
     private func resting(_ schedule: WidgetScheduleEntry) -> some View {
+        if rectangular || typeSize.isAccessibilitySize {
+            compactResting(schedule)
+        } else {
+            HStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(status(schedule))
+                            .font(.title3.bold())
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if !medium { patriot(height: 34) }
+                    }
+                    if case .unknownSchedule(let name) = schedule.state {
+                        Text(name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    if let next = schedule.nextSchoolDay, let start = next.firstBell {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("BACK TO SCHOOL")
+                                .font(.system(size: 9, weight: .bold))
+                                .tracking(1)
+                                .foregroundStyle(.secondary)
+                            Text(TimeDisplay.shortDayLabel(next.day))
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            Text(next.scheduleLabel)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            Text(TimeDisplay.time(start, format))
+                                .font(.caption.weight(.semibold))
+                        }
+                        .padding(.leading, 10)
+                        .overlay(alignment: .leading) {
+                            Capsule()
+                                .fill(renderingMode == .fullColor && contrast != .increased
+                                      ? Color(red: 0.78, green: 0.60, blue: 0.16) : Color.primary)
+                                .frame(width: 3)
+                                .widgetAccentable()
+                        }
+                    } else {
+                        Text("No upcoming school day available")
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if medium { patriot(height: 110) }
+            }
+        }
+    }
+
+    private func patriot(height: CGFloat) -> some View {
+        Image("Patriot")
+            .resizable()
+            .widgetAccentedRenderingMode(.desaturated)
+            .scaledToFit()
+            .frame(width: height * 0.78, height: height)
+            .accessibilityHidden(true)
+    }
+
+    private func compactResting(_ schedule: WidgetScheduleEntry) -> some View {
         VStack(alignment: .leading, spacing: rectangular ? 2 : 8) {
             Text(status(schedule))
                 .font(rectangular ? .headline : .title3.bold())
@@ -194,6 +259,35 @@ struct ScheduleLayoutPreviews: PreviewProvider {
                 .preferredColorScheme(.dark)
                 .previewContext(WidgetPreviewContext(family: family))
                 .previewDisplayName("Large text · dark · \(family)")
+        }
+    }
+}
+
+#Preview("Small · weekend", as: .systemSmall) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.weekendExample
+}
+
+#Preview("Medium · weekend", as: .systemMedium) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.weekendExample
+}
+
+struct ScheduleWidgetBackground: View {
+    let entry: ScheduleWidgetEntry
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        if let schedule = entry.schedule, schedule.focus == nil, family != .accessoryRectangular {
+            LinearGradient(
+                colors: [Color.primary.opacity(0.02), Color.green.opacity(0.14)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            .background(.background)
+        } else {
+            Rectangle().fill(.background)
         }
     }
 }

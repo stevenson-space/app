@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        A19000000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A19000000000000000000002; };
 		905622C1300F25D400F40B5E /* ScheduleKit in Frameworks */ = {isa = PBXBuildFile; productRef = 905622C0300F25D400F40B5E /* ScheduleKit */; };
 		90563A01300F25D400F40B5E /* StudentIDKit in Frameworks */ = {isa = PBXBuildFile; productRef = 90563A02300F25D400F40B5E /* StudentIDKit */; };
 		A18000000000000000000008 = {isa = PBXBuildFile; productRef = A18000000000000000000007; };
@@ -24,6 +25,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+        A19000000000000000000002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Stevenson Space Companion App/Assets.xcassets"; sourceTree = SOURCE_ROOT; };
 		905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Stevenson Space Companion App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A18000000000000000000001 = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScheduleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -54,6 +56,7 @@
 		9056229F300F25D400F40B5E = {
 			isa = PBXGroup;
 			children = (
+                A19000000000000000000002 /* Shared widget assets */,
 				A18000000000000000000002 /* ScheduleWidgets */,
 				905622AA300F25D400F40B5E /* Stevenson Space Companion App */,
 				905622A9300F25D400F40B5E /* Products */,
@@ -160,7 +163,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A18000000000000000000006 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A18000000000000000000006 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A19000000000000000000001, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
