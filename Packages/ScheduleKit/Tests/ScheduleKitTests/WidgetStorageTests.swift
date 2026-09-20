@@ -21,6 +21,8 @@ private struct WidgetMigrationRefusingSecrets: SecretStore {
         let defaults = try #require(ScheduleReadingDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         defaults.set(true, forKey: "sk.widgetDataReady")
+        // Release readers must ignore a clock offset left by a Debug install.
+        defaults.set(-123456.0, forKey: "sk.debug.widgetTimeTravelOffset")
         defaults.set(Data("private student ID".utf8), forKey: "sk.studentID")
         var config = UserConfig(freePeriods: [6, 7])
         config.customizations["2"] = PeriodCustomization(name: "Biology", room: "243", emoji: "🧫")
@@ -35,7 +37,10 @@ private struct WidgetMigrationRefusingSecrets: SecretStore {
         #expect(data.config == config)
         #expect(data.overrides == [override])
         #expect(data.map != nil)
-        let allowed: Set<String> = ["sk.widgetDataReady", "sk.userConfig", "sk.overrides", "sk.mapData"]
+        var allowed: Set<String> = ["sk.widgetDataReady", "sk.userConfig", "sk.overrides", "sk.mapData"]
+        #if DEBUG
+        allowed.insert("sk.debug.widgetTimeTravelOffset")
+        #endif
         #expect(Set(defaults.requestedKeys).isSubset(of: allowed))
         #expect(!defaults.requestedKeys.contains("sk.studentID"))
         #expect(before == defaults.persistentDomain(forName: name)! as NSDictionary)
@@ -293,4 +298,22 @@ private struct WidgetMigrationRefusingSecrets: SecretStore {
         #expect(try current().state == .asynchronous)
         #expect(try current().countdownInterval == nil)
     }
+
+    #if DEBUG
+    @Test func widgetClockSharesAndClearsTimeTravelWithoutChangingScheduleData() throws {
+        let name = "widget-clock-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(true, forKey: "sk.widgetDataReady")
+        let store = SharedStore(defaults: defaults, secrets: InMemorySecretStore(), legacyDefaults: defaults)
+        #expect(try SharedStore.readScheduleData(from: defaults).widgetClock.offset == 0)
+        store.widgetTimeTravelOffset = -123456
+        #expect(try SharedStore.readScheduleData(from: defaults).widgetClock.offset == -123456)
+        store.widgetTimeTravelOffset = 0
+        let snapshot = try SharedStore.readScheduleData(from: defaults)
+        #expect(snapshot.widgetClock.offset == 0)
+        #expect(snapshot.config == UserConfig())
+        #expect(snapshot.overrides.isEmpty)
+    }
+    #endif
 }

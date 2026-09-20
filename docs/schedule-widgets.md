@@ -42,9 +42,31 @@ Apple controls update cadence and can delay both rendering and timeline switches
 A cache only changes when the main app refreshes it. No widget networking or new
 backend is introduced.
 
+The off-day Patriot image is prepared once as a thumbnail bounded to 330 × 330
+before being passed to SwiftUI (110 points at 3×). Using only `.resizable()` and
+`.frame` would leave the original 1307 × 1687 bitmap in the widget archive,
+risking an archival failure that keeps the previous timeline visible. Shared
+schedule read failures are logged in the extension's `Timeline` category before
+returning the existing open-app fallback and 15-minute retry.
+
 ## Validation
 
-Automated coverage lives in `WidgetTimelineTests` and `WidgetStorageTests`, alongside
+### Debug time travel
+
+In Debug builds, Settings → Developer — Time Travel and Developer — Scenarios
+also update widgets. The simulated clock offset is shared through the App Group,
+and each clock change requests a widget reload. Schedule labels and bell times
+use the simulated date; timeline delivery dates, reload requests, and countdown
+intervals are translated back to real time so transitions continue while the
+app is suspended. iOS still controls when a requested reload is delivered.
+
+“Back to real time,” tapping a widget, or relaunching the app resets both clocks.
+Scenario overrides remain until “Clear demo overrides” removes them, matching
+the existing app behavior. Release builds neither read nor apply the debug clock.
+
+### Checks
+
+Automated coverage lives in `WidgetTimelineTests`, `WidgetDebugClockTests`, and `WidgetStorageTests`, alongside
 existing resolver, notification, personalization, storage, and sync tests:
 
 ```sh
@@ -92,6 +114,13 @@ Before release, validate on a signed device **without the debugger attached**:
 - Check Lock Screen behavior after a restart, before and after first unlock, and
   check date rollover while traveling outside the school time zone.
 
+Refresh and debug-clock validation (September 19, 2026): all 223 Debug ScheduleKit
+tests pass, and the app plus embedded widget extension build in both Debug and
+Release for the simulator. On-device refresh remains unverified: the connected iPhone was
+locked and Xcode's widget preview timed out. For the rendering regression, check
+both small and medium widgets on a weekend, then set and remove a bell-schedule
+override for today; verify the off-day logo and schedule replace each other.
+
 ## Deferred Live Activity requirements
 
 Future work must retain app-open initiation, the actual first bell's 15-minute
@@ -105,3 +134,4 @@ planning implementation. No ActivityKit or Dynamic Island UI ships in this versi
 - [Creating a widget extension](https://developer.apple.com/documentation/widgetkit/creating-a-widget-extension)
 - [Bounded timer text](https://developer.apple.com/documentation/swiftui/text/init(timerinterval:pausetime:countsdown:showshours:))
 - [Configuring App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups)
+- [Preparing image thumbnails](https://developer.apple.com/documentation/uikit/uiimage/preparingthumbnail(of:))

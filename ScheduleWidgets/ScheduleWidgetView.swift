@@ -1,5 +1,6 @@
 import ScheduleKit
 import SwiftUI
+import UIKit
 import WidgetKit
 
 struct ScheduleWidgetView: View {
@@ -58,7 +59,7 @@ struct ScheduleWidgetView: View {
                     .widgetAccentable()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                if let interval = schedule.countdownInterval {
+                if let interval = entry.countdownInterval {
                     Text(timerInterval: interval, countsDown: true)
                         .font(rectangular ? .title2.weight(.bold) : .system(size: min(timerSize, 54), weight: .bold, design: .rounded))
                         .monospacedDigit()
@@ -182,13 +183,22 @@ struct ScheduleWidgetView: View {
         }
     }
 
+    // A SwiftUI frame only changes layout; it leaves the full 1307 × 1687
+    // bitmap in the widget archive. Prepare a bounded image once for all
+    // timeline entries, sized for the largest (110 pt) logo at 3× scale.
+    private static let patriotThumbnail = UIImage(named: "Patriot")?
+        .preparingThumbnail(of: CGSize(width: 330, height: 330))
+
+    @ViewBuilder
     private func patriot(height: CGFloat) -> some View {
-        Image("Patriot")
-            .resizable()
-            .widgetAccentedRenderingMode(.desaturated)
-            .scaledToFit()
-            .frame(width: height * 0.78, height: height)
-            .accessibilityHidden(true)
+        if let thumbnail = Self.patriotThumbnail {
+            Image(uiImage: thumbnail)
+                .resizable()
+                .widgetAccentedRenderingMode(.desaturated)
+                .scaledToFit()
+                .frame(width: height * 0.78, height: height)
+                .accessibilityHidden(true)
+        }
     }
 
     private func compactResting(_ schedule: WidgetScheduleEntry) -> some View {

@@ -1,4 +1,5 @@
 import ScheduleKit
+import OSLog
 import SwiftUI
 import WidgetKit
 
@@ -6,9 +7,24 @@ struct ScheduleWidgetEntry: TimelineEntry {
     let date: Date
     let schedule: WidgetScheduleEntry?
     let config: UserConfig
+    #if DEBUG
+    var clock = WidgetDebugClock()
+    #endif
+
+    var countdownInterval: ClosedRange<Date>? {
+        guard let interval = schedule?.countdownInterval else { return nil }
+        #if DEBUG
+        return clock.realInterval(for: interval)
+        #else
+        return interval
+        #endif
+    }
 }
 
 struct ScheduleProvider: TimelineProvider {
+    private static let logger = Logger(subsystem: "shankar.Stevenson-Space-Companion-App.ScheduleWidgets",
+                                       category: "Timeline")
+
     func placeholder(in context: Context) -> ScheduleWidgetEntry { Self.example }
 
     func getSnapshot(in context: Context, completion: @escaping (ScheduleWidgetEntry) -> Void) {
@@ -24,11 +40,24 @@ struct ScheduleProvider: TimelineProvider {
         do {
             let data = try SharedStore.readScheduleData()
             let catalog = try BellScheduleCatalog.loadBundled()
-            let plan = WidgetTimelinePlanner.plan(from: now, inputs: data.resolverInputs(catalog: catalog))
+            #if DEBUG
+            let scheduleNow = data.widgetClock.scheduleDate(for: now)
+            #else
+            let scheduleNow = now
+            #endif
+            let plan = WidgetTimelinePlanner.plan(from: scheduleNow, inputs: data.resolverInputs(catalog: catalog))
+            #if DEBUG
+            return (plan.entries.map {
+                ScheduleWidgetEntry(date: data.widgetClock.realDate(for: $0.date),
+                                    schedule: $0, config: data.config, clock: data.widgetClock)
+            }, data.widgetClock.realDate(for: plan.reloadAfter))
+            #else
             return (plan.entries.map {
                 ScheduleWidgetEntry(date: $0.date, schedule: $0, config: data.config)
             }, plan.reloadAfter)
+            #endif
         } catch {
+            Self.logger.error("Unable to load shared schedule for widget: \(String(describing: error), privacy: .public)")
             return ([ScheduleWidgetEntry(date: now, schedule: nil, config: UserConfig())],
                     now.addingTimeInterval(15 * 60))
         }

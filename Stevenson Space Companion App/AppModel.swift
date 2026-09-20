@@ -68,10 +68,12 @@ final class AppModel {
     #if DEBUG
     var timeTravelOffset: TimeInterval = 0 {
         didSet {
+            store.widgetTimeTravelOffset = timeTravelOffset
             refreshDerived()
             // Cheap when nothing changed (plan-hash short-circuit); keeps the
             // notification queue consistent with the traveled clock.
             rescheduleNotifications()
+            reloadScheduleWidgets()
         }
     }
     var isTimeTraveling: Bool { timeTravelOffset != 0 }
@@ -79,6 +81,10 @@ final class AppModel {
 
     init(store: SharedStore = SharedStore()) {
         self.store = store
+        #if DEBUG
+        // The app clock starts in real time on launch; clear the widget clock too.
+        store.widgetTimeTravelOffset = 0
+        #endif
         if UIApplication.shared.isProtectedDataAvailable {
             store.prepareScheduleDataForWidgets()
         }

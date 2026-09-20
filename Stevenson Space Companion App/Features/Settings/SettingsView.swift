@@ -213,7 +213,7 @@ struct DeveloperSection: View {
                 model.timeTravelOffset = 0
             }
             .disabled(!model.isTimeTraveling)
-            LabeledContent("App clock") {
+            LabeledContent("App & widget clock") {
                 Text(model.now().formatted(date: .abbreviated, time: .standard))
                     .monospacedDigit()
             }
