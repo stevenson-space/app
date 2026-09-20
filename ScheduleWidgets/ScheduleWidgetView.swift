@@ -60,7 +60,7 @@ struct ScheduleWidgetView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 if let interval = entry.countdownInterval {
-                    Text(timerInterval: interval, countsDown: true)
+                    Text(timerInterval: interval, pauseTime: entry.countdownPauseTime, countsDown: true)
                         .font(rectangular ? .title2.weight(.bold) : .system(size: min(timerSize, 54), weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .lineLimit(1)
@@ -96,7 +96,6 @@ struct ScheduleWidgetView: View {
             }
             .accessibilityElement(children: .contain)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
 
             if medium {
                 Divider()

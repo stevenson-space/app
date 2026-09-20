@@ -7,6 +7,7 @@ struct ScheduleWidgetEntry: TimelineEntry {
     let date: Date
     let schedule: WidgetScheduleEntry?
     let config: UserConfig
+    var countdownPauseTime: Date? = nil
     #if DEBUG
     var clock = WidgetDebugClock()
     #endif
@@ -92,7 +93,9 @@ struct ScheduleProvider: TimelineProvider {
         let next = resolveDay(nextSchoolDay, inputs: inputs, freePeriodGrouping: .separate)
         let schedule = WidgetScheduleEntry(date: now, timeline: timeline,
                                            state: momentState(at: now, in: timeline), nextSchoolDay: next)
-        return ScheduleWidgetEntry(date: now, schedule: schedule, config: config)
+        // Freeze sample countdowns at the fixture time so gallery snapshots
+        // remain representative after the fixture dates have passed.
+        return ScheduleWidgetEntry(date: now, schedule: schedule, config: config, countdownPauseTime: now)
     }
 }
 
