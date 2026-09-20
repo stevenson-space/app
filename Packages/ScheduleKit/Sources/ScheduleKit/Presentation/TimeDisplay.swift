@@ -1,9 +1,8 @@
 import Foundation
-import ScheduleKit
 
 /// All user-facing time formatting. Bell times always display in the school's
 /// timezone — a student checking from out of town sees Stevenson's clock.
-enum TimeDisplay {
+public enum TimeDisplay {
     private static func makeFormatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = format
@@ -28,12 +27,12 @@ enum TimeDisplay {
         return formatter
     }()
 
-    static var systemUses24Hour: Bool {
+    public static var systemUses24Hour: Bool {
         DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current)?
             .contains("H") ?? false
     }
 
-    static func uses24Hour(_ pref: TimeFormatPref) -> Bool {
+    public static func uses24Hour(_ pref: TimeFormatPref) -> Bool {
         switch pref {
         case .twentyFourHour: return true
         case .twelveHour: return false
@@ -42,12 +41,12 @@ enum TimeDisplay {
     }
 
     /// "2:33 PM" / "14:33"
-    static func time(_ date: Date, _ pref: TimeFormatPref) -> String {
+    public static func time(_ date: Date, _ pref: TimeFormatPref) -> String {
         uses24Hour(pref) ? twentyFourHour.string(from: date) : twelveHour.string(from: date)
     }
 
     /// "8:30 – 9:21" (meridiem dropped in ranges; bell times are unambiguous)
-    static func range(_ start: Date, _ end: Date, _ pref: TimeFormatPref) -> String {
+    public static func range(_ start: Date, _ end: Date, _ pref: TimeFormatPref) -> String {
         if uses24Hour(pref) {
             return "\(twentyFourHour.string(from: start)) – \(twentyFourHour.string(from: end))"
         }
@@ -55,7 +54,7 @@ enum TimeDisplay {
     }
 
     /// "In 14h 9m" / "In 12m" / "Now" — the upcoming-block chip.
-    static func untilChip(_ seconds: TimeInterval) -> String {
+    public static func untilChip(_ seconds: TimeInterval) -> String {
         let total = max(Int(seconds), 0)
         let hours = total / 3600
         let minutes = (total % 3600) / 60
@@ -65,7 +64,7 @@ enum TimeDisplay {
     }
 
     /// "42:07" under an hour, "1:02:33" above.
-    static func countdown(_ seconds: TimeInterval) -> String {
+    public static func countdown(_ seconds: TimeInterval) -> String {
         let total = max(Int(seconds.rounded(.down)), 0)
         let hours = total / 3600
         let minutes = (total % 3600) / 60
@@ -77,7 +76,7 @@ enum TimeDisplay {
     }
 
     /// Spoken form for VoiceOver: "42 minutes", "1 hour 2 minutes".
-    static func spokenDuration(_ seconds: TimeInterval) -> String {
+    public static func spokenDuration(_ seconds: TimeInterval) -> String {
         let total = max(Int(seconds), 0)
         let hours = total / 3600
         let minutes = (total % 3600) / 60
@@ -89,7 +88,7 @@ enum TimeDisplay {
     }
 
     /// "Today" / "Tomorrow" / "Monday, Aug 24"
-    static func dayLabel(_ day: DayKey, relativeTo today: DayKey) -> String {
+    public static func dayLabel(_ day: DayKey, relativeTo today: DayKey) -> String {
         if day == today { return "Today" }
         if day == today.advanced(by: 1) { return "Tomorrow" }
         guard let date = day.date() else { return day.description }
@@ -97,7 +96,7 @@ enum TimeDisplay {
     }
 
     /// "Wed, Aug 12"
-    static func shortDayLabel(_ day: DayKey) -> String {
+    public static func shortDayLabel(_ day: DayKey) -> String {
         guard let date = day.date() else { return day.description }
         return shortWeekdayMonthDay.string(from: date)
     }

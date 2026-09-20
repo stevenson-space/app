@@ -99,6 +99,11 @@ struct HomeView: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
+        .onChange(of: model.homeTodayRequest) { _, _ in
+            selectedDay = nil
+            isTimerCompact = false
+            scrollPosition.scrollTo(edge: .top)
+        }
         .onChange(of: today) { _, _ in
             selectedDay = nil
         }

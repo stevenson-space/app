@@ -3,6 +3,7 @@ import SwiftUI
 import Observation
 import ScheduleKit
 import StudentIDKit
+import WidgetKit
 
 /// Root observable store. Owns the resolver inputs (persisted via SharedStore),
 /// derives today's timeline, and coordinates sync + notifications. All schedule
@@ -18,6 +19,8 @@ enum RootTab: Hashable {
 @MainActor
 final class AppModel {
     var selectedTab: RootTab = .home
+    private(set) var homeTodayRequest = 0
+    private var scheduleDataReady = false
 
     let store: SharedStore
     let catalog: BellScheduleCatalog
@@ -65,10 +68,12 @@ final class AppModel {
     #if DEBUG
     var timeTravelOffset: TimeInterval = 0 {
         didSet {
+            store.widgetTimeTravelOffset = timeTravelOffset
             refreshDerived()
             // Cheap when nothing changed (plan-hash short-circuit); keeps the
             // notification queue consistent with the traveled clock.
             rescheduleNotifications()
+            reloadScheduleWidgets()
         }
     }
     var isTimeTraveling: Bool { timeTravelOffset != 0 }
@@ -76,6 +81,14 @@ final class AppModel {
 
     init(store: SharedStore = SharedStore()) {
         self.store = store
+        #if DEBUG
+        // The app clock starts in real time on launch; clear the widget clock too.
+        store.widgetTimeTravelOffset = 0
+        #endif
+        let preparedScheduleData = UIApplication.shared.isProtectedDataAvailable
+        if preparedScheduleData {
+            store.prepareScheduleDataForWidgets()
+        }
         do {
             self.catalog = try BellScheduleCatalog.loadBundled()
         } catch {
@@ -94,26 +107,12 @@ final class AppModel {
         let config = store.userConfig
         let overrides = store.overrides
         let map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
-        let cachedLunchMenu = store.cachedLunchMenuData.flatMap { try? LunchMenuParser.parse($0) }
-        let bundledLunchMenu = try? LunchMenuParser.loadBundled()
-        let lunchMenu: LunchMenu?
-        if let cachedLunchMenu,
-           cachedLunchMenu.validFrom <= today, today <= cachedLunchMenu.validTo {
-            lunchMenu = cachedLunchMenu
-        } else if let bundledLunchMenu,
-                  bundledLunchMenu.validFrom <= today, today <= bundledLunchMenu.validTo {
-            lunchMenu = bundledLunchMenu
-        } else {
-            lunchMenu = [cachedLunchMenu, bundledLunchMenu]
-                .compactMap { $0 }
-                .max { $0.validTo < $1.validTo }
-        }
         self.config = config
         self.overrides = overrides
         self.map = map
         self.prefs = store.notificationPrefs
         self.fetchMetadata = store.fetchMetadata
-        self.lunchMenu = lunchMenu
+        self.lunchMenu = Self.loadLunchMenu(from: store, on: today)
         self.lunchFetchMetadata = store.lunchFetchMetadata
 
         // Both the card and its photo are protected while the device is locked,
@@ -149,6 +148,9 @@ final class AppModel {
         self.nextSchoolDay = cachedNextSchoolDay(after: today)
         updateCurrentState()
 
+        scheduleDataReady = preparedScheduleData
+        if scheduleDataReady { reloadScheduleWidgets() }
+
         dayChangeObserver = NotificationCenter.default.addObserver(
             forName: .NSCalendarDayChanged, object: nil, queue: nil
         ) { [weak self] _ in
@@ -159,7 +161,26 @@ final class AppModel {
             forName: UIApplication.protectedDataDidBecomeAvailableNotification,
             object: nil, queue: nil
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.reloadStudentIDIfUnread() }
+            Task { @MainActor [weak self] in
+                self?.prepareWidgetDataIfNeeded()
+                self?.reloadStudentIDIfUnread()
+            }
+        }
+    }
+
+    private static func loadLunchMenu(from store: SharedStore, on today: DayKey) -> LunchMenu? {
+        let cachedLunchMenu = store.cachedLunchMenuData.flatMap { try? LunchMenuParser.parse($0) }
+        let bundledLunchMenu = try? LunchMenuParser.loadBundled()
+        if let cachedLunchMenu,
+           cachedLunchMenu.validFrom <= today, today <= cachedLunchMenu.validTo {
+            return cachedLunchMenu
+        } else if let bundledLunchMenu,
+                  bundledLunchMenu.validFrom <= today, today <= bundledLunchMenu.validTo {
+            return bundledLunchMenu
+        } else {
+            return [cachedLunchMenu, bundledLunchMenu]
+                .compactMap { $0 }
+                .max { $0.validTo < $1.validTo }
         }
     }
 
@@ -303,6 +324,7 @@ final class AppModel {
         store.userConfig = updated
         refreshDerived()
         rescheduleNotifications()
+        reloadScheduleWidgets()
     }
 
     func updatePrefs(_ transform: (inout NotificationPrefs) -> Void) {
@@ -326,6 +348,7 @@ final class AppModel {
         store.overrides = overrides
         refreshDerived()
         rescheduleNotifications()
+        reloadScheduleWidgets()
     }
 
     func removeOverride(day: DayKey) {
@@ -333,6 +356,7 @@ final class AppModel {
         store.overrides = overrides
         refreshDerived()
         rescheduleNotifications()
+        reloadScheduleWidgets()
     }
 
     // MARK: - Student ID
@@ -454,6 +478,7 @@ final class AppModel {
         // Throttling runs on the real clock even while time-traveling.
         let result = await syncService.refresh(force: force, now: Date())
         fetchMetadata = store.fetchMetadata
+        if result == .updated { reloadScheduleWidgets() }
         if result == .updated, let cached = store.cachedMapData {
             map = try? ScheduleDatesParser.parse(cached)
             refreshDerived()
@@ -504,6 +529,7 @@ final class AppModel {
         guard phase == .active else { return }
         // A transient keychain error may not emit a protected-data notification;
         // retry the launch-time read whenever the app returns to the foreground.
+        prepareWidgetDataIfNeeded()
         reloadStudentIDIfUnread()
         if today != lastComputedDay {
             refreshDerived()
@@ -518,6 +544,38 @@ final class AppModel {
     var isDataStale: Bool {
         guard let lastSuccess = fetchMetadata.lastSuccess else { return store.cachedMapData == nil }
         return now().timeIntervalSince(lastSuccess) > 7 * 24 * 3600
+    }
+
+    // MARK: - Widgets
+
+    private func reloadScheduleWidgets() {
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetTimelinePlanner.kind)
+    }
+
+    private func prepareWidgetDataIfNeeded() {
+        guard !scheduleDataReady, UIApplication.shared.isProtectedDataAvailable else { return }
+        store.prepareScheduleDataForWidgets()
+        config = store.userConfig
+        overrides = store.overrides
+        prefs = store.notificationPrefs
+        map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
+        fetchMetadata = store.fetchMetadata
+        lunchMenu = Self.loadLunchMenu(from: store, on: DayKey(date: Date()))
+        lunchFetchMetadata = store.lunchFetchMetadata
+        scheduleDataReady = true
+        refreshDerived()
+        rescheduleNotifications()
+        reloadScheduleWidgets()
+    }
+
+    func openWidgetURL(_ url: URL) {
+        guard WidgetTimelinePlanner.isHomeURL(url) else { return }
+        #if DEBUG
+        timeTravelOffset = 0
+        #endif
+        refreshDerived()
+        selectedTab = .home
+        homeTodayRequest += 1
     }
 
     // MARK: - Notifications

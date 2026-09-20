@@ -1,11 +1,10 @@
 import SwiftUI
-import ScheduleKit
 
 /// Visual identity per schedule family and block role. Standard stays quiet;
 /// everything abnormal gets a loud color — the design principle is that the
 /// app should shout exactly when the day is weird.
-enum ScheduleStyle {
-    static func accent(for family: BellFamily?) -> Color {
+public enum ScheduleStyle {
+    public static func accent(for family: BellFamily?) -> Color {
         switch family {
         case .standard, nil: return .secondary
         case .lateArrival: return .purple
@@ -17,7 +16,7 @@ enum ScheduleStyle {
         }
     }
 
-    static func icon(for family: BellFamily?) -> String {
+    public static func icon(for family: BellFamily?) -> String {
         switch family {
         case .standard, nil: return "clock"
         case .lateArrival: return "sunrise.fill"
@@ -29,7 +28,7 @@ enum ScheduleStyle {
         }
     }
 
-    static func tint(for role: BlockRole) -> Color {
+    public static func tint(for role: BlockRole) -> Color {
         switch role {
         case .classPeriod: return .indigo
         case .lunch: return .green
@@ -43,7 +42,7 @@ enum ScheduleStyle {
         }
     }
 
-    static func icon(for role: BlockRole) -> String {
+    public static func icon(for role: BlockRole) -> String {
         switch role {
         case .classPeriod: return "book.fill"
         case .lunch: return "fork.knife"
@@ -62,15 +61,16 @@ enum ScheduleStyle {
     /// The emoji shown on a block's card. A stored emoji belongs to a class
     /// (keyed by its anchor period); lunch, advisory, and free time always
     /// use their role defaults.
-    static func emoji(for block: ResolvedBlock, config: UserConfig) -> String {
+    public static func emoji(for block: ResolvedBlock, config: UserConfig) -> String {
         if block.role == .classPeriod,
-           let custom = config.customization(for: block.customizationID)?.emoji?.nilIfBlank {
+           let custom = config.customization(for: block.customizationID)?.emoji?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !custom.isEmpty {
             return custom
         }
         return emoji(for: block.role, name: block.displayName)
     }
 
-    static func emoji(for role: BlockRole, name: String?) -> String {
+    public static func emoji(for role: BlockRole, name: String?) -> String {
         switch role {
         case .lunch: return "🍔"
         case .advisory: return "🧑‍🏫"
@@ -85,7 +85,7 @@ enum ScheduleStyle {
     }
 
     /// Best-effort subject guess from the class name; 📚 when nothing matches.
-    static func subjectEmoji(_ name: String?) -> String {
+    public static func subjectEmoji(_ name: String?) -> String {
         guard let name else { return "📚" }
         let words = name.lowercased()
             .split(whereSeparator: { !$0.isLetter && !$0.isNumber })

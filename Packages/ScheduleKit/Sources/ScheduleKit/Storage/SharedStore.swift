@@ -1,12 +1,11 @@
 import Foundation
 
 /// Everything the resolver reads, in one App-Group-ready store. The main app
-/// writes; future widget/Live Activity targets read the same suite — which is
+/// writes; widget targets read the same suite — which is
 /// the whole point: every surface computes from identical inputs.
 ///
-/// Until the App Group entitlement lands (widgets phase), the suite behaves
-/// like private storage; `migrateFromStandardIfNeeded` is the one-time path
-/// for any data written before a suite existed.
+/// Only the main app constructs this store. Extensions use `readScheduleData()`
+/// instead, which reads schedule keys without initializing secrets or migrating.
 public final class SharedStore: @unchecked Sendable {
     public static let appGroupID = "group.shankar.Stevenson-Space-Companion-App"
     public static let defaultMapURL = URL(
@@ -31,6 +30,7 @@ public final class SharedStore: @unchecked Sendable {
     /// Where this app kept its preferences before the App Group suite existed.
     /// A separate property only so tests can point it somewhere harmless.
     private let legacyDefaults: UserDefaults
+    private var legacyPrivateSuiteURL: URL?
 
     private enum Keys {
         static let userConfig = "sk.userConfig"
@@ -43,11 +43,13 @@ public final class SharedStore: @unchecked Sendable {
         static let lunchFetchMetadata = "sk.lunchFetchMetadata"
         static let studentID = "sk.studentID"
         static let studentIDPhotoHidden = "sk.studentIDPhotoHidden"
+        static let widgetDataReady = "sk.widgetDataReady"
+        static let privateSuiteMigrated = "sk.privateSuiteMigrated"
         static let migrated = "sk.migratedToAppGroup"
         static let mapURLRetired = "sk.mapURLRetired"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
                           notificationPrefs, mapURL, lunchMenuData,
-                          lunchFetchMetadata, studentID, studentIDPhotoHidden]
+                          lunchFetchMetadata, studentIDPhotoHidden]
     }
 
     /// Every key the one-time App Group migration carries across.
@@ -66,14 +68,97 @@ public final class SharedStore: @unchecked Sendable {
     public convenience init() {
         if let suite = UserDefaults(suiteName: SharedStore.appGroupID) {
             self.init(defaults: suite, secrets: KeychainSecretStore())
+            // Before entitlements, suiteName could write a private preferences
+            // domain inside the app container. Import it before standard defaults.
+            migrateFromPrivateSuiteIfNeeded()
             migrateFromStandardIfNeeded()
         } else {
             self.init(defaults: .standard, secrets: KeychainSecretStore())
         }
-        // Order matters: the App Group migration must land any legacy blob in
-        // this suite before the keychain migration goes looking for it.
+        // Identity is read directly from legacy storage, never staged in the
+        // App Group while waiting for the keychain to become available.
         migrateStudentIDToKeychainIfNeeded()
         retireCustomMapURLIfNeeded()
+    }
+
+    /// Main-app-only upgrade from the formerly unentitled suite. An independent
+    /// marker is required: the old suite may already contain the standard-store
+    /// migration marker. Never replace newer values in the shared container.
+    func migrateFromPrivateSuiteIfNeeded(fileURL: URL? = nil) {
+        guard !defaults.bool(forKey: Keys.privateSuiteMigrated) else { return }
+        let url = fileURL ?? FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Preferences/\(Self.appGroupID).plist")
+        guard let data = try? Data(contentsOf: url),
+              var values = (try? PropertyListSerialization.propertyList(from: data, format: nil))
+                as? [String: Any] else { return }
+        legacyPrivateSuiteURL = url
+        for key in Keys.all where defaults.object(forKey: key) == nil {
+            if let value = values[key] { defaults.set(value, forKey: key) }
+        }
+        // Keep identity in the app's keychain; never copy it into the App Group.
+        if let identity = values[Keys.studentID] as? Data {
+            switch secrets.read(Keys.studentID) {
+            case .unavailable: return
+            case .missing:
+                guard (try? secrets.write(identity, for: Keys.studentID)) != nil else { return }
+            case .value: break
+            }
+            values.removeValue(forKey: Keys.studentID)
+            guard let cleaned = try? PropertyListSerialization.data(
+                fromPropertyList: values, format: .binary, options: 0),
+                  (try? cleaned.write(to: url, options: .atomic)) != nil else { return }
+        }
+        defaults.set(true, forKey: Keys.privateSuiteMigrated)
+    }
+
+    /// Call in the main app after protected data becomes available. Retry imports
+    /// before publishing readiness, so an empty locked launch cannot masquerade
+    /// as a new user's default configuration.
+    public func prepareScheduleDataForWidgets() {
+        migrateFromPrivateSuiteIfNeeded()
+        migrateFromStandardIfNeeded()
+        migrateStudentIDToKeychainIfNeeded()
+        retireCustomMapURLIfNeeded()
+        defaults.set(true, forKey: Keys.widgetDataReady)
+    }
+
+    /// Schedule-only snapshot. This path never creates SharedStore, a SecretStore,
+    /// or a reference to standard defaults and never writes or runs migrations.
+    public static func readScheduleData() throws -> SharedScheduleData {
+        guard FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) != nil,
+              let suite = UserDefaults(suiteName: appGroupID) else {
+            throw SharedScheduleDataError.unavailable
+        }
+        return try readScheduleData(from: suite)
+    }
+
+    static func readScheduleData(from defaults: UserDefaults) throws -> SharedScheduleData {
+        guard defaults.bool(forKey: Keys.widgetDataReady) else {
+            throw SharedScheduleDataError.unavailable
+        }
+        func read<T: Decodable>(_ type: T.Type, key: String, fallback: T) throws -> T {
+            guard let value = defaults.object(forKey: key) else { return fallback }
+            guard let data = value as? Data else { throw SharedScheduleDataError.unavailable }
+            return try JSONDecoder().decode(type, from: data)
+        }
+        let config = try read(UserConfig.self, key: Keys.userConfig, fallback: UserConfig())
+        let overrides = try read([DayOverride].self, key: Keys.overrides, fallback: [])
+        let map: DayTypeMap?
+        if let value = defaults.object(forKey: Keys.mapData) {
+            guard let data = value as? Data else { throw SharedScheduleDataError.unavailable }
+            map = try ScheduleDatesParser.parse(data)
+        } else {
+            // An absent remote cache uses the resolver's bundled school calendar
+            // and documented Standard fallback, just like the main app.
+            map = nil
+        }
+        #if DEBUG
+        var snapshot = SharedScheduleData(config: config, overrides: overrides, map: map)
+        snapshot.widgetClock = WidgetDebugClock(offset: defaults.double(forKey: widgetTimeTravelKey))
+        return snapshot
+        #else
+        return SharedScheduleData(config: config, overrides: overrides, map: map)
+        #endif
     }
 
     /// The in-app data-source editor (the only way to set or reset a custom
@@ -94,10 +179,9 @@ public final class SharedStore: @unchecked Sendable {
         defaults.set(true, forKey: Keys.mapURLRetired)
     }
 
-    /// Copies any pre-App-Group data from `.standard` into the suite, once.
-    /// The student ID is copied like everything else and deliberately not
-    /// deleted here: `migrateStudentIDToKeychainIfNeeded` drops both plaintext
-    /// copies together, once the keychain is known to hold the card.
+    /// Copies non-secret pre-App-Group data from `.standard` into the suite.
+    /// The student ID stays private until `migrateStudentIDToKeychainIfNeeded`
+    /// moves it directly from legacy storage into the keychain.
     func migrateFromStandardIfNeeded() {
         guard !defaults.bool(forKey: Keys.migrated) else { return }
         var copied = false
@@ -117,7 +201,7 @@ public final class SharedStore: @unchecked Sendable {
         // one-shot flag there would strand the config, overrides and prefs in
         // the old suite forever, so only a launch that actually carried
         // something across closes the door. On a genuinely fresh install the
-        // loop keeps running — ten `object(forKey:)` reads, and the old suite
+        // loop keeps running — nine `object(forKey:)` reads, and the old suite
         // is empty, so there is nothing left for it to resurrect.
         if copied {
             defaults.set(true, forKey: Keys.migrated)
@@ -128,14 +212,39 @@ public final class SharedStore: @unchecked Sendable {
     /// the standard defaults from before the suite existed.
     private var legacyStudentIDData: Data? {
         defaults.data(forKey: Keys.studentID) ?? legacyDefaults.data(forKey: Keys.studentID)
+            ?? privateSuiteValues?[Keys.studentID] as? Data
+    }
+
+    private var privateSuiteValues: [String: Any]? {
+        try? readPrivateSuiteValues()
+    }
+
+    private func readPrivateSuiteValues() throws -> [String: Any]? {
+        guard let url = legacyPrivateSuiteURL else { return nil }
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch CocoaError.fileReadNoSuchFile {
+            return nil
+        }
+        guard let values = try PropertyListSerialization.propertyList(from: data, format: nil)
+            as? [String: Any] else {
+            throw CocoaError(.propertyListReadCorrupt)
+        }
+        return values
     }
 
     /// Drops the plaintext card from every plist that could still hold one.
-    /// Only ever called once the keychain is known to have the bytes: the
-    /// standard-defaults copy is the last one an upgraded install has left.
-    private func clearPlaintextStudentID() {
+    /// Migration calls this after saving to the keychain; explicit removal must
+    /// finish this cleanup before deleting the keychain value.
+    private func clearPlaintextStudentID() throws {
         defaults.removeObject(forKey: Keys.studentID)
         legacyDefaults.removeObject(forKey: Keys.studentID)
+        if let url = legacyPrivateSuiteURL, var values = try readPrivateSuiteValues(),
+           values.removeValue(forKey: Keys.studentID) != nil {
+            let data = try PropertyListSerialization.data(fromPropertyList: values, format: .binary, options: 0)
+            try data.write(to: url, options: .atomic)
+        }
     }
 
     /// Moves a student ID written by a version that kept it in `UserDefaults`
@@ -151,18 +260,27 @@ public final class SharedStore: @unchecked Sendable {
             // Already migrated; the plist copies are leftovers from a run whose
             // cleanup did not finish — including an install upgraded by a
             // version that cleared the suite but not the standard defaults.
-            clearPlaintextStudentID()
+            try? clearPlaintextStudentID()
         case .unavailable:
             // Locked. Reading nothing here does not mean there is nothing there,
             // so leave both copies alone and migrate on a later launch.
             return
         case .missing:
             guard (try? secrets.write(legacy, for: Keys.studentID)) != nil else { return }
-            clearPlaintextStudentID()
+            try? clearPlaintextStudentID()
         }
     }
 
     // MARK: - Typed accessors
+
+    #if DEBUG
+    private static let widgetTimeTravelKey = "sk.debug.widgetTimeTravelOffset"
+
+    public var widgetTimeTravelOffset: TimeInterval {
+        get { WidgetDebugClock(offset: defaults.double(forKey: Self.widgetTimeTravelKey)).offset }
+        set { defaults.set(WidgetDebugClock(offset: newValue).offset, forKey: Self.widgetTimeTravelKey) }
+    }
+    #endif
 
     public var userConfig: UserConfig {
         get { decode(UserConfig.self, key: Keys.userConfig) ?? UserConfig() }
@@ -208,9 +326,8 @@ public final class SharedStore: @unchecked Sendable {
     /// readable from a backup or an extracted container and carries the
     /// student's number and name in the clear.
     ///
-    /// Being device-only and unavailable while locked, a widget will not be able
-    /// to read it as-is; when the App Group entitlement lands, publish a
-    /// deliberately redacted view for that surface rather than moving this.
+    /// Device-only and unavailable while locked. Widgets use the schedule-only
+    /// reader above and never access this value or share the app's keychain.
     public func readStudentIDData() -> SecretReadResult {
         let stored = secrets.read(Keys.studentID)
         guard case .missing = stored, let legacy = legacyStudentIDData else {
@@ -223,7 +340,7 @@ public final class SharedStore: @unchecked Sendable {
         // migration once per launch, which is no help to a process that started
         // before first unlock.
         if (try? secrets.write(legacy, for: Keys.studentID)) != nil {
-            clearPlaintextStudentID()
+            try? clearPlaintextStudentID()
         }
         // Either way, serve the bytes the student still has. Reporting the card
         // as missing would blank the ID tab for the rest of the session and let
@@ -236,10 +353,18 @@ public final class SharedStore: @unchecked Sendable {
     public var studentIDData: Data? { readStudentIDData().data }
 
     public func setStudentIDData(_ data: Data?) throws {
-        try secrets.write(data, for: Keys.studentID)
+        if let data {
+            try secrets.write(data, for: Keys.studentID)
+            // The card is committed. A cleanup failure must not report a failed
+            // save and cause the caller to restore the previous card's photo.
+            try? clearPlaintextStudentID()
+            return
+        }
         // A blob left by a version that used the plist would otherwise outlive
-        // the removal and reappear at the next migration.
-        clearPlaintextStudentID()
+        // the removal and reappear at the next migration. Keep the keychain copy
+        // until every plaintext copy has been cleared successfully.
+        try clearPlaintextStudentID()
+        try secrets.write(nil, for: Keys.studentID)
     }
 
     /// A display preference; hiding the photo keeps the saved image available.
@@ -332,5 +457,23 @@ extension FetchMetadata: Codable {
         lastChanged = try c.decodeIfPresent(Date.self, forKey: .lastChanged)
         etag = try c.decodeIfPresent(String.self, forKey: .etag)
         lastError = try c.decodeIfPresent(String.self, forKey: .lastError)
+    }
+}
+
+public enum SharedScheduleDataError: Error { case unavailable }
+
+public struct SharedScheduleData: Sendable {
+    public let config: UserConfig
+    public let overrides: [DayOverride]
+    public let map: DayTypeMap?
+    #if DEBUG
+    public var widgetClock = WidgetDebugClock()
+    #endif
+
+    public func resolverInputs(catalog: BellScheduleCatalog) -> ResolverInputs {
+        ResolverInputs(map: map,
+                       overrides: Dictionary(overrides.map { ($0.day, $0) },
+                                             uniquingKeysWith: { _, last in last }),
+                       config: config, catalog: catalog)
     }
 }

@@ -180,7 +180,7 @@ private struct WriteRefusingSecretStore: SecretStore {
         #expect(defaults.object(forKey: "sk.studentID") == nil)
     }
 
-    @Test func theAppGroupMigrationDropsTheStandardCopyOnlyOnceTheKeychainHasIt() {
+    @Test func theAppGroupMigrationKeepsIdentityPrivateUntilTheKeychainHasIt() {
         let install = UpgradedInstall()
         defer { install.tearDown() }
 
@@ -192,8 +192,8 @@ private struct WriteRefusingSecretStore: SecretStore {
         install.store.migrateFromStandardIfNeeded()
         install.store.migrateStudentIDToKeychainIfNeeded()
 
-        // The keychain could not confirm anything, so neither copy may go.
-        #expect(install.suite.data(forKey: "sk.studentID") == payload)
+        // A locked launch must not expose the private card to extensions.
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
         #expect(install.legacy.data(forKey: "sk.studentID") == payload)
 
         install.secrets.isUnavailable = false
@@ -201,9 +201,48 @@ private struct WriteRefusingSecretStore: SecretStore {
 
         #expect(install.secrets.read("sk.studentID") == .value(payload))
         #expect(install.suite.object(forKey: "sk.studentID") == nil)
-        // The plaintext card would otherwise sit in the old plist forever: the
-        // App Group migration copies it out but nothing was deleting it.
         #expect(install.legacy.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test(arguments: [false, true])
+    func widgetPreparationRetriesIdentityMigrationAfterUnlock(hasSavedCard: Bool) throws {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+        let legacyCard = Data("legacy card".utf8)
+        let savedCard = Data("newer saved card".utf8)
+        if hasSavedCard { try install.secrets.write(savedCard, for: "sk.studentID") }
+        let config = UserConfig(freePeriods: [7])
+        install.legacy.set(try JSONEncoder().encode(config), forKey: "sk.userConfig")
+        install.legacy.set(true, forKey: "sk.studentIDPhotoHidden")
+        install.legacy.set(legacyCard, forKey: "sk.studentID")
+        install.secrets.isUnavailable = true
+
+        install.store.prepareScheduleDataForWidgets()
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        #expect(install.legacy.data(forKey: "sk.studentID") == legacyCard)
+        #expect(try SharedStore.readScheduleData(from: install.suite).config == config)
+        #expect(install.store.studentIDPhotoHidden)
+        #expect(install.suite.bool(forKey: "sk.migratedToAppGroup"))
+
+        install.secrets.isUnavailable = false
+        install.store.prepareScheduleDataForWidgets()
+        #expect(install.secrets.read("sk.studentID") == .value(hasSavedCard ? savedCard : legacyCard))
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        #expect(install.legacy.object(forKey: "sk.studentID") == nil)
+    }
+
+    @Test func failedKeychainWriteDoesNotShareOrDiscardTheStandardCard() {
+        let install = UpgradedInstall()
+        defer { install.tearDown() }
+        let payload = Data("legacy card".utf8)
+        install.legacy.set(payload, forKey: "sk.studentID")
+        let store = SharedStore(defaults: install.suite, secrets: WriteRefusingSecretStore(),
+                                legacyDefaults: install.legacy)
+        store.prepareScheduleDataForWidgets()
+        #expect(install.suite.object(forKey: "sk.studentID") == nil)
+        #expect(install.legacy.data(forKey: "sk.studentID") == payload)
+        #expect(store.readStudentIDData() == .value(payload))
+        #expect(!install.suite.bool(forKey: "sk.migratedToAppGroup"))
     }
 
     @Test func aCardStrandedInTheStandardDefaultsIsClearedOnALaterLaunch() {
@@ -238,9 +277,8 @@ private struct WriteRefusingSecretStore: SecretStore {
         #expect(install.legacy.object(forKey: "sk.studentID") == nil)
     }
 
-    @Test func studentIDIsCarriedByTheAppGroupMigration() {
-        // Anything not in this list is silently left behind in the old suite.
-        #expect(SharedStore.migratableKeys.contains("sk.studentID"))
+    @Test func studentIDIsExcludedFromTheAppGroupMigration() {
+        #expect(!SharedStore.migratableKeys.contains("sk.studentID"))
     }
 
     @Test func mapURLDefaultsAndReset() {
