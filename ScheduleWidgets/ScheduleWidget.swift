@@ -65,10 +65,7 @@ struct ScheduleProvider: TimelineProvider {
 
     static var weekendExample: ScheduleWidgetEntry {
         let now = DayKey(year: 2026, month: 9, day: 19).date(at: HourMinute(hour: 12, minute: 0))!
-        let catalog = try! BellScheduleCatalog.loadBundled()
-        let config = UserConfig()
-        let plan = WidgetTimelinePlanner.plan(from: now, inputs: ResolverInputs(config: config, catalog: catalog))
-        return ScheduleWidgetEntry(date: now, schedule: plan.entries[0], config: config)
+        return exampleEntry(at: now, config: UserConfig(), nextSchoolDay: DayKey(year: 2026, month: 9, day: 21))
     }
 
     static var example: ScheduleWidgetEntry {
@@ -81,9 +78,21 @@ struct ScheduleProvider: TimelineProvider {
             name: longName ? "Advanced Topics in Environmental Science and Research" : "AP Biology",
             room: room, emoji: "🧬")
         let now = DayKey(year: 2026, month: 9, day: 14).date(at: time)!
-        let catalog = try! BellScheduleCatalog.loadBundled()
-        let plan = WidgetTimelinePlanner.plan(from: now, inputs: ResolverInputs(config: config, catalog: catalog))
-        return ScheduleWidgetEntry(date: now, schedule: plan.entries[0], config: config)
+        return exampleEntry(at: now, config: config, nextSchoolDay: DayKey(year: 2026, month: 9, day: 15))
+    }
+
+    private static func exampleEntry(at now: Date, config: UserConfig, nextSchoolDay: DayKey) -> ScheduleWidgetEntry {
+        guard let catalog = try? BellScheduleCatalog.loadBundled() else {
+            return ScheduleWidgetEntry(date: now, schedule: nil, config: config)
+        }
+        // Gallery examples only need these two known days, not a full timeline
+        // and a search for future school days.
+        let inputs = ResolverInputs(config: config, catalog: catalog)
+        let timeline = resolveDay(DayKey(date: now), inputs: inputs, freePeriodGrouping: .separate)
+        let next = resolveDay(nextSchoolDay, inputs: inputs, freePeriodGrouping: .separate)
+        let schedule = WidgetScheduleEntry(date: now, timeline: timeline,
+                                           state: momentState(at: now, in: timeline), nextSchoolDay: next)
+        return ScheduleWidgetEntry(date: now, schedule: schedule, config: config)
     }
 }
 
