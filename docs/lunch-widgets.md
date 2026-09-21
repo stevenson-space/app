@@ -81,3 +81,10 @@ wrapped lines remain grouped as one dish. Small widgets prefer readable list
 text for multiple options and report the remaining count when space runs out.
 The simulator build passes. View renders were checked against the September 22
 sides/soup example in dark mode and a dense menu at compact large-widget bounds.
+
+Day-off styling: lunch widgets now reuse the schedule widget’s resting gradient
+(primary at 2% to green at 14%, over the system background) when the resolved day
+is not a serving day. Menu days, missing categories, and unavailable/loading data
+keep the system background. This follows the existing simulated-day resolution.
+The simulator build passes; light and dark day-off view renders and a neutral
+menu-day render were visually checked.
