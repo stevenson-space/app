@@ -71,15 +71,18 @@ struct LunchWidgetView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             ViewThatFits(in: .vertical) {
-                Text(section.items.joined(separator: " · "))
-                    .font(.headline)
-                    .fixedSize(horizontal: false, vertical: true)
+                if section.items.count == 1 {
+                    menuOptions(section.items)
+                        .font(.headline)
+                }
+                menuOptions(section.items)
+                    .font(.subheadline.weight(.semibold))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(section.items.joined(separator: " · "))
+                    Text(section.items.first ?? "Not listed today")
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("More in app ↗")
+                    Text(section.items.count > 1 ? "+\(section.items.count - 1) more in app ↗" : "More in app ↗")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -160,12 +163,21 @@ struct LunchWidgetView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(accent)
                 .widgetAccentable()
-            Text(section.items.isEmpty ? "Not listed today" : section.items.joined(separator: " · "))
+            menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items)
                 .font(.subheadline.weight(.medium))
-                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    private func menuOptions(_ items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            ForEach(items, id: \.self) { item in
+                Text(item)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func empty(title: String, detail: String) -> some View {
@@ -187,9 +199,7 @@ struct LunchWidgetView: View {
 
 struct LunchWidgetBackground: View {
     var body: some View {
-        LinearGradient(colors: [Color.primary.opacity(0.02), Color.green.opacity(0.14)],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
-            .background(.background)
+        Rectangle().fill(.background)
     }
 }
 
