@@ -18,7 +18,9 @@ struct ScheduleWidgetView: View {
     var body: some View {
         Group {
             if let schedule = entry.schedule {
-                if let focus = schedule.focus {
+                if family == .systemLarge {
+                    large(schedule)
+                } else if let focus = schedule.focus {
                     active(schedule, focus: focus)
                 } else {
                     resting(schedule)
@@ -115,6 +117,242 @@ struct ScheduleWidgetView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+    }
+
+    private func large(_ schedule: WidgetScheduleEntry) -> some View {
+        let preview = schedule.timeline.blocks.isEmpty ? schedule.nextSchoolDay : nil
+        let timeline = preview ?? schedule.timeline
+        return VStack(alignment: .leading, spacing: 12) {
+            if let focus = schedule.focus {
+                largeHeader(schedule, focus: focus)
+            } else if schedule.isFinished {
+                Label("School finished", systemImage: "checkmark.circle.fill")
+                    .font(.title2.bold())
+                    .padding(.vertical, 8)
+            } else if !schedule.timeline.blocks.isEmpty {
+                compactResting(schedule)
+            } else if let preview, !preview.blocks.isEmpty {
+                largeRestingHeader(schedule, next: preview)
+            } else {
+                resting(schedule)
+            }
+
+            if !timeline.blocks.isEmpty {
+                HStack {
+                    Text(preview == nil ? "TODAY" : "NEXT SCHOOL DAY")
+                        .fontWeight(.bold)
+                        .tracking(1.4)
+                    Spacer(minLength: 8)
+                    Text(timeline.scheduleLabel)
+                }
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 4)
+
+                // Prefer generous rows, then tighten spacing for split days.
+                // The final fallback still includes every block in two columns.
+                GeometryReader { geometry in
+                    let blocks = timeline.blocks
+                    let spaciousHeight = CGFloat(blocks.count * 24 + max(0, blocks.count - 1) * 2)
+                    // Choose expanding rows using the actual available height;
+                    // ViewThatFits measures ideal size and can select tight rows
+                    // even when there is room left beneath them.
+                    if geometry.size.height >= spaciousHeight {
+                        dayRows(blocks, schedule: schedule, compact: false, spacious: true)
+                            .frame(height: geometry.size.height)
+                    } else {
+                        ViewThatFits(in: .vertical) {
+                            dayRows(blocks, schedule: schedule, compact: false)
+                            HStack(alignment: .top, spacing: 12) {
+                                let midpoint = (blocks.count + 1) / 2
+                                dayRows(Array(blocks.prefix(midpoint)), schedule: schedule, compact: true)
+                                dayRows(Array(blocks.dropFirst(midpoint)), schedule: schedule, compact: true)
+                            }
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+            }
+        }
+        // Keep the entire day visible; VoiceOver retains full row details.
+        .dynamicTypeSize(...DynamicTypeSize.large)
+    }
+
+    private func largeRestingHeader(_ schedule: WidgetScheduleEntry, next: DayTimeline) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text(status(schedule))
+                    .font(.title3.bold())
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                patriot(height: 30)
+            }
+            if case .unknownSchedule(let name) = schedule.state {
+                Text(name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("BACK TO SCHOOL")
+                        .font(.system(size: 9, weight: .bold))
+                        .tracking(1)
+                        .foregroundStyle(.secondary)
+                    Text(TimeDisplay.shortDayLabel(next.day))
+                        .font(.subheadline.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let start = next.firstBell {
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(TimeDisplay.time(start, format))
+                            .font(.title3.weight(.semibold))
+                        Text("first bell")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.leading, 10)
+            .overlay(alignment: .leading) {
+                Capsule()
+                    .fill(renderingMode == .fullColor && contrast != .increased
+                          ? Color(red: 0.78, green: 0.60, blue: 0.16) : Color.primary)
+                    .frame(width: 3)
+                    .widgetAccentable()
+            }
+        }
+    }
+
+    private func largeHeader(_ schedule: WidgetScheduleEntry, focus: ResolvedBlock) -> some View {
+        let tint = accent(schedule, focus: focus)
+        return HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(focus.start > schedule.date ? "UP NEXT" : "IN PROGRESS")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(1.2)
+                    .foregroundStyle(tint)
+                    .widgetAccentable()
+                periodName(focus)
+                    .font(.system(size: 17, weight: .semibold))
+                    .lineLimit(2)
+                Text(details(focus))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            .privacySensitive()
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                if let interval = entry.countdownInterval {
+                    Text(timerInterval: interval, pauseTime: entry.countdownPauseTime, countsDown: true)
+                        .font(.system(size: 36, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.identity)
+                        .multilineTextAlignment(.trailing)
+                    Text(focus.start > schedule.date ? "until start" : "remaining")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(TimeDisplay.time(focus.start, format))
+                        .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    Text("first bell")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.65)
+            .frame(width: 108, alignment: .trailing)
+            .accessibilityElement(children: .combine)
+        }
+        .padding(12)
+        .background(
+            LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0.10)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 14)
+        )
+        .overlay(alignment: .leading) {
+            Capsule()
+                .fill(tint)
+                .frame(width: 3, height: 28)
+                .widgetAccentable()
+        }
+    }
+
+    private func dayRows(_ blocks: [ResolvedBlock], schedule: WidgetScheduleEntry,
+                         compact: Bool, spacious: Bool = false) -> some View {
+        VStack(spacing: 2) {
+            ForEach(blocks) { block in
+                let focused = schedule.focus?.id == block.id
+                let completed = block.end <= schedule.date
+                let tint = accent(schedule, focus: block)
+                HStack(spacing: compact ? 4 : 7) {
+                    Group {
+                        if completed {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 7, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        } else if focused {
+                            Capsule()
+                                .fill(tint)
+                                .frame(width: 3, height: 14)
+                                .widgetAccentable()
+                        } else {
+                            Color.clear.frame(height: 1)
+                        }
+                    }
+                    .frame(width: 7)
+                    .accessibilityHidden(true)
+
+                    periodName(block)
+                        .font(.system(size: compact ? 11 : 13, weight: focused ? .semibold : .medium))
+                        .foregroundStyle(completed ? .secondary : .primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if !compact, let room = block.room {
+                        Text(room)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 3)
+                            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 4))
+                            .frame(maxWidth: 43, alignment: .trailing)
+                    }
+                    rowTime(block, compact: compact)
+                        .font(.system(size: compact ? 10 : 11, weight: focused ? .medium : .regular))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                .lineLimit(1)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .frame(minHeight: spacious ? 24 : nil, maxHeight: spacious ? .infinity : nil)
+                .background(focused ? tint.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 9))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(focused ? (block.start > schedule.date ? "Up next. " : "Current. ") : completed ? "Completed. " : "")\(block.displayName). \(details(block))")
+                .privacySensitive()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: !spacious)
+    }
+
+    private func rowTime(_ block: ResolvedBlock, compact: Bool) -> some View {
+        HStack(spacing: 3) {
+            Text(TimeDisplay.time(block.start, format, includesMeridiem: false))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            if !compact {
+                Text("–")
+                Text(TimeDisplay.time(block.end, format, includesMeridiem: false))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        // Reserve equal bell-time columns, including for single-digit hours.
+        .frame(width: compact ? 36 : 88)
     }
 
     private func periodName(_ block: ResolvedBlock) -> some View {
@@ -325,7 +563,7 @@ private struct WidgetPeriodName: View {
 // PreviewProvider supports explicit WidgetPreviewContext for layout variants.
 struct ScheduleLayoutPreviews: PreviewProvider {
     static var previews: some View {
-        ForEach([WidgetFamily.systemSmall, .systemMedium, .accessoryRectangular], id: \.self) { family in
+        ForEach([WidgetFamily.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular], id: \.self) { family in
             ScheduleWidgetView(entry: ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true, room: nil))
                 .containerBackground(.background, for: .widget)
                 .environment(\.dynamicTypeSize, .accessibility1)
@@ -363,4 +601,50 @@ struct ScheduleWidgetBackground: View {
             Rectangle().fill(.background)
         }
     }
+}
+
+#Preview("Large · full day", as: .systemLarge) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.example(at: HourMinute(hour: 8, minute: 0))
+    ScheduleProvider.example(at: HourMinute(hour: 8, minute: 15))
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true)
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 21), room: nil)
+    ScheduleProvider.example(at: HourMinute(hour: 15, minute: 25))
+    ScheduleProvider.example(at: HourMinute(hour: 15, minute: 30))
+    ScheduleProvider.weekendExample
+}
+
+#Preview("Large · weekend next school day", as: .systemLarge) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.weekendExample
+    ScheduleProvider.weekendExample(family: .standard, dense: true)
+    ScheduleProvider.weekendExample(family: .lateArrival)
+}
+
+#Preview("Large · special and split schedules", as: .systemLarge) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.fullDayExample()
+    ScheduleProvider.fullDayExample(dense: true)
+    ScheduleProvider.fullDayExample(family: .lateArrival)
+    ScheduleProvider.fullDayExample(family: .pmAssembly)
+    ScheduleProvider.fullDayExample(family: .earlyDismissal)
+}
+
+struct LargeSchedulePrivacyPreview: PreviewProvider {
+    static var previews: some View {
+        ScheduleWidgetView(entry: ScheduleProvider.fullDayExample(dense: true))
+            .redacted(reason: .privacy)
+            .containerBackground(.background, for: .widget)
+            .previewContext(WidgetPreviewContext(family: .systemLarge))
+            .previewDisplayName("Large · privacy")
+    }
+}
+
+#Preview("Large · custom classes", as: .systemLarge) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.customClassesExample
 }
