@@ -71,13 +71,16 @@ highlight identify the current/next block. Room badges separate room numbers
 from bell times. After
 dismissal the full day remains visible beneath “School finished” for five minutes,
 then beneath “Next school day” with the upcoming school date and first bell. Days without
-blocks reuse the existing off-day/unavailable presentation and next-school-day
-information.
+blocks show a compact off-day header, the next school date and first bell, and
+the upcoming day's personalized schedule under “NEXT SCHOOL DAY”. The green
+background and gold accent remain. If no upcoming blocks are available, the
+existing off-day/unavailable presentation remains.
 
 Rows retain class emoji, names, room badges, and time ranges. Upcoming periods
 have no dot; completed periods retain checkmarks. Equal-width bell-time columns
-align start and end times. `ViewThatFits` first tries rows that expand to use the
-available height, then tighter spacing, then two columns with start times for
+align start and end times. The layout measures the available height and expands
+rows evenly when their minimum height fits. Otherwise, `ViewThatFits` tries
+tighter spacing, then two columns with start times for
 dense days; it never truncates the list or scrolls. The header uses a visible
 accent gradient and slightly tighter corners. Names may truncate, while VoiceOver retains complete names,
 rooms, time ranges, and period state. Dynamic Type is capped at Large for this
