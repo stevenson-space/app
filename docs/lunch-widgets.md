@@ -96,3 +96,7 @@ Small widgets and the large category fallback use the same mapping. Increased
 contrast and non-full-color rendering retain the primary-color fallback and
 widgetAccentable grouping. The simulator build passes; dark full-menu and light
 small-category renders were visually checked.
+
+No-lunch foreground correction: on non-serving days, the header and empty-state
+icon use primary text (white in dark mode), matching schedule resting states.
+Menu-day accents remain unchanged. Simulator build and dark day-off render pass.
