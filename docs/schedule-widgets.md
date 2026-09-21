@@ -1,6 +1,6 @@
 # Schedule widgets
 
-One iOS 18+ WidgetKit extension supports small and medium Home Screen widgets and
+One iOS 18+ WidgetKit extension supports small, medium, and large Home Screen widgets and
 an accessory rectangular Lock Screen widget. Tap any family to select Home and
 reset its date to today. Live Activities and Dynamic Island are deferred.
 
@@ -59,6 +59,48 @@ risking an archival failure that keeps the previous timeline visible. Shared
 schedule read failures are logged in the extension's `Timeline` category before
 returning the existing open-app fallback and 15-minute retry.
 
+## Large Home Screen layout
+
+The large family reuses the same provider, resolved blocks, focus, and bounded
+countdown as the other sizes. The current/next period and right-aligned countdown share a softly tinted header,
+with a small state label and room/time details. Before the existing 15-minute
+lead-in it shows the first bell time instead.
+The entire day stays underneath, including completed periods, free periods,
+lunch/advisory halves, and special-schedule blocks. Completed blocks use subdued labels and checkmarks; an accent bar and rounded
+highlight identify the current/next block. Room badges separate room numbers
+from bell times. After
+dismissal the full day remains visible beneath “School finished” for five minutes,
+then beneath “Next school day” with the upcoming school date and first bell. Days without
+blocks reuse the existing off-day/unavailable presentation and next-school-day
+information.
+
+Rows retain class emoji, names, room badges, and time ranges. Upcoming periods
+have no dot; completed periods retain checkmarks. Equal-width bell-time columns
+align start and end times. `ViewThatFits` first tries rows that expand to use the
+available height, then tighter spacing, then two columns with start times for
+dense days; it never truncates the list or scrolls. The header uses a visible
+accent gradient and slightly tighter corners. Names may truncate, while VoiceOver retains complete names,
+rooms, time ranges, and period state. Dynamic Type is capped at Large for this
+family to preserve the full-day layout. Personal names, emoji, rooms, and schedule
+rows are marked privacy-sensitive using WidgetKit's system redaction support.
+
+Large-widget validation (September 20, 2026): all 225 ScheduleKit tests pass.
+The app and extension build for the iOS Simulator. Previews cover ordinary and
+dense split schedules, free periods, late arrival, assembly, finals, passing,
+lead-in, dismissal, weekends, long names, large text, and privacy redaction.
+Xcode's preview renderer timed out, so actual Home Screen layout, tinted rendering,
+and privacy behavior still require visual verification on a simulator or device.
+
+Large-widget visual refinement (September 20, 2026): the app and embedded
+widget extension build successfully for the iPhone 18 Pro simulator destination.
+Xcode preview rendering timed out, so the revised spacing and header still need
+visual confirmation on a device or functioning preview. Schedule logic is unchanged.
+
+Emoji-preserving refinement (September 20, 2026): custom-class previews render
+successfully in light and dark appearance, including the longer World Literature
+name and five-digit room number. Rows retain emojis, the header keeps a visible
+accent gradient, and upcoming dots are removed.
+
 ## Validation
 
 ### Debug time travel
@@ -87,7 +129,7 @@ xcodebuild -project 'Stevenson Space Companion App.xcodeproj' \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-The widget view provides previews for all three families, lead-in, passing,
+The widget view provides previews for all four families, lead-in, passing,
 completion, long names, missing rooms, custom emoji, and larger text. In Xcode,
 use appearance, text size, and widget rendering variants to inspect light, dark,
 accented, and vibrant modes.
@@ -111,7 +153,7 @@ Before release, validate on a signed device **without the debugger attached**:
 
 - Upgrade an existing install; verify names, rooms, emoji, 12/24-hour preference,
   overrides, cached calendar, and student ID still work. Open the app once.
-- Add small, medium, and rectangular widgets. Test light/dark/tinted appearance,
+- Add small, medium, large, and rectangular widgets. Test light/dark/tinted appearance,
   increased contrast, large text, and VoiceOver. Check long names and absent rooms.
 - Leave the app suspended across a period end, passing, and the next period start;
   confirm timer text counts down and stops at zero if a transition is delayed.

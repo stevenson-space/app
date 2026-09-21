@@ -82,13 +82,47 @@ struct ScheduleProvider: TimelineProvider {
         return exampleEntry(at: now, config: config, nextSchoolDay: DayKey(year: 2026, month: 9, day: 15))
     }
 
-    private static func exampleEntry(at now: Date, config: UserConfig, nextSchoolDay: DayKey) -> ScheduleWidgetEntry {
+    static func fullDayExample(family: BellFamily = .standard, dense: Bool = false) -> ScheduleWidgetEntry {
+        var config = UserConfig(freePeriods: [6, 7])
+        config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a)
+        if dense {
+            for period in UserConfig.periodRange {
+                config.setSlot(period: period, half: .b, to: .free)
+            }
+        }
+        config.customizations["1"] = PeriodCustomization(name: "Environmental Science and Research", room: "2432", emoji: "🧬")
+        let day = DayKey(year: 2026, month: 9, day: 14)
+        return exampleEntry(at: day.date(at: HourMinute(hour: 9, minute: 0))!,
+                            config: config, nextSchoolDay: day.advanced(by: 1), family: family)
+    }
+
+    static var customClassesExample: ScheduleWidgetEntry {
+        var config = UserConfig(freePeriods: [8])
+        let classes = [
+            ("1", "AP CS P", "3012", "💻"),
+            ("2", "AP Stats", "15000", "📊"),
+            ("3", "AP Physics C", "1616", "⚛️"),
+            ("5", "World Literature", "2608", "📚"),
+            ("6", "AP Gov", "2818", "🏛️"),
+            ("7", "AP Physics 2", "1620", "⚛️")
+        ]
+        for (period, name, room, emoji) in classes {
+            config.customizations[period] = PeriodCustomization(name: name, room: room, emoji: emoji)
+        }
+        let day = DayKey(year: 2026, month: 9, day: 14)
+        return exampleEntry(at: day.date(at: HourMinute(hour: 10, minute: 30))!,
+                            config: config, nextSchoolDay: day.advanced(by: 1), family: .standard)
+    }
+
+    private static func exampleEntry(at now: Date, config: UserConfig, nextSchoolDay: DayKey, family: BellFamily? = nil) -> ScheduleWidgetEntry {
         guard let catalog = try? BellScheduleCatalog.loadBundled() else {
             return ScheduleWidgetEntry(date: now, schedule: nil, config: config)
         }
         // Gallery examples only need these two known days, not a full timeline
         // and a search for future school days.
-        let inputs = ResolverInputs(config: config, catalog: catalog)
+        let day = DayKey(date: now)
+        let overrides = family.map { [day: DayOverride(day: day, type: .bell(family: $0, rotation: .rotation1))] } ?? [:]
+        let inputs = ResolverInputs(overrides: overrides, config: config, catalog: catalog)
         let timeline = resolveDay(DayKey(date: now), inputs: inputs, freePeriodGrouping: .separate)
         let next = resolveDay(nextSchoolDay, inputs: inputs, freePeriodGrouping: .separate)
         let schedule = WidgetScheduleEntry(date: now, timeline: timeline,
@@ -108,7 +142,7 @@ struct ScheduleWidget: Widget {
                 .widgetURL(WidgetTimelinePlanner.homeURL)
         }
         .configurationDisplayName("School Schedule")
-        .description("Your current period, passing time, and the countdown to the next bell.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+        .description("Your current period, passing time, and the countdown to the next bell, with your full day in the large widget.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }

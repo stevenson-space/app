@@ -41,8 +41,9 @@ public enum TimeDisplay {
     }
 
     /// "2:33 PM" / "14:33"
-    public static func time(_ date: Date, _ pref: TimeFormatPref) -> String {
-        uses24Hour(pref) ? twentyFourHour.string(from: date) : twelveHour.string(from: date)
+    public static func time(_ date: Date, _ pref: TimeFormatPref, includesMeridiem: Bool = true) -> String {
+        let formatter = uses24Hour(pref) ? twentyFourHour : (includesMeridiem ? twelveHour : twelveHourShort)
+        return formatter.string(from: date)
     }
 
     /// "8:30 – 9:21" (meridiem dropped in ranges; bell times are unambiguous)
