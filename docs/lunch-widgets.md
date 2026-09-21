@@ -26,8 +26,12 @@ selected category’s menu, including visually truncated text.
   Widgets request hourly refreshes and publish seven days of Chicago-midnight
   entries. A final empty entry prevents the last menu from lingering indefinitely.
   Actual refresh delivery remains controlled by iOS.
-- Lunch widgets use the real school date, independent of the schedule widget’s
-  DEBUG time travel. Tapping opens `stevenson-space://lunch`, resets time travel,
+- In DEBUG builds, lunch widgets follow the same shared time-travel clock and
+  scenario overrides as the schedule widget. Menus and date labels use the
+  simulated school date; midnight entries are translated back to real time so
+  transitions still occur while the app is suspended. Changing the clock or
+  scenarios requests a reload of both lunch widgets. Release builds use real
+  time and ignore saved debug offsets. Tapping opens `stevenson-space://lunch`, resets time travel,
   selects Lunch, and resets a previously selected menu date to today.
 - Before shared data is prepared, widgets invite the user to open the app.
   Off days show “No lunch today”; missing or expired menus on serving days show
@@ -64,3 +68,7 @@ Implementation validation (September 21, 2026):
 - Xcode’s widget preview service reported no available schemes. Actual Home
   Screen gallery configuration, system-tinted rendering, VoiceOver interaction,
   and OS-delivered refresh timing still require validation on a device.
+
+Time-travel follow-up: all 232 ScheduleKit tests pass, including simulated lunch
+selection, midnight translation, scenario overrides, and returning to real time.
+The app and widget extension build in both Debug and Release for iOS Simulator.

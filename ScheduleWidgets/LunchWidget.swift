@@ -37,9 +37,21 @@ enum LunchWidgetData {
               let catalog = try? BellScheduleCatalog.loadBundled() else {
             return [LunchTimelineEntry(date: now, lunch: nil, station: station)]
         }
-        return LunchWidgetTimelinePlanner.entries(from: now, cachedData: data.cachedMenu,
+        #if DEBUG
+        let menuNow = data.schedule.widgetClock.scheduleDate(for: now)
+        #else
+        let menuNow = now
+        #endif
+        return LunchWidgetTimelinePlanner.entries(from: menuNow, cachedData: data.cachedMenu,
             inputs: data.schedule.resolverInputs(catalog: catalog)).map {
-                LunchTimelineEntry(date: $0.date, lunch: $0, station: station)
+                #if DEBUG
+                // Resolve the simulated day, but schedule WidgetKit transitions
+                // on the real clock, just like the school schedule widget.
+                let displayDate = data.schedule.widgetClock.realDate(for: $0.date)
+                #else
+                let displayDate = $0.date
+                #endif
+                return LunchTimelineEntry(date: displayDate, lunch: $0, station: station)
             }
     }
 
