@@ -15,8 +15,8 @@ public struct LunchWidgetEntry: Sendable {
 }
 
 public enum LunchWidgetTimelinePlanner {
-    public static let categoryKind = "LunchCategoryWidget"
-    public static let menuKind = "LunchMenuWidget"
+    // Preserve the existing configurable small widget identity.
+    public static let kind = "LunchCategoryWidget"
     public static let lunchURL = URL(string: "stevenson-space://lunch")!
 
     /// Daily entries keep the date correct while the app is suspended. The

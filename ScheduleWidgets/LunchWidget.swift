@@ -17,11 +17,22 @@ enum LunchCategory: String, AppEnum {
 }
 
 struct LunchCategoryIntent: WidgetConfigurationIntent {
-    static let title: LocalizedStringResource = "Lunch Category"
-    static let description = IntentDescription("Choose the food category to show on your Home Screen.")
+    static let title: LocalizedStringResource = "Lunch Menu"
+    static let description = IntentDescription("Choose a category for the small widget. The large widget shows the full menu.")
 
     @Parameter(title: "Food Category", default: .comfort)
     var category: LunchCategory
+
+    static var parameterSummary: some ParameterSummary {
+        Switch(.widgetFamily) {
+            Case(.systemSmall) {
+                Summary { \.$category }
+            }
+            DefaultCase {
+                Summary()
+            }
+        }
+    }
 }
 
 struct LunchTimelineEntry: TimelineEntry {
@@ -77,42 +88,17 @@ struct LunchCategoryProvider: AppIntentTimelineProvider {
     }
 }
 
-struct LunchMenuProvider: TimelineProvider {
-    func placeholder(in context: Context) -> LunchTimelineEntry { LunchWidgetData.example() }
-
-    func getSnapshot(in context: Context, completion: @escaping (LunchTimelineEntry) -> Void) {
-        completion(context.isPreview ? LunchWidgetData.example() : LunchWidgetData.entries()[0])
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<LunchTimelineEntry>) -> Void) {
-        completion(Timeline(entries: LunchWidgetData.entries(), policy: .after(Date().addingTimeInterval(3600))))
-    }
-}
-
-struct LunchCategoryWidget: Widget {
+struct LunchMenuWidget: Widget {
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: LunchWidgetTimelinePlanner.categoryKind,
+        AppIntentConfiguration(kind: LunchWidgetTimelinePlanner.kind,
                                intent: LunchCategoryIntent.self, provider: LunchCategoryProvider()) { entry in
             LunchWidgetView(entry: entry)
                 .containerBackground(for: .widget) { LunchWidgetBackground(entry: entry) }
                 .widgetURL(LunchWidgetTimelinePlanner.lunchURL)
         }
-        .configurationDisplayName("Lunch Category")
-        .description("Today’s lunch from your favorite category. Edit the widget to choose one.")
-        .supportedFamilies([.systemSmall])
-    }
-}
-
-struct LunchMenuWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: LunchWidgetTimelinePlanner.menuKind, provider: LunchMenuProvider()) { entry in
-            LunchWidgetView(entry: entry)
-                .containerBackground(for: .widget) { LunchWidgetBackground(entry: entry) }
-                .widgetURL(LunchWidgetTimelinePlanner.lunchURL)
-        }
-        .configurationDisplayName("Today’s Lunch")
-        .description("All six food categories, with room to see what’s on the menu.")
-        .supportedFamilies([.systemLarge])
+        .configurationDisplayName("Lunch Menu")
+        .description("Choose a category in small, or see the full lunch menu in large.")
+        .supportedFamilies([.systemSmall, .systemLarge])
     }
 }
 
@@ -120,7 +106,6 @@ struct LunchMenuWidget: Widget {
 struct StevensonWidgetBundle: WidgetBundle {
     var body: some Widget {
         ScheduleWidget()
-        LunchCategoryWidget()
         LunchMenuWidget()
     }
 }
