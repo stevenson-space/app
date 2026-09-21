@@ -161,6 +161,19 @@ public final class SharedStore: @unchecked Sendable {
         #endif
     }
 
+    /// Read-only lunch snapshot: no store initialization, migrations, or secrets.
+    public static func readLunchWidgetData() throws -> (schedule: SharedScheduleData, cachedMenu: Data?) {
+        guard FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) != nil,
+              let suite = UserDefaults(suiteName: appGroupID) else {
+            throw SharedScheduleDataError.unavailable
+        }
+        return try readLunchWidgetData(from: suite)
+    }
+
+    static func readLunchWidgetData(from defaults: UserDefaults) throws -> (schedule: SharedScheduleData, cachedMenu: Data?) {
+        (try readScheduleData(from: defaults), defaults.data(forKey: Keys.lunchMenuData))
+    }
+
     /// The in-app data-source editor (the only way to set or reset a custom
     /// `mapURL`) was removed. Any URL it had persisted would otherwise stay
     /// active forever with no recovery path. Drop it once so upgraded installs
