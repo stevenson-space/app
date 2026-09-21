@@ -29,7 +29,7 @@ Packages/StudentIDKit/         Student ID logic — no UI.
     StudentIDPhotoStore.swift  The cropped headshot, on disk with complete file protection
   Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
 Stevenson Space Companion App/ SwiftUI app target: Home, Lunch, ID, Settings
-ScheduleWidgets/              Small, medium, and rectangular WidgetKit views
+ScheduleWidgets/              Schedule widgets and small/large lunch widgets
 ```
 
 Two pure functions are the heart of everything; the app and widgets must go through them so all surfaces agree:
@@ -70,6 +70,10 @@ doesn't publish — `validFrom`, `validTo`, `semesterSwitch`, `offset` — comes
 the bundled `lunch-menu.json`. The rotation length is read from the data rather
 than hardcoded, and every station must agree on it. One failed or invalid station
 fails the whole refresh, and the last good menu stays.
+
+The configurable small **Lunch Category** widget shows one station; the large
+**Today’s Lunch** widget shows all six categories. Both share the app’s menu
+cache and serving-day rules. See [lunch widget behavior](docs/lunch-widgets.md).
 
 ## The ID tab
 

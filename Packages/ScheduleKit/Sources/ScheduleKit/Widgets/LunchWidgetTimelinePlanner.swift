@@ -17,7 +17,7 @@ public struct LunchWidgetEntry: Sendable {
 public enum LunchWidgetTimelinePlanner {
     public static let categoryKind = "LunchCategoryWidget"
     public static let menuKind = "LunchMenuWidget"
-    public static let lunchURL = URL(string: "stevensonspace://lunch")!
+    public static let lunchURL = URL(string: "stevenson-space://lunch")!
 
     /// Daily entries keep the date correct while the app is suspended. The
     /// terminal empty entry prevents the last menu persisting beyond its day.

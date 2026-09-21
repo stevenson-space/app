@@ -38,6 +38,10 @@ struct LunchMenuView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Lunch")
+            .onChange(of: model.lunchTodayRequest, initial: true) {
+                guard model.lunchTodayRequest > 0 else { return }
+                selectedDay = model.today
+            }
             .toolbar {
                 if day != preferredDay {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -360,28 +364,6 @@ private struct LunchStationCard: View {
 }
 
 private extension LunchMenuStation {
-    var title: String {
-        switch self {
-        case .comfort: return "Comfort Food"
-        case .mindful: return "Mindful"
-        case .sides: return "Sides"
-        case .soup: return "Soup"
-        case .international: return "International"
-        case .special: return "Special"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .comfort: return "takeoutbag.and.cup.and.straw.fill"
-        case .mindful: return "leaf.fill"
-        case .sides: return "carrot.fill"
-        case .soup: return "cup.and.saucer.fill"
-        case .international: return "globe.americas.fill"
-        case .special: return "sparkles"
-        }
-    }
-
     var color: Color {
         switch self {
         case .comfort: return .orange

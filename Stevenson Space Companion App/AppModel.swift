@@ -20,6 +20,7 @@ enum RootTab: Hashable {
 final class AppModel {
     var selectedTab: RootTab = .home
     private(set) var homeTodayRequest = 0
+    private(set) var lunchTodayRequest = 0
     private var scheduleDataReady = false
 
     let store: SharedStore
@@ -169,19 +170,7 @@ final class AppModel {
     }
 
     private static func loadLunchMenu(from store: SharedStore, on today: DayKey) -> LunchMenu? {
-        let cachedLunchMenu = store.cachedLunchMenuData.flatMap { try? LunchMenuParser.parse($0) }
-        let bundledLunchMenu = try? LunchMenuParser.loadBundled()
-        if let cachedLunchMenu,
-           cachedLunchMenu.validFrom <= today, today <= cachedLunchMenu.validTo {
-            return cachedLunchMenu
-        } else if let bundledLunchMenu,
-                  bundledLunchMenu.validFrom <= today, today <= bundledLunchMenu.validTo {
-            return bundledLunchMenu
-        } else {
-            return [cachedLunchMenu, bundledLunchMenu]
-                .compactMap { $0 }
-                .max { $0.validTo < $1.validTo }
-        }
+        LunchMenuLoader.load(cachedData: store.cachedLunchMenuData, on: today)
     }
 
     // MARK: - Clock
@@ -223,9 +212,7 @@ final class AppModel {
     /// Lunch follows the website's policy: only regular school days, never
     /// weekends, breaks, or the Summer bell schedule.
     func lunchMenu(for day: DayKey) -> LunchMenuDay? {
-        let timeline = timeline(for: day)
-        guard timeline.isSchoolDay, timeline.family != .summer else { return nil }
-        return lunchMenu?.menu(for: day)
+        LunchMenuLoader.menu(lunchMenu, for: day, inputs: resolverInputs)
     }
 
     /// The tab opens on today when lunch is served, otherwise the next day for
@@ -521,7 +508,8 @@ final class AppModel {
         let result = await lunchSyncService.refresh(force: force, now: Date())
         lunchFetchMetadata = store.lunchFetchMetadata
         if result == .updated, let cached = store.cachedLunchMenuData {
-            lunchMenu = try? LunchMenuParser.parse(cached)
+            lunchMenu = LunchMenuLoader.load(cachedData: cached, on: DayKey(date: Date()))
+            reloadLunchWidgets()
         }
     }
 
@@ -548,7 +536,13 @@ final class AppModel {
 
     // MARK: - Widgets
 
+    private func reloadLunchWidgets() {
+        WidgetCenter.shared.reloadTimelines(ofKind: LunchWidgetTimelinePlanner.categoryKind)
+        WidgetCenter.shared.reloadTimelines(ofKind: LunchWidgetTimelinePlanner.menuKind)
+    }
+
     private func reloadScheduleWidgets() {
+        reloadLunchWidgets()
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetTimelinePlanner.kind)
     }
 
@@ -569,6 +563,15 @@ final class AppModel {
     }
 
     func openWidgetURL(_ url: URL) {
+        if url == LunchWidgetTimelinePlanner.lunchURL {
+            #if DEBUG
+            timeTravelOffset = 0
+            #endif
+            refreshDerived()
+            selectedTab = .lunch
+            lunchTodayRequest += 1
+            return
+        }
         guard WidgetTimelinePlanner.isHomeURL(url) else { return }
         #if DEBUG
         timeTravelOffset = 0
