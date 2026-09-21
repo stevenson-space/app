@@ -592,14 +592,20 @@ struct ScheduleWidgetBackground: View {
 
     var body: some View {
         if let schedule = entry.schedule, schedule.focus == nil, family != .accessoryRectangular {
-            LinearGradient(
-                colors: [Color.primary.opacity(0.02), Color.green.opacity(0.14)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            .background(.background)
+            RestingWidgetBackground()
         } else {
             Rectangle().fill(.background)
         }
+    }
+}
+
+struct RestingWidgetBackground: View {
+    var body: some View {
+        LinearGradient(
+            colors: [Color.primary.opacity(0.02), Color.green.opacity(0.14)],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
+        .background(.background)
     }
 }
 
