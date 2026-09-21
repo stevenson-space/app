@@ -537,8 +537,7 @@ final class AppModel {
     // MARK: - Widgets
 
     private func reloadLunchWidgets() {
-        WidgetCenter.shared.reloadTimelines(ofKind: LunchWidgetTimelinePlanner.categoryKind)
-        WidgetCenter.shared.reloadTimelines(ofKind: LunchWidgetTimelinePlanner.menuKind)
+        WidgetCenter.shared.reloadTimelines(ofKind: LunchWidgetTimelinePlanner.kind)
     }
 
     private func reloadScheduleWidgets() {

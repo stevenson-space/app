@@ -203,7 +203,7 @@ struct LunchWidgetBackground: View {
 }
 
 #Preview("Lunch · category", as: .systemSmall) {
-    LunchCategoryWidget()
+    LunchMenuWidget()
 } timeline: {
     LunchWidgetData.example()
     LunchWidgetData.example(station: .sides)

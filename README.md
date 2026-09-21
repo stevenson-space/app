@@ -71,8 +71,8 @@ the bundled `lunch-menu.json`. The rotation length is read from the data rather
 than hardcoded, and every station must agree on it. One failed or invalid station
 fails the whole refresh, and the last good menu stays.
 
-The configurable small **Lunch Category** widget shows one station; the large
-**Today’s Lunch** widget shows all six categories. Both share the app’s menu
+The **Lunch Menu** widget offers a configurable small size for one station and
+a large size showing all six categories. Both sizes share the app’s menu
 cache and serving-day rules. See [lunch widget behavior](docs/lunch-widgets.md).
 
 ## The ID tab

@@ -1,12 +1,14 @@
 # Lunch Home Screen widgets
 
-**Lunch Category** is a configurable small widget. Long-press it, choose Edit
-Widget, and select Comfort Food, Mindful, Sides, Soup, International, or Special.
-**Today’s Lunch** uses the large family: six categories with multi-item sides and
-soups need more vertical space than medium provides at readable text sizes.
+**Lunch Menu** is one widget gallery entry with small and large sizes. Small
+shows one category; long-press it, choose Edit Widget, and select Comfort Food,
+Mindful, Sides, Soup, International, or Special. The category setting appears only
+for small widgets. Large shows all categories: multi-item sides and soups need
+more vertical space than medium provides at readable text sizes.
 
-Both widgets use the standard system background, semantic text, and green
-accent-aware category labels. Each menu option starts on its own line, without
+Menu days use the system background, an indigo header, and the app’s category
+colors. Non-serving days use the schedule widget’s resting green gradient with
+primary text and icons. Headers omit the date. Each menu option starts on its own line, without
 inline bullets; the small widget shows a remaining-option count if the full list
 does not fit. The large menu reads in
 three paired rows. Menu options wrap at their natural size rather than shrinking.
@@ -29,7 +31,7 @@ selected category’s menu, including visually truncated text.
   entries. A final empty entry prevents the last menu from lingering indefinitely.
   Actual refresh delivery remains controlled by iOS.
 - In DEBUG builds, lunch widgets follow the same shared time-travel clock and
-  scenario overrides as the schedule widget. Menus and date labels use the
+  scenario overrides as the schedule widget. Menus use the
   simulated school date; midnight entries are translated back to real time so
   transitions still occur while the app is suspended. Changing the clock or
   scenarios requests a reload of both lunch widgets. Release builds use real
@@ -100,3 +102,10 @@ small-category renders were visually checked.
 No-lunch foreground correction: on non-serving days, the header and empty-state
 icon use primary text (white in dark mode), matching schedule resting states.
 Menu-day accents remain unchanged. Simulator build and dark day-off render pass.
+
+Gallery consolidation: both sizes now use one AppIntentConfiguration and timeline
+provider. The existing small widget kind and intent are retained to preserve its
+category selection. Previously installed large widgets from this feature branch
+must be re-added as the large size of Lunch Menu.
+The consolidated app and extension build for iOS Simulator, including the
+widget-family parameter summary and App Intents metadata extraction.
