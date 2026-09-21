@@ -10,6 +10,7 @@ struct LunchWidgetView: View {
 
     private var large: Bool { family == .systemLarge }
     private var accent: Color {
+        guard entry.lunch?.isServingDay != false else { return .primary }
         guard renderingMode == .fullColor, contrast != .increased else { return .primary }
         return ScheduleStyle.tint(for: .classPeriod)
     }
