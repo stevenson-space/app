@@ -120,7 +120,9 @@ struct ScheduleWidgetView: View {
     }
 
     private func large(_ schedule: WidgetScheduleEntry) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let preview = schedule.timeline.blocks.isEmpty ? schedule.nextSchoolDay : nil
+        let timeline = preview ?? schedule.timeline
+        return VStack(alignment: .leading, spacing: 12) {
             if let focus = schedule.focus {
                 largeHeader(schedule, focus: focus)
             } else if schedule.isFinished {
@@ -129,17 +131,19 @@ struct ScheduleWidgetView: View {
                     .padding(.vertical, 8)
             } else if !schedule.timeline.blocks.isEmpty {
                 compactResting(schedule)
+            } else if let preview, !preview.blocks.isEmpty {
+                largeRestingHeader(schedule, next: preview)
             } else {
                 resting(schedule)
             }
 
-            if !schedule.timeline.blocks.isEmpty {
+            if !timeline.blocks.isEmpty {
                 HStack {
-                    Text("TODAY")
+                    Text(preview == nil ? "TODAY" : "NEXT SCHOOL DAY")
                         .fontWeight(.bold)
                         .tracking(1.4)
                     Spacer(minLength: 8)
-                    Text(schedule.timeline.scheduleLabel)
+                    Text(timeline.scheduleLabel)
                 }
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
@@ -149,22 +153,78 @@ struct ScheduleWidgetView: View {
 
                 // Prefer generous rows, then tighten spacing for split days.
                 // The final fallback still includes every block in two columns.
-                ViewThatFits(in: .vertical) {
-                    dayRows(schedule.timeline.blocks, schedule: schedule, compact: false, spacious: true)
-                    dayRows(schedule.timeline.blocks, schedule: schedule, compact: false)
-                    HStack(alignment: .top, spacing: 12) {
-                        let blocks = schedule.timeline.blocks
-                        let midpoint = (blocks.count + 1) / 2
-                        dayRows(Array(blocks.prefix(midpoint)), schedule: schedule, compact: true)
-                        dayRows(Array(blocks.dropFirst(midpoint)), schedule: schedule, compact: true)
+                GeometryReader { geometry in
+                    let blocks = timeline.blocks
+                    let spaciousHeight = CGFloat(blocks.count * 24 + max(0, blocks.count - 1) * 2)
+                    // Choose expanding rows using the actual available height;
+                    // ViewThatFits measures ideal size and can select tight rows
+                    // even when there is room left beneath them.
+                    if geometry.size.height >= spaciousHeight {
+                        dayRows(blocks, schedule: schedule, compact: false, spacious: true)
+                            .frame(height: geometry.size.height)
+                    } else {
+                        ViewThatFits(in: .vertical) {
+                            dayRows(blocks, schedule: schedule, compact: false)
+                            HStack(alignment: .top, spacing: 12) {
+                                let midpoint = (blocks.count + 1) / 2
+                                dayRows(Array(blocks.prefix(midpoint)), schedule: schedule, compact: true)
+                                dayRows(Array(blocks.dropFirst(midpoint)), schedule: schedule, compact: true)
+                            }
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
             }
         }
         // Keep the entire day visible; VoiceOver retains full row details.
         .dynamicTypeSize(...DynamicTypeSize.large)
+    }
+
+    private func largeRestingHeader(_ schedule: WidgetScheduleEntry, next: DayTimeline) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text(status(schedule))
+                    .font(.title3.bold())
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                patriot(height: 30)
+            }
+            if case .unknownSchedule(let name) = schedule.state {
+                Text(name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("BACK TO SCHOOL")
+                        .font(.system(size: 9, weight: .bold))
+                        .tracking(1)
+                        .foregroundStyle(.secondary)
+                    Text(TimeDisplay.shortDayLabel(next.day))
+                        .font(.subheadline.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let start = next.firstBell {
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(TimeDisplay.time(start, format))
+                            .font(.title3.weight(.semibold))
+                        Text("first bell")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.leading, 10)
+            .overlay(alignment: .leading) {
+                Capsule()
+                    .fill(renderingMode == .fullColor && contrast != .increased
+                          ? Color(red: 0.78, green: 0.60, blue: 0.16) : Color.primary)
+                    .frame(width: 3)
+                    .widgetAccentable()
+            }
+        }
     }
 
     private func largeHeader(_ schedule: WidgetScheduleEntry, focus: ResolvedBlock) -> some View {
@@ -553,6 +613,14 @@ struct ScheduleWidgetBackground: View {
     ScheduleProvider.example(at: HourMinute(hour: 15, minute: 25))
     ScheduleProvider.example(at: HourMinute(hour: 15, minute: 30))
     ScheduleProvider.weekendExample
+}
+
+#Preview("Large · weekend next school day", as: .systemLarge) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.weekendExample
+    ScheduleProvider.weekendExample(family: .standard, dense: true)
+    ScheduleProvider.weekendExample(family: .lateArrival)
 }
 
 #Preview("Large · special and split schedules", as: .systemLarge) {

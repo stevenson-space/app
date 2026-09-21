@@ -65,8 +65,20 @@ struct ScheduleProvider: TimelineProvider {
     }
 
     static var weekendExample: ScheduleWidgetEntry {
+        weekendExample(family: .standard)
+    }
+
+    static func weekendExample(family: BellFamily, dense: Bool = false) -> ScheduleWidgetEntry {
+        var config = UserConfig()
+        config.customizations["1"] = PeriodCustomization(name: "AP Biology", room: "2432", emoji: "🧬")
+        if dense {
+            for period in UserConfig.periodRange {
+                config.setSlot(period: period, half: .b, to: .free)
+            }
+        }
         let now = DayKey(year: 2026, month: 9, day: 19).date(at: HourMinute(hour: 12, minute: 0))!
-        return exampleEntry(at: now, config: UserConfig(), nextSchoolDay: DayKey(year: 2026, month: 9, day: 21))
+        return exampleEntry(at: now, config: config, nextSchoolDay: DayKey(year: 2026, month: 9, day: 22),
+                            nextFamily: family)
     }
 
     static var example: ScheduleWidgetEntry {
@@ -114,14 +126,18 @@ struct ScheduleProvider: TimelineProvider {
                             config: config, nextSchoolDay: day.advanced(by: 1), family: .standard)
     }
 
-    private static func exampleEntry(at now: Date, config: UserConfig, nextSchoolDay: DayKey, family: BellFamily? = nil) -> ScheduleWidgetEntry {
+    private static func exampleEntry(at now: Date, config: UserConfig, nextSchoolDay: DayKey, family: BellFamily? = nil,
+                                     nextFamily: BellFamily? = nil) -> ScheduleWidgetEntry {
         guard let catalog = try? BellScheduleCatalog.loadBundled() else {
             return ScheduleWidgetEntry(date: now, schedule: nil, config: config)
         }
         // Gallery examples only need these two known days, not a full timeline
         // and a search for future school days.
         let day = DayKey(date: now)
-        let overrides = family.map { [day: DayOverride(day: day, type: .bell(family: $0, rotation: .rotation1))] } ?? [:]
+        var overrides = family.map { [day: DayOverride(day: day, type: .bell(family: $0, rotation: .rotation1))] } ?? [:]
+        if let nextFamily {
+            overrides[nextSchoolDay] = DayOverride(day: nextSchoolDay, type: .bell(family: nextFamily, rotation: .rotation1))
+        }
         let inputs = ResolverInputs(overrides: overrides, config: config, catalog: catalog)
         let timeline = resolveDay(DayKey(date: now), inputs: inputs, freePeriodGrouping: .separate)
         let next = resolveDay(nextSchoolDay, inputs: inputs, freePeriodGrouping: .separate)
