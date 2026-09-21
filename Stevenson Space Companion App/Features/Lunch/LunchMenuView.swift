@@ -363,19 +363,6 @@ private struct LunchStationCard: View {
     }
 }
 
-private extension LunchMenuStation {
-    var color: Color {
-        switch self {
-        case .comfort: return .orange
-        case .mindful: return .green
-        case .sides: return .yellow
-        case .soup: return .red
-        case .international: return .blue
-        case .special: return .purple
-        }
-    }
-}
-
 #Preview {
     let defaults = UserDefaults(suiteName: "lunch-menu-preview")!
     LunchMenuView()

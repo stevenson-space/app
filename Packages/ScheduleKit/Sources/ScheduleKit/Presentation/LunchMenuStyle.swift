@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 public extension LunchMenuStation {
     var title: String {
@@ -23,4 +23,17 @@ public extension LunchMenuStation {
         }
     }
 
+}
+
+public extension LunchMenuStation {
+    var color: Color {
+        switch self {
+        case .comfort: return .orange
+        case .mindful: return .green
+        case .sides: return .yellow
+        case .soup: return .red
+        case .international: return .blue
+        case .special: return .purple
+        }
+    }
 }
