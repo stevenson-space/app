@@ -9,6 +9,7 @@ struct DayTimelineListView: View {
 
     let timeline: DayTimeline
     let isLive: Bool
+    var showsHalfPeriods = false
     var minimumHeight: CGFloat = 0
 
     var body: some View {
@@ -22,8 +23,8 @@ struct DayTimelineListView: View {
     private var liveList: some View {
         // Reading currentSpanID re-renders this list exactly at boundaries.
         let _ = model.currentSpanID
-        // Per-minute ticks keep the upcoming-block chip honest between boundaries.
-        return TimelineView(.periodic(from: .now, by: 60)) { context in
+        // Align ticks to bell minutes, including A/B boundaries inside a full class.
+        return TimelineView(.periodic(from: Date(timeIntervalSinceReferenceDate: 0), by: 60)) { context in
             blockList(now: context.date.addingTimeInterval(model.displayOffset))
         }
     }
@@ -31,7 +32,7 @@ struct DayTimelineListView: View {
     private func blockList(now: Date?) -> some View {
         let config = model.config
         let pref = config.timeFormat
-        let blocks = timeline.blocks
+        let blocks = showsHalfPeriods ? timeline.halfPeriodBlocks(catalog: model.catalog) : timeline.blocks
         let nextUpcomingID = now.flatMap { instant in
             blocks.first { $0.start > instant }?.id
         }
@@ -79,6 +80,7 @@ struct DayTimelineListView: View {
     private func accessibilitySummary(for block: ResolvedBlock, now: Date?,
                                       pref: TimeFormatPref) -> String {
         var parts = [block.displayName]
+        if let spanLabel = block.spanLabel { parts.append(spanLabel) }
         if let room = block.room { parts.append("room \(room)") }
         parts.append("\(TimeDisplay.time(block.start, pref)) to \(TimeDisplay.time(block.end, pref))")
         if let now {

@@ -6,27 +6,21 @@ import ScheduleKit
 struct HomeHeaderView: View {
     @Environment(AppModel.self) private var model
     let timeline: DayTimeline
+    @Binding var showsHalfPeriods: Bool
     @State private var showsOverrideEditor = false
 
     var body: some View {
-        let isStandard = timeline.isStandardSchedule
-
         VStack(alignment: .leading, spacing: 8) {
-            if isStandard {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock")
-                    Text(timeline.scheduleLabel)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    scheduleLabel
+                    Spacer(minLength: 0)
+                    halfPeriodToggle
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            } else {
-                let accent = ScheduleStyle.accent(for: timeline.family)
-                Label(timeline.scheduleLabel, systemImage: ScheduleStyle.icon(for: timeline.family))
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(accent))
+                VStack(alignment: .leading, spacing: 4) {
+                    scheduleLabel
+                    halfPeriodToggle
+                }
             }
 
             if let note = timeline.dayNote {
@@ -48,6 +42,35 @@ struct HomeHeaderView: View {
                         }
                     }
             }
+        }
+    }
+
+    @ViewBuilder private var scheduleLabel: some View {
+        if timeline.isStandardSchedule {
+            Label(timeline.scheduleLabel, systemImage: "clock")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        } else {
+            Label(timeline.scheduleLabel, systemImage: ScheduleStyle.icon(for: timeline.family))
+                .font(.headline)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(ScheduleStyle.accent(for: timeline.family)))
+        }
+    }
+
+    @ViewBuilder private var halfPeriodToggle: some View {
+        if let family = timeline.family,
+           model.catalog.schedule(family: family, rotation: timeline.rotation)?.hasABVariants == true {
+            Toggle("Half periods", isOn: $showsHalfPeriods)
+                .toggleStyle(.button)
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                .font(.caption.weight(.medium))
+                .controlSize(.small)
+                .frame(minHeight: 44)
+                .accessibilityHint("Shows each period’s A and B bell times in the schedule list")
         }
     }
 

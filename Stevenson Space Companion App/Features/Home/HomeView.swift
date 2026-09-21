@@ -4,6 +4,7 @@ import ScheduleKit
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("homeShowsHalfPeriods") private var showsHalfPeriods = false
     // nil follows the live day, including midnight and foreground rollovers.
     @State private var selectedDay: DayKey?
     @State private var isTimerCompact = false
@@ -23,7 +24,7 @@ struct HomeView: View {
                 VStack(spacing: 22) {
                     HomeDayPicker(day: day, today: today, select: selectDay)
                     if timeline.isSchoolDay {
-                        HomeHeaderView(timeline: timeline)
+                        HomeHeaderView(timeline: timeline, showsHalfPeriods: $showsHalfPeriods)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -36,7 +37,7 @@ struct HomeView: View {
                             // Fill the compact viewport with cards rather than a blank
                             // footer, while retaining enough scroll range for pinning.
                             DayTimelineListView(
-                                timeline: timeline, isLive: true,
+                                timeline: timeline, isLive: true, showsHalfPeriods: showsHalfPeriods,
                                 minimumHeight: max(viewportHeight - compactHeaderHeight - 24, 0))
                                 .padding(.horizontal, 16)
                         } header: {
@@ -62,7 +63,7 @@ struct HomeView: View {
                                 }
                         }
                     } else {
-                        DayTimelineListView(timeline: timeline, isLive: false)
+                        DayTimelineListView(timeline: timeline, isLive: false, showsHalfPeriods: showsHalfPeriods)
                             .padding(.horizontal, 16)
                     }
                 } else {
