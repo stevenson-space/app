@@ -105,8 +105,7 @@ struct LunchMenuView: View {
 
     private func moveWeek(_ offset: Int) {
         let targetWeek = weekStart.advanced(by: offset * 7)
-        let preferredWeekday = min(max((day.weekday() ?? 2) - 2, 0), 4)
-        selectedDay = targetWeek.advanced(by: preferredWeekday)
+        selectedDay = offset < 0 ? targetWeek.advanced(by: 4) : targetWeek
     }
 }
 
