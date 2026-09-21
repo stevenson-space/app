@@ -109,3 +109,11 @@ category selection. Previously installed large widgets from this feature branch
 must be re-added as the large size of Lunch Menu.
 The consolidated app and extension build for iOS Simulator, including the
 widget-family parameter summary and App Intents metadata extraction.
+
+Spacing refinement: the large menu first tries three paired rows separated by
+flexible space, with wider column gutters and more space below category labels
+and between dishes. It uses the full available height instead of leaving unused
+space below the last row. Dense menus retain the compact grid/column fallbacks.
+Small widgets gain more separation below the header, category label, and between
+options. Simulator build passes; September 22 and compact dense-menu view renders
+were visually checked.

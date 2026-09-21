@@ -21,7 +21,7 @@ struct LunchWidgetView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: large ? 14 : 10) {
+        VStack(alignment: .leading, spacing: large ? 22 : 16) {
             header
             if let menu = entry.lunch?.menu, !menu.sections.isEmpty {
                 if large {
@@ -55,7 +55,7 @@ struct LunchWidgetView: View {
     }
 
     private func category(_ section: LunchMenuSection) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 10) {
             Label(section.station.title, systemImage: section.station.icon)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(categoryAccent(section.station))
@@ -63,10 +63,10 @@ struct LunchWidgetView: View {
                 .lineLimit(1)
             ViewThatFits(in: .vertical) {
                 if section.items.count == 1 {
-                    menuOptions(section.items)
+                    menuOptions(section.items, spacing: 8)
                         .font(.headline)
                 }
-                menuOptions(section.items)
+                menuOptions(section.items, spacing: 8)
                     .font(.subheadline.weight(.semibold))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(section.items.first ?? "Not listed today")
@@ -85,6 +85,7 @@ struct LunchWidgetView: View {
 
     private func fullMenu(_ menu: LunchMenuDay) -> some View {
         ViewThatFits(in: .vertical) {
+            spaciousMenu(menu)
             menuGrid(menu, spacing: 20)
             menuGrid(menu, spacing: 13)
             menuGrid(menu, spacing: 7)
@@ -112,6 +113,24 @@ struct LunchWidgetView: View {
                 .accessibilityLabel(menu.sections.map {
                     "\($0.station.title): \($0.items.joined(separator: ", "))"
                 }.joined(separator: ". "))
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func spaciousMenu(_ menu: LunchMenuDay) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(menu.sections.filter { [.comfort, .sides, .international].contains($0.station) }) { section in
+                if section.station != .comfort {
+                    Spacer(minLength: 24)
+                }
+                HStack(alignment: .top, spacing: 22) {
+                    menuCell(section, spacing: 9)
+                    if let paired = menu.sections.first(where: { $0.station == partner(for: section.station) }) {
+                        menuCell(paired, spacing: 9)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }
@@ -150,21 +169,21 @@ struct LunchWidgetView: View {
         }
     }
 
-    private func menuCell(_ section: LunchMenuSection) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+    private func menuCell(_ section: LunchMenuSection, spacing: CGFloat = 5) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
             Label(section.station.title, systemImage: section.station.icon)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(categoryAccent(section.station))
                 .widgetAccentable()
-            menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items)
+            menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items, spacing: spacing)
                 .font(.subheadline.weight(.medium))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
-    private func menuOptions(_ items: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+    private func menuOptions(_ items: [String], spacing: CGFloat = 5) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
             ForEach(items, id: \.self) { item in
                 Text(item)
                     .fixedSize(horizontal: false, vertical: true)
