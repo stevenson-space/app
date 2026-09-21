@@ -157,7 +157,7 @@ struct ScheduleWidget: Widget {
                 .widgetURL(WidgetTimelinePlanner.homeURL)
         }
         .configurationDisplayName("School Schedule")
-        .description("Your current period, passing time, and the countdown to the next bell, with your full day in the large widget.")
+        .description("See what's next and how long until the bell.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }
