@@ -94,7 +94,7 @@ struct LunchCategoryWidget: Widget {
         AppIntentConfiguration(kind: LunchWidgetTimelinePlanner.categoryKind,
                                intent: LunchCategoryIntent.self, provider: LunchCategoryProvider()) { entry in
             LunchWidgetView(entry: entry)
-                .containerBackground(for: .widget) { LunchWidgetBackground() }
+                .containerBackground(for: .widget) { LunchWidgetBackground(entry: entry) }
                 .widgetURL(LunchWidgetTimelinePlanner.lunchURL)
         }
         .configurationDisplayName("Lunch Category")
@@ -107,7 +107,7 @@ struct LunchMenuWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: LunchWidgetTimelinePlanner.menuKind, provider: LunchMenuProvider()) { entry in
             LunchWidgetView(entry: entry)
-                .containerBackground(for: .widget) { LunchWidgetBackground() }
+                .containerBackground(for: .widget) { LunchWidgetBackground(entry: entry) }
                 .widgetURL(LunchWidgetTimelinePlanner.lunchURL)
         }
         .configurationDisplayName("Today’s Lunch")

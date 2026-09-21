@@ -198,8 +198,14 @@ struct LunchWidgetView: View {
 }
 
 struct LunchWidgetBackground: View {
+    let entry: LunchTimelineEntry
+
     var body: some View {
-        Rectangle().fill(.background)
+        if entry.lunch?.isServingDay == false {
+            RestingWidgetBackground()
+        } else {
+            Rectangle().fill(.background)
+        }
     }
 }
 
