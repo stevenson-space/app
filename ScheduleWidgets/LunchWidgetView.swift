@@ -46,25 +46,12 @@ struct LunchWidgetView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Label(large ? "Today’s lunch" : "LUNCH", systemImage: "fork.knife")
-                .font(large ? .headline : .caption2.weight(.bold))
-                .tracking(large ? 0 : 1.2)
-                .foregroundStyle(accent)
-                .widgetAccentable()
-            Spacer(minLength: 4)
-            Text(dateLabel)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-        .lineLimit(1)
-    }
-
-    private var dateLabel: String {
-        let day = entry.lunch?.day ?? DayKey(date: entry.date)
-        var format = Date.FormatStyle.dateTime.month(.abbreviated).day()
-        format.timeZone = SchoolTime.timeZone
-        return (day.date() ?? entry.date).formatted(format)
+        Label(large ? "Today’s lunch" : "LUNCH", systemImage: "fork.knife")
+            .font(large ? .headline : .caption2.weight(.bold))
+            .tracking(large ? 0 : 1.2)
+            .foregroundStyle(accent)
+            .widgetAccentable()
+            .lineLimit(1)
     }
 
     private func category(_ section: LunchMenuSection) -> some View {
