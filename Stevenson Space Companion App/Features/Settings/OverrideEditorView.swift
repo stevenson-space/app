@@ -131,7 +131,11 @@ struct OverrideEditorView: View {
             case .summer: choice = .summer
             }
         } else {
-            choice = timeline.kind == .asynchronous ? .asynchronous : .noSchool
+            switch timeline.kind {
+            case .noSchool: choice = .noSchool
+            case .asynchronous: choice = .asynchronous
+            default: choice = .standard
+            }
         }
     }
 }
