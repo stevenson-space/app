@@ -83,6 +83,8 @@ struct OverrideEditorView: View {
                     }
                     .pickerStyle(.inline)
                 }
+            } footer: {
+                Text("Overrides also update lunch availability in the app and widgets. No School, Asynchronous E-Learning, and Summer School hide lunch. Dishes follow the published calendar date; overrides do not shift the menu rotation or add weekend menus.")
             }
 
             Section {
@@ -105,11 +107,6 @@ struct OverrideEditorView: View {
             // Use the requested day, or the app's "today", within the school year.
             let date = (initialDay ?? model.today).date() ?? Date()
             selectedDate = min(max(date, dateRange.lowerBound), dateRange.upperBound)
-            let timeline = model.timeline(for: selectedDay)
-            if initialDay != nil, timeline.rotationUncertain {
-                choice = .earlyDismissal
-                rotation = timeline.rotation ?? .rotation1
-            }
             prefill(for: DayKey(date: selectedDate))
         }
         .onChange(of: selectedDate) {
@@ -118,9 +115,11 @@ struct OverrideEditorView: View {
     }
 
     private func prefill(for day: DayKey) {
-        guard let existing = model.overrides.first(where: { $0.day == day }) else { return }
-        switch existing.type {
-        case .bell(let family, let existingRotation):
+        // Always reset from this date's effective schedule. Carrying a previous
+        // date's draft into a new date can unintentionally hide its lunch menu.
+        let timeline = model.timeline(for: day)
+        rotation = timeline.rotation ?? .rotation1
+        if let family = timeline.family {
             switch family {
             case .standard: choice = .standard
             case .lateArrival: choice = .lateArrival
@@ -129,11 +128,10 @@ struct OverrideEditorView: View {
             case .pmAssembly: choice = .pmAssembly
             case .earlyDismissal:
                 choice = .earlyDismissal
-                if let existingRotation { rotation = existingRotation }
             case .summer: choice = .summer
             }
-        case .noSchool: choice = .noSchool
-        case .asynchronous: choice = .asynchronous
+        } else {
+            choice = timeline.kind == .asynchronous ? .asynchronous : .noSchool
         }
     }
 }
