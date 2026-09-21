@@ -5,8 +5,10 @@ Widget, and select Comfort Food, Mindful, Sides, Soup, International, or Special
 **Today’s Lunch** uses the large family: six categories with multi-item sides and
 soups need more vertical space than medium provides at readable text sizes.
 
-Both widgets use the schedule widget’s system background with a soft green
-wash, semantic text, and accent-aware category labels. The large menu reads in
+Both widgets use the standard system background, semantic text, and green
+accent-aware category labels. Each menu option starts on its own line, without
+inline bullets; the small widget shows a remaining-option count if the full list
+does not fit. The large menu reads in
 three paired rows. Menu options wrap at their natural size rather than shrinking.
 Unusually long future menus or larger accessibility text fall back to the
 category list with an explicit link to the full menu. Small widgets similarly
@@ -72,3 +74,10 @@ Implementation validation (September 21, 2026):
 Time-travel follow-up: all 232 ScheduleKit tests pass, including simulated lunch
 selection, midnight translation, scenario overrides, and returning to real time.
 The app and widget extension build in both Debug and Release for iOS Simulator.
+
+Style follow-up: removed the green background wash in favor of the system
+background. Options now use separate text rows with a small inter-option gap;
+wrapped lines remain grouped as one dish. Small widgets prefer readable list
+text for multiple options and report the remaining count when space runs out.
+The simulator build passes. View renders were checked against the September 22
+sides/soup example in dark mode and a dense menu at compact large-widget bounds.
