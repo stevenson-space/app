@@ -43,6 +43,7 @@ struct DayTimelineListView: View {
                     emoji: ScheduleStyle.emoji(for: block, config: config),
                     title: block.displayName,
                     subtitle: subtitle(for: block, pref: pref),
+                    periodLabel: periodLabel(for: block),
                     minimumHeight: max(0, (minimumHeight - CGFloat(max(blocks.count - 1, 0)) * 8)
                                        / CGFloat(max(blocks.count, 1))),
                     dimmed: now.map { $0 >= block.end } ?? false,
@@ -67,11 +68,16 @@ struct DayTimelineListView: View {
         }
     }
 
-    /// "9:26 – 10:38 · 2–3A · 118" — span only when the block isn't a plain
-    /// full period, room only when set.
+    /// Use the bell schedule identity, not list position or customization identity:
+    /// early dismissal can reorder periods and continuation classes can share a name.
+    private func periodLabel(for block: ResolvedBlock) -> String? {
+        guard let number = block.periodID.periodNumber else { return nil }
+        return block.spanLabel ?? String(number)
+    }
+
+    /// Period identity has its own label; this line is just time and room.
     private func subtitle(for block: ResolvedBlock, pref: TimeFormatPref) -> String {
         var parts = [TimeDisplay.range(block.start, block.end, pref)]
-        if let spanLabel = block.spanLabel { parts.append(spanLabel) }
         if let room = block.room { parts.append(room) }
         return parts.joined(separator: " · ")
     }
@@ -79,6 +85,9 @@ struct DayTimelineListView: View {
     private func accessibilitySummary(for block: ResolvedBlock, now: Date?,
                                       pref: TimeFormatPref) -> String {
         var parts = [block.displayName]
+        if let period = periodLabel(for: block) {
+            parts.insert("Period \(period)", at: 0)
+        }
         if let room = block.room { parts.append("room \(room)") }
         parts.append("\(TimeDisplay.time(block.start, pref)) to \(TimeDisplay.time(block.end, pref))")
         if let now {
