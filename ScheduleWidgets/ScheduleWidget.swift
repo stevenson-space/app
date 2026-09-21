@@ -149,7 +149,6 @@ struct ScheduleProvider: TimelineProvider {
     }
 }
 
-@main
 struct ScheduleWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetTimelinePlanner.kind, provider: ScheduleProvider()) { entry in
