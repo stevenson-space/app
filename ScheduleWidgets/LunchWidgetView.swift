@@ -6,15 +6,17 @@ struct LunchWidgetView: View {
     let entry: LunchTimelineEntry
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
 
     private var large: Bool { family == .systemLarge }
     private var accent: Color {
         guard renderingMode == .fullColor, contrast != .increased else { return .primary }
-        return colorScheme == .dark
-            ? Color(red: 0.55, green: 0.82, blue: 0.60)
-            : Color(red: 0.20, green: 0.49, blue: 0.29)
+        return ScheduleStyle.tint(for: .classPeriod)
+    }
+
+    private func categoryAccent(_ station: LunchMenuStation) -> Color {
+        guard renderingMode == .fullColor, contrast != .increased else { return .primary }
+        return station.color
     }
 
     var body: some View {
@@ -68,7 +70,8 @@ struct LunchWidgetView: View {
         VStack(alignment: .leading, spacing: 7) {
             Label(section.station.title, systemImage: section.station.icon)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(categoryAccent(section.station))
+                .widgetAccentable()
                 .lineLimit(1)
             ViewThatFits(in: .vertical) {
                 if section.items.count == 1 {
@@ -108,6 +111,8 @@ struct LunchWidgetView: View {
                 ForEach(menu.sections) { section in
                     Label(section.station.title, systemImage: section.station.icon)
                         .font(.subheadline)
+                        .foregroundStyle(categoryAccent(section.station))
+                        .widgetAccentable()
                         .accessibilityLabel("\(section.station.title): \(section.items.joined(separator: ", "))")
                 }
                 Text("Open the app for the full menu ↗")
@@ -161,7 +166,7 @@ struct LunchWidgetView: View {
         VStack(alignment: .leading, spacing: 5) {
             Label(section.station.title, systemImage: section.station.icon)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(accent)
+                .foregroundStyle(categoryAccent(section.station))
                 .widgetAccentable()
             menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items)
                 .font(.subheadline.weight(.medium))

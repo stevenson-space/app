@@ -88,3 +88,11 @@ is not a serving day. Menu days, missing categories, and unavailable/loading dat
 keep the system background. This follows the existing simulated-day resolution.
 The simulator build passes; light and dark day-off view renders and a neutral
 menu-day render were visually checked.
+
+Category palette follow-up: the lunch header now uses the schedule class-period
+indigo accent. Category labels and icons share the app’s orange, green, yellow,
+red, blue, and purple mapping through LunchMenuStation.color in ScheduleKit.
+Small widgets and the large category fallback use the same mapping. Increased
+contrast and non-full-color rendering retain the primary-color fallback and
+widgetAccentable grouping. The simulator build passes; dark full-menu and light
+small-category renders were visually checked.
