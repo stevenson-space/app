@@ -17,25 +17,19 @@ struct ScheduleCardRow<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 14) {
+            if let periodLabel {
+                Text(periodLabel)
+                    .font(.system(.headline, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(highlightTint ?? .secondary)
+                    .fixedSize()
+            }
+
             Text(emoji)
                 .font(.title2)
                 .frame(width: 36)
 
             VStack(alignment: .leading, spacing: 3) {
-                if let periodLabel {
-                    Text("PERIOD \(periodLabel)")
-                        .font(.caption2.weight(.bold))
-                        .monospacedDigit()
-                        .tracking(0.6)
-                        .foregroundStyle(highlightTint ?? .primary)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill((highlightTint ?? .primary).opacity(0.08))
-                        )
-                        .padding(.bottom, 3)
-                }
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(.primary)
