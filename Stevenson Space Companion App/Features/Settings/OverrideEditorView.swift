@@ -83,8 +83,6 @@ struct OverrideEditorView: View {
                     }
                     .pickerStyle(.inline)
                 }
-            } footer: {
-                Text("Overrides also update lunch availability in the app and widgets. No School, Asynchronous E-Learning, and Summer School hide lunch. Dishes follow the published calendar date; overrides do not shift the menu rotation or add weekend menus.")
             }
 
             Section {
