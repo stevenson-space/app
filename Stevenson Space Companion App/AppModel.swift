@@ -15,6 +15,14 @@ enum RootTab: Hashable {
     case settings
 }
 
+enum StudentIDPresentationError: LocalizedError {
+    case presentationInProgress
+
+    var errorDescription: String? {
+        "Close the open sheet or picker in Stevenson Space, then ask to show your student ID again."
+    }
+}
+
 @Observable
 @MainActor
 final class AppModel {
@@ -351,7 +359,17 @@ final class AppModel {
 
     /// Shared foreground handoff for App Intents. The root scene owns the
     /// scanner presentation, including when the ID tab hasn't been created yet.
-    func openStudentIDScanner() -> Bool {
+    func openStudentIDScanner() throws -> Bool {
+        if isStudentIDScanning { return true }
+        // A failed cover presentation can leave its binding true. Check before
+        // changing either navigation or the binding, and preserve unfinished edits.
+        let hasPresentation = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .contains { $0.rootViewController?.presentedViewController != nil }
+        guard !hasPresentation else {
+            throw StudentIDPresentationError.presentationInProgress
+        }
         reloadStudentIDIfUnread()
         selectedTab = .id
         isStudentIDScanning = studentID != nil
