@@ -28,6 +28,8 @@ enum StudentIDPresentationError: LocalizedError {
 final class AppModel {
     var selectedTab: RootTab = .home
     var isStudentIDScanning = false
+    var isStudentIDScannerPresented = false
+    private(set) var studentIDScannerPresentationID = UUID()
     private(set) var homeTodayRequest = 0
     private(set) var lunchTodayRequest = 0
     private var scheduleDataReady = false
@@ -360,7 +362,13 @@ final class AppModel {
     /// Shared foreground handoff for App Intents. The root scene owns the
     /// scanner presentation, including when the ID tab hasn't been created yet.
     func openStudentIDScanner() throws -> Bool {
-        if isStudentIDScanning { return true }
+        if isStudentIDScanning && isStudentIDScannerPresented { return true }
+        if isStudentIDScanning {
+            isStudentIDScanning = false
+            // Recreate only the cover's host so a stale true binding cannot
+            // swallow the next request in the same SwiftUI update.
+            studentIDScannerPresentationID = UUID()
+        }
         // A failed cover presentation can leave its binding true. Check before
         // changing either navigation or the binding, and preserve unfinished edits.
         let hasPresentation = UIApplication.shared.connectedScenes
