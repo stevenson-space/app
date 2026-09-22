@@ -11,13 +11,16 @@ struct OverrideEditorView: View {
     var initialDay: DayKey? = nil
 
     @State private var selectedDate = Date()
-    @State private var choice: Choice = .lateArrival
+    @State private var choice: Choice? = nil
     @State private var rotation: EDRotation = .rotation1
     @State private var initialized = false
 
     enum Choice: String, CaseIterable, Identifiable {
         case standard, lateArrival, odyssey, activityPeriod, pmAssembly
-        case earlyDismissal, summer, noSchool, asynchronous
+        #if DEBUG
+        case earlyDismissal, summer
+        #endif
+        case noSchool, asynchronous
 
         var id: String { rawValue }
 
@@ -28,8 +31,10 @@ struct OverrideEditorView: View {
             case .odyssey: return "Odyssey"
             case .activityPeriod: return "Activity Period"
             case .pmAssembly: return "PM Assembly"
+            #if DEBUG
             case .earlyDismissal: return "Early Dismissal (Finals)"
             case .summer: return "Summer School"
+            #endif
             case .noSchool: return "No School"
             case .asynchronous: return "Asynchronous E-Learning"
             }
@@ -42,8 +47,10 @@ struct OverrideEditorView: View {
             case .odyssey: return .bell(family: .odyssey, rotation: nil)
             case .activityPeriod: return .bell(family: .activityPeriod, rotation: nil)
             case .pmAssembly: return .bell(family: .pmAssembly, rotation: nil)
+            #if DEBUG
             case .earlyDismissal: return .bell(family: .earlyDismissal, rotation: rotation)
             case .summer: return .bell(family: .summer, rotation: nil)
+            #endif
             case .noSchool: return .noSchool
             case .asynchronous: return .asynchronous
             }
@@ -71,10 +78,19 @@ struct OverrideEditorView: View {
                     .environment(\.calendar, SchoolTime.calendar)
                     .environment(\.timeZone, SchoolTime.timeZone)
                 Picker("Schedule", selection: $choice) {
+                    if choice == nil {
+                        Text("Choose a schedule").tag(nil as Choice?)
+                    }
                     ForEach(Choice.allCases) { option in
-                        Text(option.label).tag(option)
+                        Text(option.label).tag(Optional(option))
                     }
                 }
+                if choice == nil, let family = model.timeline(for: selectedDay).family {
+                    Text("This day uses \(family.displayName). Choose a schedule to replace it, or go back to keep it unchanged.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                #if DEBUG
                 if choice == .earlyDismissal {
                     Picker("Finals rotation", selection: $rotation) {
                         ForEach(EDRotation.allCases, id: \.self) { rotation in
@@ -83,13 +99,16 @@ struct OverrideEditorView: View {
                     }
                     .pickerStyle(.inline)
                 }
+                #endif
             }
 
             Section {
                 Button("Save Override") {
+                    guard let choice else { return }
                     model.setOverride(day: selectedDay, type: choice.overrideType(rotation: rotation))
                     dismiss()
                 }
+                .disabled(choice == nil)
                 if model.overrides.contains(where: { $0.day == selectedDay }) {
                     Button("Remove Override for This Date", role: .destructive) {
                         model.removeOverride(day: selectedDay)
@@ -124,9 +143,16 @@ struct OverrideEditorView: View {
             case .odyssey: choice = .odyssey
             case .activityPeriod: choice = .activityPeriod
             case .pmAssembly: choice = .pmAssembly
+            #if DEBUG
             case .earlyDismissal:
                 choice = .earlyDismissal
             case .summer: choice = .summer
+            #else
+            case .earlyDismissal, .summer:
+                // Require an explicit replacement for schedules that cannot
+                // be selected in this build.
+                choice = nil
+            #endif
             }
         } else {
             switch timeline.kind {
