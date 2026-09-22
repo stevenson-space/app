@@ -44,6 +44,7 @@ struct DayTimelineListView: View {
                     title: block.displayName,
                     subtitle: subtitle(for: block, pref: pref),
                     periodLabel: periodLabel(for: block),
+                    reservesPeriodSpace: true,
                     minimumHeight: max(0, (minimumHeight - CGFloat(max(blocks.count - 1, 0)) * 8)
                                        / CGFloat(max(blocks.count, 1))),
                     dimmed: now.map { $0 >= block.end } ?? false,
