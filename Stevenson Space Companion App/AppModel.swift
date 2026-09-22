@@ -23,6 +23,10 @@ enum StudentIDPresentationError: LocalizedError {
     }
 }
 
+enum StudentIDPresentationResult {
+    case presented, opening, needsImport
+}
+
 @Observable
 @MainActor
 final class AppModel {
@@ -361,8 +365,17 @@ final class AppModel {
 
     /// Shared foreground handoff for App Intents. The root scene owns the
     /// scanner presentation, including when the ID tab hasn't been created yet.
-    func openStudentIDScanner() throws -> Bool {
-        if isStudentIDScanning && isStudentIDScannerPresented { return true }
+    func openStudentIDScanner() throws -> StudentIDPresentationResult {
+        if isStudentIDScanning && isStudentIDScannerPresented { return .presented }
+        let presentations = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .compactMap { $0.rootViewController?.presentedViewController }
+        // viewDidAppear hasn't acknowledged an animating cover yet. Preserve
+        // its host and binding until UIKit finishes the presentation.
+        if isStudentIDScanning && presentations.contains(where: \.isBeingPresented) {
+            return .opening
+        }
         if isStudentIDScanning {
             isStudentIDScanning = false
             // Recreate only the cover's host so a stale true binding cannot
@@ -371,17 +384,13 @@ final class AppModel {
         }
         // A failed cover presentation can leave its binding true. Check before
         // changing either navigation or the binding, and preserve unfinished edits.
-        let hasPresentation = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .contains { $0.rootViewController?.presentedViewController != nil }
-        guard !hasPresentation else {
+        guard presentations.isEmpty else {
             throw StudentIDPresentationError.presentationInProgress
         }
         reloadStudentIDIfUnread()
         selectedTab = .id
         isStudentIDScanning = studentID != nil
-        return isStudentIDScanning
+        return isStudentIDScanning ? .opening : .needsImport
     }
 
     func openTab(_ tab: RootTab) {
