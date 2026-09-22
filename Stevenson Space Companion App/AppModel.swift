@@ -600,6 +600,7 @@ final class AppModel {
 
     func openWidgetURL(_ url: URL) {
         if url == LunchWidgetTimelinePlanner.lunchURL {
+            isStudentIDScanning = false
             #if DEBUG
             timeTravelOffset = 0
             #endif
@@ -609,6 +610,7 @@ final class AppModel {
             return
         }
         guard WidgetTimelinePlanner.isHomeURL(url) else { return }
+        isStudentIDScanning = false
         #if DEBUG
         timeTravelOffset = 0
         #endif
