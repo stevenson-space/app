@@ -52,9 +52,13 @@ struct ShowStudentIDIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        if try model.openStudentIDScanner() {
+        switch try model.openStudentIDScanner() {
+        case .presented:
             return .result(dialog: "Here is your student ID.")
+        case .opening:
+            return .result(dialog: "Your student ID is opening.")
+        case .needsImport:
+            return .result(dialog: "Import your student ID screenshot in the ID tab first.")
         }
-        return .result(dialog: "Import your student ID screenshot in the ID tab first.")
     }
 }
