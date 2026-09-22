@@ -144,6 +144,13 @@ redirects included.
   days, breaks…). A purple banner shows whenever the clock is shifted.
 - Pending-notification inspector: Settings → Developer — Notifications.
 
+## Shortcuts and Siri
+
+Eight actions open the student ID scanner or a selected tab, and return the
+current class/period, next class, schedule, schedule type, and lunch menu.
+Class results expose names, periods, saved rooms, and times to subsequent
+Shortcuts actions. See [implementation, Apple references, and validation](docs/app-intents.md).
+
 ## Deferred (architecture is ready for them)
 
 Live Activities and Dynamic Island remain deferred. Their requirements and the

@@ -19,6 +19,7 @@ enum RootTab: Hashable {
 @MainActor
 final class AppModel {
     var selectedTab: RootTab = .home
+    var isStudentIDScanning = false
     private(set) var homeTodayRequest = 0
     private(set) var lunchTodayRequest = 0
     private var scheduleDataReady = false
@@ -347,6 +348,24 @@ final class AppModel {
     }
 
     // MARK: - Student ID
+
+    /// Shared foreground handoff for App Intents. The root scene owns the
+    /// scanner presentation, including when the ID tab hasn't been created yet.
+    func openStudentIDScanner() -> Bool {
+        reloadStudentIDIfUnread()
+        selectedTab = .id
+        isStudentIDScanning = studentID != nil
+        return isStudentIDScanning
+    }
+
+    func openTab(_ tab: RootTab) {
+        isStudentIDScanning = false
+        switch tab {
+        case .home: openWidgetURL(WidgetTimelinePlanner.homeURL)
+        case .lunch: openWidgetURL(LunchWidgetTimelinePlanner.lunchURL)
+        case .id, .settings: selectedTab = tab
+        }
+    }
 
     func setStudentIDPhotoHidden(_ hidden: Bool) {
         store.studentIDPhotoHidden = hidden

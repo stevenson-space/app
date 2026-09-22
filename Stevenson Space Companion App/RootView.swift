@@ -21,6 +21,11 @@ struct RootView: View {
             }
         }
         .onOpenURL { model.openWidgetURL($0) }
+        .fullScreenCover(isPresented: $model.isStudentIDScanning) {
+            if let card = model.studentID {
+                StudentIDScanView(card: card)
+            }
+        }
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             // One app-wide 1 Hz heartbeat: flips block boundaries and catches
