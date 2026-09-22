@@ -4,44 +4,60 @@ import SwiftUI
 /// time-and-room line, optional period label and trailing chip. Home renders
 /// the live day with it; the editor renders the standard-day template with it.
 struct ScheduleCardRow<Trailing: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .subheadline) private var periodColumnWidth = 44.0
+
     let emoji: String
     let title: String
     let subtitle: String
     /// Home's physical period or split-period range, independent of the class name.
     var periodLabel: String? = nil
+    /// Unnumbered Home events still align with the numbered rows around them.
+    var reservesPeriodSpace = false
     var minimumHeight: CGFloat = 0
     var dimmed = false
     /// Tint of the "happening now" state; nil for every other card.
     var highlightTint: Color? = nil
     @ViewBuilder var trailing: Trailing
 
-    var body: some View {
-        HStack(spacing: 14) {
-            if let periodLabel {
-                Text(periodLabel)
-                    .font(.system(.headline, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(highlightTint ?? .secondary)
-                    .fixedSize()
-            }
+    private var hasPeriodColumn: Bool { periodLabel != nil || reservesPeriodSpace }
 
-            Text(emoji)
-                .font(.title2)
-                .frame(width: 36)
+    var body: some View {
+        // At accessibility sizes, put the identity above the details so the
+        // fixed columns don't crowd out the class name and time.
+        let layout = dynamicTypeSize.isAccessibilitySize && hasPeriodColumn
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(spacing: 12))
+
+        layout {
+            HStack(spacing: 8) {
+                if hasPeriodColumn {
+                    Text(periodLabel ?? "")
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(highlightTint ?? .secondary)
+                        .fixedSize()
+                        .frame(width: periodColumnWidth)
+                        .accessibilityHidden(periodLabel == nil)
+                }
+
+                Text(emoji)
+                    .font(.title2)
+                    .frame(width: 36)
+            }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(.primary)
-                    .lineLimit(periodLabel == nil ? 1 : nil)
+                    .lineLimit(hasPeriodColumn ? nil : 1)
                 Text(subtitle)
                     .font(.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                    .lineLimit(periodLabel == nil ? 1 : nil)
+                    .lineLimit(hasPeriodColumn ? nil : 1)
             }
-
-            Spacer(minLength: 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             trailing
         }
@@ -74,8 +90,10 @@ private struct ScheduleCardExamples: View {
                                 periodLabel: "4B") { }
                 ScheduleCardRow(emoji: "🥳", title: "Free Period", subtitle: "2:38 – 3:25",
                                 periodLabel: "8") { }
-                ScheduleCardRow(emoji: "🎉", title: "Activity", subtitle: "10:06 – 10:46") { }
-                ScheduleCardRow(emoji: "📣", title: "Assembly", subtitle: "10:06 – 10:46") { }
+                ScheduleCardRow(emoji: "🎉", title: "Activity", subtitle: "10:06 – 10:46",
+                                reservesPeriodSpace: true) { }
+                ScheduleCardRow(emoji: "📣", title: "Assembly", subtitle: "10:06 – 10:46",
+                                reservesPeriodSpace: true) { }
             }
             .padding(16)
         }
