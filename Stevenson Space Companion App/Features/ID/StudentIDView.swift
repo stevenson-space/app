@@ -12,7 +12,6 @@ struct StudentIDView: View {
     @State private var pickedItem: PhotosPickerItem?
     @State private var stage: StudentIDImportStage?
     @State private var importID: UUID?
-    @State private var isScanning = false
     @State private var removeFailed = false
     /// Set when the student asks for a different screenshot: the picker can only
     /// be presented once the import sheet has actually gone away.
@@ -70,11 +69,6 @@ struct StudentIDView: View {
                                  onSave: save,
                                  onChooseAnother: chooseAnother)
         }
-        .fullScreenCover(isPresented: $isScanning) {
-            if let card = model.studentID {
-                StudentIDScanView(card: card)
-            }
-        }
         .alert("Could not remove your ID", isPresented: $removeFailed) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -87,12 +81,12 @@ struct StudentIDView: View {
     private func savedCard(_ card: StudentIDCard) -> some View {
         VStack(spacing: 18) {
             StudentIDCardView(content: .card(card, photo: model.studentIDPhotoHidden ? nil : model.studentIDPhoto))
-                .onTapGesture { isScanning = true }
+                .onTapGesture { model.isStudentIDScanning = true }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Opens the barcode full screen for scanning")
 
             Button {
-                isScanning = true
+                model.isStudentIDScanning = true
             } label: {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
                     .font(.headline)
