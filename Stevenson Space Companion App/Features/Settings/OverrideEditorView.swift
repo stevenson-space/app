@@ -11,7 +11,7 @@ struct OverrideEditorView: View {
     var initialDay: DayKey? = nil
 
     @State private var selectedDate = Date()
-    @State private var choice: Choice = .lateArrival
+    @State private var choice: Choice? = nil
     @State private var rotation: EDRotation = .rotation1
     @State private var initialized = false
 
@@ -78,9 +78,17 @@ struct OverrideEditorView: View {
                     .environment(\.calendar, SchoolTime.calendar)
                     .environment(\.timeZone, SchoolTime.timeZone)
                 Picker("Schedule", selection: $choice) {
-                    ForEach(Choice.allCases) { option in
-                        Text(option.label).tag(option)
+                    if choice == nil {
+                        Text("Choose a schedule").tag(nil as Choice?)
                     }
+                    ForEach(Choice.allCases) { option in
+                        Text(option.label).tag(Optional(option))
+                    }
+                }
+                if choice == nil, let family = model.timeline(for: selectedDay).family {
+                    Text("This day uses \(family.displayName). Choose a schedule to replace it, or go back to keep it unchanged.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 #if DEBUG
                 if choice == .earlyDismissal {
@@ -96,9 +104,11 @@ struct OverrideEditorView: View {
 
             Section {
                 Button("Save Override") {
+                    guard let choice else { return }
                     model.setOverride(day: selectedDay, type: choice.overrideType(rotation: rotation))
                     dismiss()
                 }
+                .disabled(choice == nil)
                 if model.overrides.contains(where: { $0.day == selectedDay }) {
                     Button("Remove Override for This Date", role: .destructive) {
                         model.removeOverride(day: selectedDay)
@@ -139,9 +149,9 @@ struct OverrideEditorView: View {
             case .summer: choice = .summer
             #else
             case .earlyDismissal, .summer:
-                // Keep the picker on an available option without changing the
-                // effective schedule unless the user explicitly saves.
-                choice = .standard
+                // Require an explicit replacement for schedules that cannot
+                // be selected in this build.
+                choice = nil
             #endif
             }
         } else {
