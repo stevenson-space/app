@@ -23,7 +23,7 @@ struct ScheduleCardRow<Trailing: View>: View {
     private var hasPeriodColumn: Bool { periodLabel != nil || showsPeriodBadge }
 
     private var badgeTint: Color {
-        highlightTint ?? (periodLabel == nil ? .purple : .primary)
+        highlightTint ?? .primary
     }
 
     private var periodBadge: some View {
