@@ -17,7 +17,10 @@ struct OverrideEditorView: View {
 
     enum Choice: String, CaseIterable, Identifiable {
         case standard, lateArrival, odyssey, activityPeriod, pmAssembly
-        case earlyDismissal, summer, noSchool, asynchronous
+        #if DEBUG
+        case earlyDismissal, summer
+        #endif
+        case noSchool, asynchronous
 
         var id: String { rawValue }
 
@@ -28,8 +31,10 @@ struct OverrideEditorView: View {
             case .odyssey: return "Odyssey"
             case .activityPeriod: return "Activity Period"
             case .pmAssembly: return "PM Assembly"
+            #if DEBUG
             case .earlyDismissal: return "Early Dismissal (Finals)"
             case .summer: return "Summer School"
+            #endif
             case .noSchool: return "No School"
             case .asynchronous: return "Asynchronous E-Learning"
             }
@@ -42,8 +47,10 @@ struct OverrideEditorView: View {
             case .odyssey: return .bell(family: .odyssey, rotation: nil)
             case .activityPeriod: return .bell(family: .activityPeriod, rotation: nil)
             case .pmAssembly: return .bell(family: .pmAssembly, rotation: nil)
+            #if DEBUG
             case .earlyDismissal: return .bell(family: .earlyDismissal, rotation: rotation)
             case .summer: return .bell(family: .summer, rotation: nil)
+            #endif
             case .noSchool: return .noSchool
             case .asynchronous: return .asynchronous
             }
@@ -75,6 +82,7 @@ struct OverrideEditorView: View {
                         Text(option.label).tag(option)
                     }
                 }
+                #if DEBUG
                 if choice == .earlyDismissal {
                     Picker("Finals rotation", selection: $rotation) {
                         ForEach(EDRotation.allCases, id: \.self) { rotation in
@@ -83,6 +91,7 @@ struct OverrideEditorView: View {
                     }
                     .pickerStyle(.inline)
                 }
+                #endif
             }
 
             Section {
@@ -124,9 +133,16 @@ struct OverrideEditorView: View {
             case .odyssey: choice = .odyssey
             case .activityPeriod: choice = .activityPeriod
             case .pmAssembly: choice = .pmAssembly
+            #if DEBUG
             case .earlyDismissal:
                 choice = .earlyDismissal
             case .summer: choice = .summer
+            #else
+            case .earlyDismissal, .summer:
+                // Keep the picker on an available option without changing the
+                // effective schedule unless the user explicitly saves.
+                choice = .standard
+            #endif
             }
         } else {
             switch timeline.kind {
