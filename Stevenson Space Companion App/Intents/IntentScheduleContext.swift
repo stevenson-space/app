@@ -29,7 +29,7 @@ struct IntentScheduleContext {
         let period = block.spanLabel.map { "Period \($0)" } ?? block.periodID.defaultDisplayName
         let name = block.displayName == period ? period : "\(block.displayName), \(period)"
         let room = block.room.map { ", room \($0)" } ?? ""
-        return "\(name)\(room), from \(TimeDisplay.time(block.start, .twelveHour)) to \(TimeDisplay.time(block.end, .twelveHour))."
+        return "\(name)\(room), from \(TimeDisplay.time(block.start, inputs.config.timeFormat)) to \(TimeDisplay.time(block.end, inputs.config.timeFormat))."
     }
 
     func status(_ inquiry: ScheduleInquiry) -> String {

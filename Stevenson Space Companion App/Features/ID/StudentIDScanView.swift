@@ -9,6 +9,7 @@ struct StudentIDScanView: View {
     let card: StudentIDCard
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         GeometryReader { proxy in
@@ -54,9 +55,42 @@ struct StudentIDScanView: View {
         .contentShape(Rectangle())
         .onTapGesture { dismiss() }
         .modifier(ScreenAwakeAtFullBrightness())
+        .background {
+            ScannerPresentationObserver { model.isStudentIDScannerPresented = $0 }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Student ID barcode, number "
                             + card.spokenNumber)
+    }
+}
+
+/// A presentation request (or SwiftUI onAppear) can precede the visible cover.
+/// Use the controller's completed appearance to acknowledge scanner visibility.
+private struct ScannerPresentationObserver: UIViewControllerRepresentable {
+    let visibilityChanged: (Bool) -> Void
+
+    func makeUIViewController(context: Context) -> Controller {
+        let controller = Controller()
+        controller.visibilityChanged = visibilityChanged
+        return controller
+    }
+
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.visibilityChanged = visibilityChanged
+    }
+
+    final class Controller: UIViewController {
+        var visibilityChanged: ((Bool) -> Void)?
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            visibilityChanged?(true)
+        }
+
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            visibilityChanged?(false)
+        }
     }
 }
 

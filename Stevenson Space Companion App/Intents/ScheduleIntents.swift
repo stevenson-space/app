@@ -66,7 +66,7 @@ struct GetScheduleIntent: AppIntent {
         let heading = context.scheduleSummary(timeline)
         let details = timeline.blocks.map { context.summary($0) }.joined(separator: "\n")
         let dialog = timeline.blocks.isEmpty ? "\(heading) There are no timed periods."
-            : "\(heading) There are \(timeline.blocks.count) schedule blocks, from \(TimeDisplay.time(timeline.blocks[0].start, .twelveHour)) to \(TimeDisplay.time(timeline.blocks[timeline.blocks.count - 1].end, .twelveHour))."
+            : "\(heading) There are \(timeline.blocks.count) schedule blocks, from \(TimeDisplay.time(timeline.blocks[0].start, context.inputs.config.timeFormat)) to \(TimeDisplay.time(timeline.blocks[timeline.blocks.count - 1].end, context.inputs.config.timeFormat))."
         return .result(value: timeline.blocks.map(ScheduleBlockEntity.init), dialog: "\(dialog)") {
             IntentTextSnippet(title: heading, detail: details.isEmpty ? "No timed periods." : details)
         }

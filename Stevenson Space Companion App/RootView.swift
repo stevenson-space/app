@@ -21,10 +21,16 @@ struct RootView: View {
             }
         }
         .onOpenURL { model.openWidgetURL($0) }
-        .fullScreenCover(isPresented: $model.isStudentIDScanning) {
-            if let card = model.studentID {
-                StudentIDScanView(card: card)
-            }
+        .background {
+            Color.clear
+                .fullScreenCover(isPresented: $model.isStudentIDScanning, onDismiss: {
+                    model.isStudentIDScannerPresented = false
+                }) {
+                    if let card = model.studentID {
+                        StudentIDScanView(card: card)
+                    }
+                }
+                .id(model.studentIDScannerPresentationID)
         }
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
