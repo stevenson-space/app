@@ -23,9 +23,8 @@ struct RootView: View {
         .onOpenURL { model.openWidgetURL($0) }
         .background {
             Color.clear
-                .fullScreenCover(isPresented: $model.isStudentIDScanning, onDismiss: {
-                    model.isStudentIDScannerPresented = false
-                }) {
+                .fullScreenCover(isPresented: $model.isStudentIDScanning,
+                                 onDismiss: model.studentIDScannerDidDismiss) {
                     if let card = model.studentID {
                         StudentIDScanView(card: card)
                     }

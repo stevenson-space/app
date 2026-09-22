@@ -33,6 +33,8 @@ final class AppModel {
     var selectedTab: RootTab = .home
     var isStudentIDScanning = false
     var isStudentIDScannerPresented = false
+    var isStudentIDScannerDismissing = false
+    private var reopenStudentIDAfterDismissal = false
     private(set) var studentIDScannerPresentationID = UUID()
     private(set) var homeTodayRequest = 0
     private(set) var lunchTodayRequest = 0
@@ -366,6 +368,10 @@ final class AppModel {
     /// Shared foreground handoff for App Intents. The root scene owns the
     /// scanner presentation, including when the ID tab hasn't been created yet.
     func openStudentIDScanner() throws -> StudentIDPresentationResult {
+        if isStudentIDScannerDismissing || (!isStudentIDScanning && isStudentIDScannerPresented) {
+            reopenStudentIDAfterDismissal = true
+            return .opening
+        }
         if isStudentIDScanning && isStudentIDScannerPresented { return .presented }
         let presentations = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -393,7 +399,18 @@ final class AppModel {
         return isStudentIDScanning ? .opening : .needsImport
     }
 
+    func studentIDScannerDidDismiss() {
+        isStudentIDScannerPresented = false
+        isStudentIDScannerDismissing = false
+        guard reopenStudentIDAfterDismissal else { return }
+        reopenStudentIDAfterDismissal = false
+        // Wait for the old cover to finish dismissing before requesting another.
+        selectedTab = .id
+        isStudentIDScanning = studentID != nil
+    }
+
     func openTab(_ tab: RootTab) {
+        reopenStudentIDAfterDismissal = false
         isStudentIDScanning = false
         switch tab {
         case .home: openWidgetURL(WidgetTimelinePlanner.homeURL)
@@ -617,6 +634,7 @@ final class AppModel {
 
     func openWidgetURL(_ url: URL) {
         if url == LunchWidgetTimelinePlanner.lunchURL {
+            reopenStudentIDAfterDismissal = false
             isStudentIDScanning = false
             #if DEBUG
             timeTravelOffset = 0
@@ -627,6 +645,7 @@ final class AppModel {
             return
         }
         guard WidgetTimelinePlanner.isHomeURL(url) else { return }
+        reopenStudentIDAfterDismissal = false
         isStudentIDScanning = false
         #if DEBUG
         timeTravelOffset = 0
