@@ -56,7 +56,9 @@ struct StudentIDScanView: View {
         .onTapGesture { dismiss() }
         .modifier(ScreenAwakeAtFullBrightness())
         .background {
-            ScannerPresentationObserver { model.isStudentIDScannerPresented = $0 }
+            ScannerPresentationObserver(
+                visibilityChanged: { model.isStudentIDScannerPresented = $0 },
+                dismissalStarted: { model.isStudentIDScannerDismissing = true })
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Student ID barcode, number "
@@ -68,19 +70,28 @@ struct StudentIDScanView: View {
 /// Use the controller's completed appearance to acknowledge scanner visibility.
 private struct ScannerPresentationObserver: UIViewControllerRepresentable {
     let visibilityChanged: (Bool) -> Void
+    let dismissalStarted: () -> Void
 
     func makeUIViewController(context: Context) -> Controller {
         let controller = Controller()
         controller.visibilityChanged = visibilityChanged
+        controller.dismissalStarted = dismissalStarted
         return controller
     }
 
     func updateUIViewController(_ controller: Controller, context: Context) {
         controller.visibilityChanged = visibilityChanged
+        controller.dismissalStarted = dismissalStarted
     }
 
     final class Controller: UIViewController {
         var visibilityChanged: ((Bool) -> Void)?
+        var dismissalStarted: (() -> Void)?
+
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            if isBeingDismissed { dismissalStarted?() }
+        }
 
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
