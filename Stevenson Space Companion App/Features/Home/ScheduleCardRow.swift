@@ -12,15 +12,41 @@ struct ScheduleCardRow<Trailing: View>: View {
     let subtitle: String
     /// Home's physical period or split-period range, independent of the class name.
     var periodLabel: String? = nil
-    /// Unnumbered Home events still align with the numbered rows around them.
-    var reservesPeriodSpace = false
+    /// Home shows a special-event badge even when a block has no period number.
+    var showsPeriodBadge = false
     var minimumHeight: CGFloat = 0
     var dimmed = false
     /// Tint of the "happening now" state; nil for every other card.
     var highlightTint: Color? = nil
     @ViewBuilder var trailing: Trailing
 
-    private var hasPeriodColumn: Bool { periodLabel != nil || reservesPeriodSpace }
+    private var hasPeriodColumn: Bool { periodLabel != nil || showsPeriodBadge }
+
+    private var badgeTint: Color {
+        highlightTint ?? (periodLabel == nil ? .purple : .primary)
+    }
+
+    private var periodBadge: some View {
+        Circle()
+            .fill(badgeTint.opacity(0.12))
+            .frame(width: periodColumnWidth, height: periodColumnWidth)
+            .overlay {
+                Group {
+                    if let periodLabel {
+                        Text(periodLabel)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    } else {
+                        Image(systemName: "sparkles")
+                    }
+                }
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .foregroundStyle(badgeTint)
+                .padding(4)
+            }
+            .accessibilityHidden(periodLabel == nil)
+    }
 
     var body: some View {
         // At accessibility sizes, put the identity above the details so the
@@ -32,13 +58,7 @@ struct ScheduleCardRow<Trailing: View>: View {
         layout {
             HStack(spacing: 8) {
                 if hasPeriodColumn {
-                    Text(periodLabel ?? "")
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(highlightTint ?? .secondary)
-                        .fixedSize()
-                        .frame(width: periodColumnWidth)
-                        .accessibilityHidden(periodLabel == nil)
+                    periodBadge
                 }
 
                 Text(emoji)
@@ -91,9 +111,9 @@ private struct ScheduleCardExamples: View {
                 ScheduleCardRow(emoji: "🥳", title: "Free Period", subtitle: "2:38 – 3:25",
                                 periodLabel: "8") { }
                 ScheduleCardRow(emoji: "🎉", title: "Activity", subtitle: "10:06 – 10:46",
-                                reservesPeriodSpace: true) { }
+                                showsPeriodBadge: true) { }
                 ScheduleCardRow(emoji: "📣", title: "Assembly", subtitle: "10:06 – 10:46",
-                                reservesPeriodSpace: true) { }
+                                showsPeriodBadge: true) { }
             }
             .padding(16)
         }
