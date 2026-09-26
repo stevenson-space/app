@@ -13,7 +13,11 @@ struct IntentScheduleContext {
             let snapshot = try SharedStore.readLunchWidgetData()
             inputs = snapshot.schedule.resolverInputs(catalog: try BellScheduleCatalog.loadBundled())
             cachedMenu = snapshot.cachedMenu
-            self.now = now // Siri always uses real time, including DEBUG builds.
+            #if DEBUG
+            self.now = snapshot.schedule.widgetClock.scheduleDate(for: now)
+            #else
+            self.now = now
+            #endif
         } catch {
             throw IntentDataError.unavailable
         }
