@@ -21,7 +21,7 @@ struct Stevenson_Space_Companion_AppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(model: model)
                 .environment(model)
         }
         // `initial: true` matters on a cold launch: when the scene is already

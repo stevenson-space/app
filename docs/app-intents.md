@@ -31,9 +31,12 @@ number, speak it, or index identity in Spotlight.
 tab and resets Home/Lunch to today using the same behavior as widget navigation.
 Opening the ID tab and opening the scanner remain separate useful actions.
 
-Navigation uses the scene's actual `AppModel` through `@AppDependency`.
-The root scene owns scanner presentation so a cold launch can present it even
-when SwiftUI hasn't constructed the ID tab yet. Foreground execution uses
+Navigation uses the shared `AppModel` through `@AppDependency` to route each
+request to one foreground window. Each root owns its `SceneNavigation` state,
+including scanner presentation, dismissal, selected tab, and today requests.
+Other windows' sheets don't block that window's scanner. A cold-launch request
+waits for a foreground root to attach, even before the ID tab is constructed.
+This follows Apple's [window state guidance](https://developer.apple.com/documentation/swiftui/windowgroup). Foreground execution uses
 [`supportedModes`](https://developer.apple.com/documentation/appintents/appintent/supportedmodes)
 on iOS 26+, with `openAppWhenRun` for iOS 18–25 compatibility.
 
@@ -63,6 +66,8 @@ All queries read the same saved inputs as widgets and call ScheduleKit's
 `resolveDay` and `momentState`. Queries don't instantiate another UI model or
 fetch network data. Open the app to refresh the calendar/menu; offline requests
 use the last saved calendar, with the same bundled fallbacks as the app.
+Unknown schedule types report that the schedule is unavailable; empty results
+do not imply that classes or lunch are confirmed absent.
 Unavailable shared storage produces an actionable error instead of silently
 returning a default student configuration. Lunch uses the app's serving-day
 and validity-window rules, rather than silently substituting the next menu day.
@@ -107,8 +112,9 @@ and metadata extraction alone don't prove voice recognition.
 
 ## Validation
 
-- `swift test --package-path Packages/ScheduleKit`: 242 tests pass, including six
-  new inquiry tests covering bell boundaries, passing, lunch/class splits,
+- The existing 242-test ScheduleKit suite passes. All seven inquiry tests also
+  pass after adding coverage for unknown schedules with empty class/lunch results.
+  Inquiry coverage includes bell boundaries, passing, lunch/class splits,
   personalization, merged free periods, finals ordering, no-school days, and
   manual overrides.
 - Simulator app build with Xcode 27 succeeds, including metadata extraction and
@@ -125,9 +131,13 @@ Before release, exercise these system-level flows on supported iOS versions:
    class before school and after the final class. Check finals and overrides.
 3. Query lunch on a serving day, weekend, no-school override, and date outside
    menu validity. Query schedule/type on asynchronous and outside-year dates.
+   For an unrecognized calendar entry, verify next class, schedule, and lunch
+   report unavailable data rather than confirmed absence.
 4. Run Show Student ID with a saved ID from a terminated app and from another
    tab, dismiss it, and repeat. Verify missing-ID setup and locked-device
    authentication. Confirm brightness and auto-lock restoration.
+   Repeat with two iPad windows: only the target window should present or dismiss
+   its scanner, and a sheet in the other window should not block it.
 5. Run Open Tab for all four choices, including while the scanner is open.
 6. Ask Siri the example phrases and natural variations; check spoken answers
    using AirPods and compare standard Siri with Siri AI on supported devices.

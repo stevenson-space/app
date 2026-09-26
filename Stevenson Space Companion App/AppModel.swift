@@ -8,36 +8,10 @@ import WidgetKit
 /// Root observable store. Owns the resolver inputs (persisted via SharedStore),
 /// derives today's timeline, and coordinates sync + notifications. All schedule
 /// math lives in ScheduleKit; this type only orchestrates.
-enum RootTab: Hashable {
-    case home
-    case lunch
-    case id
-    case settings
-}
-
-enum StudentIDPresentationError: LocalizedError {
-    case presentationInProgress
-
-    var errorDescription: String? {
-        "Close the open sheet or picker in Stevenson Space, then ask to show your student ID again."
-    }
-}
-
-enum StudentIDPresentationResult {
-    case presented, opening, needsImport
-}
-
 @Observable
 @MainActor
 final class AppModel {
-    var selectedTab: RootTab = .home
-    var isStudentIDScanning = false
-    var isStudentIDScannerPresented = false
-    var isStudentIDScannerDismissing = false
-    private var reopenStudentIDAfterDismissal = false
-    private(set) var studentIDScannerPresentationID = UUID()
-    private(set) var homeTodayRequest = 0
-    private(set) var lunchTodayRequest = 0
+    let navigation = AppNavigation()
     private var scheduleDataReady = false
 
     let store: SharedStore
@@ -365,60 +339,6 @@ final class AppModel {
 
     // MARK: - Student ID
 
-    /// Shared foreground handoff for App Intents. The root scene owns the
-    /// scanner presentation, including when the ID tab hasn't been created yet.
-    func openStudentIDScanner() throws -> StudentIDPresentationResult {
-        if isStudentIDScannerDismissing || (!isStudentIDScanning && isStudentIDScannerPresented) {
-            reopenStudentIDAfterDismissal = true
-            return .opening
-        }
-        if isStudentIDScanning && isStudentIDScannerPresented { return .presented }
-        let presentations = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .compactMap { $0.rootViewController?.presentedViewController }
-        // viewDidAppear hasn't acknowledged an animating cover yet. Preserve
-        // its host and binding until UIKit finishes the presentation.
-        if isStudentIDScanning && presentations.contains(where: \.isBeingPresented) {
-            return .opening
-        }
-        if isStudentIDScanning {
-            isStudentIDScanning = false
-            // Recreate only the cover's host so a stale true binding cannot
-            // swallow the next request in the same SwiftUI update.
-            studentIDScannerPresentationID = UUID()
-        }
-        // A failed cover presentation can leave its binding true. Check before
-        // changing either navigation or the binding, and preserve unfinished edits.
-        guard presentations.isEmpty else {
-            throw StudentIDPresentationError.presentationInProgress
-        }
-        reloadStudentIDIfUnread()
-        selectedTab = .id
-        isStudentIDScanning = studentID != nil
-        return isStudentIDScanning ? .opening : .needsImport
-    }
-
-    func studentIDScannerDidDismiss() {
-        isStudentIDScannerPresented = false
-        isStudentIDScannerDismissing = false
-        guard reopenStudentIDAfterDismissal else { return }
-        reopenStudentIDAfterDismissal = false
-        // Wait for the old cover to finish dismissing before requesting another.
-        selectedTab = .id
-        isStudentIDScanning = studentID != nil
-    }
-
-    func openTab(_ tab: RootTab) {
-        reopenStudentIDAfterDismissal = false
-        isStudentIDScanning = false
-        switch tab {
-        case .home: openWidgetURL(WidgetTimelinePlanner.homeURL)
-        case .lunch: openWidgetURL(LunchWidgetTimelinePlanner.lunchURL)
-        case .id, .settings: selectedTab = tab
-        }
-    }
-
     func setStudentIDPhotoHidden(_ hidden: Bool) {
         store.studentIDPhotoHidden = hidden
         studentIDPhotoHidden = hidden
@@ -462,7 +382,7 @@ final class AppModel {
     /// Picks up an ID that could not be read at launch because the device was
     /// locked. Both the card and the photo are protected until first unlock, and
     /// the app can be launched into the background before that happens.
-    private func reloadStudentIDIfUnread() {
+    func reloadStudentIDIfUnread() {
         // The hide-photo flag is in the App Group plist, which is as unreadable
         // as the card itself before first unlock. Left alone it stays at the
         // `false` that a locked launch read, and a photo the student chose to
@@ -632,27 +552,11 @@ final class AppModel {
         reloadScheduleWidgets()
     }
 
-    func openWidgetURL(_ url: URL) {
-        if url == LunchWidgetTimelinePlanner.lunchURL {
-            reopenStudentIDAfterDismissal = false
-            isStudentIDScanning = false
-            #if DEBUG
-            timeTravelOffset = 0
-            #endif
-            refreshDerived()
-            selectedTab = .lunch
-            lunchTodayRequest += 1
-            return
-        }
-        guard WidgetTimelinePlanner.isHomeURL(url) else { return }
-        reopenStudentIDAfterDismissal = false
-        isStudentIDScanning = false
+    func prepareForNavigation() {
         #if DEBUG
         timeTravelOffset = 0
         #endif
         refreshDerived()
-        selectedTab = .home
-        homeTodayRequest += 1
     }
 
     // MARK: - Notifications

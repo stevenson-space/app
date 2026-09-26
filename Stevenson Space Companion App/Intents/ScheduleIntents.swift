@@ -42,8 +42,13 @@ struct GetNextClassIntent: AppIntent {
     func perform() async throws -> some IntentResult & ReturnsValue<ScheduleBlockEntity?> & ProvidesDialog {
         let context = try IntentScheduleContext()
         let inquiry = context.inquiry
-        let text = inquiry.nextClass.map { "Next is \(context.summary($0))" }
-            ?? "There are no more scheduled classes starting today."
+        let text: String
+        if case .unknownSchedule = inquiry.state {
+            text = context.status(inquiry)
+        } else {
+            text = inquiry.nextClass.map { "Next is \(context.summary($0))" }
+                ?? "There are no more scheduled classes starting today."
+        }
         return .result(value: inquiry.nextClass.map(ScheduleBlockEntity.init),
                        dialog: "\(context.qualifying(text, for: inquiry.timeline))")
     }
@@ -64,11 +69,17 @@ struct GetScheduleIntent: AppIntent {
         let context = try IntentScheduleContext()
         let timeline = context.timeline(on: date)
         let heading = context.scheduleSummary(timeline)
+        let emptyMessage: String
+        if case .unknownType = timeline.kind {
+            emptyMessage = "The schedule is unavailable for this date."
+        } else {
+            emptyMessage = "There are no timed periods."
+        }
         let details = timeline.blocks.map { context.summary($0) }.joined(separator: "\n")
-        let dialog = timeline.blocks.isEmpty ? "\(heading) There are no timed periods."
+        let dialog = timeline.blocks.isEmpty ? "\(heading) \(emptyMessage)"
             : "\(heading) There are \(timeline.blocks.count) schedule blocks, from \(TimeDisplay.time(timeline.blocks[0].start, context.inputs.config.timeFormat)) to \(TimeDisplay.time(timeline.blocks[timeline.blocks.count - 1].end, context.inputs.config.timeFormat))."
         return .result(value: timeline.blocks.map(ScheduleBlockEntity.init), dialog: "\(dialog)") {
-            IntentTextSnippet(title: heading, detail: details.isEmpty ? "No timed periods." : details)
+            IntentTextSnippet(title: heading, detail: details.isEmpty ? emptyMessage : details)
         }
     }
 }
@@ -112,9 +123,14 @@ struct GetLunchMenuIntent: AppIntent {
             day.sections.map { "\($0.station.title): \($0.items.joined(separator: ", "))" }
                 .joined(separator: "\n")
         }
-        let unavailable = timeline.isSchoolDay && timeline.family != .summer
-            ? "The lunch menu is unavailable for this date."
-            : "Lunch isn't served on this date."
+        let unavailable: String
+        if case .unknownType = timeline.kind {
+            unavailable = "The schedule is unavailable for this date, so lunch service is unconfirmed."
+        } else if timeline.isSchoolDay && timeline.family != .summer {
+            unavailable = "The lunch menu is unavailable for this date."
+        } else {
+            unavailable = "Lunch isn't served on this date."
+        }
         let detail = text ?? unavailable
         return .result(value: text, dialog: "\(heading). \(detail)") {
             IntentTextSnippet(title: heading, detail: detail)

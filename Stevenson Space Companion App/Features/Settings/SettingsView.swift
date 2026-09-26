@@ -161,6 +161,7 @@ struct SettingsView: View {
 /// Time travel: shifts the app's clock so every Home state can be exercised
 /// on demand. DEBUG builds only; a banner shows whenever it's active.
 struct DeveloperSection: View {
+    @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
     @State private var target = Date()
 
@@ -230,7 +231,7 @@ struct DeveloperSection: View {
                     if let override = scenario.override {
                         model.setOverride(day: scenario.day, type: override)
                     }
-                    model.selectedTab = .home
+                    navigation.selectedTab = .home
                 }
             }
             Button("Clear demo overrides", role: .destructive) {
