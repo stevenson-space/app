@@ -72,8 +72,10 @@ Unavailable shared storage produces an actionable error instead of silently
 returning a default student configuration. Lunch uses the app's serving-day
 and validity-window rules, rather than silently substituting the next menu day.
 
-Current/next queries use the real invocation time, independent of DEBUG time
-travel. All day selection and spoken bell times use **America/Chicago**. Manual
+In DEBUG builds, current/next queries and queries with no supplied date use the
+developer time-travel clock shared with widgets. Explicit dates are used as
+supplied. Release builds always use the real invocation time and ignore saved
+debug offsets. All day selection and spoken bell times use **America/Chicago**. Manual
 overrides, split classes, custom names, rooms, and finals ordering come from the
 existing resolver. Current period uses physical blocks because the display can
 merge multiple free periods into one span.
@@ -129,6 +131,10 @@ Before release, exercise these system-level flows on supported iOS versions:
    Schedule, select a result's Room/Start Time, and pass it to another action.
 2. Run current class/period during class, lunch, passing, and free time. Run next
    class before school and after the final class. Check finals and overrides.
+   In DEBUG, use developer time travel and confirm these answers and undated
+   schedule/type/lunch queries match the simulated clock. Explicit dates should
+   remain unchanged. Reset time travel and verify queries return to real time;
+   verify Release ignores any persisted debug offset.
 3. Query lunch on a serving day, weekend, no-school override, and date outside
    menu validity. Query schedule/type on asynchronous and outside-year dates.
    For an unrecognized calendar entry, verify next class, schedule, and lunch
