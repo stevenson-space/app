@@ -3,10 +3,17 @@ import ScheduleKit
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var navigation: SceneNavigation
+    @State private var navigationError: String?
+
+    init(model: AppModel) {
+        _navigation = State(initialValue: SceneNavigation(model: model))
+    }
 
     var body: some View {
-        @Bindable var model = model
-        TabView(selection: $model.selectedTab) {
+        @Bindable var navigation = navigation
+        TabView(selection: $navigation.selectedTab) {
             Tab("Home", systemImage: "clock", value: RootTab.home) {
                 HomeView()
             }
@@ -20,7 +27,34 @@ struct RootView: View {
                 SettingsView()
             }
         }
-        .onOpenURL { model.openWidgetURL($0) }
+        .onOpenURL { navigation.openWidgetURL($0) }
+        .background {
+            Color.clear
+                .fullScreenCover(isPresented: $navigation.isStudentIDScanning,
+                                 onDismiss: navigation.studentIDScannerDidDismiss) {
+                    if let card = model.studentID {
+                        StudentIDScanView(card: card)
+                    }
+                }
+                .id(navigation.studentIDScannerPresentationID)
+        }
+        .environment(navigation)
+        .background {
+            SceneWindowReader { window in
+                navigation.window = window
+                attachNavigation()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { attachNavigation() }
+        }
+        .alert("Could not show your student ID", isPresented: Binding(
+            get: { navigationError != nil },
+            set: { if !$0 { navigationError = nil } })) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(navigationError ?? "")
+        }
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             // One app-wide 1 Hz heartbeat: flips block boundaries and catches
@@ -31,6 +65,11 @@ struct RootView: View {
                 try? await Task.sleep(for: .seconds(1))
             }
         }
+    }
+
+    private func attachNavigation() {
+        do { try model.navigation.attach(navigation) }
+        catch { navigationError = error.localizedDescription }
     }
 }
 

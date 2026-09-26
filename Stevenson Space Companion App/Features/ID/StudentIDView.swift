@@ -6,13 +6,13 @@ import StudentIDKit
 /// The ID tab: import a Student Profile screenshot once, then have a clean,
 /// scannable card two taps away for the rest of the year.
 struct StudentIDView: View {
+    @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
 
     @State private var isPickerPresented = false
     @State private var pickedItem: PhotosPickerItem?
     @State private var stage: StudentIDImportStage?
     @State private var importID: UUID?
-    @State private var isScanning = false
     @State private var removeFailed = false
     /// Set when the student asks for a different screenshot: the picker can only
     /// be presented once the import sheet has actually gone away.
@@ -70,11 +70,6 @@ struct StudentIDView: View {
                                  onSave: save,
                                  onChooseAnother: chooseAnother)
         }
-        .fullScreenCover(isPresented: $isScanning) {
-            if let card = model.studentID {
-                StudentIDScanView(card: card)
-            }
-        }
         .alert("Could not remove your ID", isPresented: $removeFailed) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -87,12 +82,12 @@ struct StudentIDView: View {
     private func savedCard(_ card: StudentIDCard) -> some View {
         VStack(spacing: 18) {
             StudentIDCardView(content: .card(card, photo: model.studentIDPhotoHidden ? nil : model.studentIDPhoto))
-                .onTapGesture { isScanning = true }
+                .onTapGesture { navigation.isStudentIDScanning = true }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Opens the barcode full screen for scanning")
 
             Button {
-                isScanning = true
+                navigation.isStudentIDScanning = true
             } label: {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
                     .font(.headline)
@@ -244,8 +239,10 @@ struct StudentIDView: View {
 }
 
 #Preview {
+    let model = AppModel(store: SharedStore(
+        defaults: UserDefaults(suiteName: "student-id-preview")!,
+        secrets: InMemorySecretStore()))
     StudentIDView()
-        .environment(AppModel(store: SharedStore(
-            defaults: UserDefaults(suiteName: "student-id-preview")!,
-            secrets: InMemorySecretStore())))
+        .environment(model)
+        .environment(SceneNavigation(model: model))
 }

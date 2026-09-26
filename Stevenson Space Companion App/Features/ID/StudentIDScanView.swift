@@ -9,6 +9,7 @@ struct StudentIDScanView: View {
     let card: StudentIDCard
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(SceneNavigation.self) private var navigation
 
     var body: some View {
         GeometryReader { proxy in
@@ -54,9 +55,53 @@ struct StudentIDScanView: View {
         .contentShape(Rectangle())
         .onTapGesture { dismiss() }
         .modifier(ScreenAwakeAtFullBrightness())
+        .background {
+            ScannerPresentationObserver(
+                visibilityChanged: { navigation.isStudentIDScannerPresented = $0 },
+                dismissalStarted: { navigation.isStudentIDScannerDismissing = true })
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Student ID barcode, number "
                             + card.spokenNumber)
+    }
+}
+
+/// A presentation request (or SwiftUI onAppear) can precede the visible cover.
+/// Use the controller's completed appearance to acknowledge scanner visibility.
+private struct ScannerPresentationObserver: UIViewControllerRepresentable {
+    let visibilityChanged: (Bool) -> Void
+    let dismissalStarted: () -> Void
+
+    func makeUIViewController(context: Context) -> Controller {
+        let controller = Controller()
+        controller.visibilityChanged = visibilityChanged
+        controller.dismissalStarted = dismissalStarted
+        return controller
+    }
+
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.visibilityChanged = visibilityChanged
+        controller.dismissalStarted = dismissalStarted
+    }
+
+    final class Controller: UIViewController {
+        var visibilityChanged: ((Bool) -> Void)?
+        var dismissalStarted: (() -> Void)?
+
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            if isBeingDismissed { dismissalStarted?() }
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            visibilityChanged?(true)
+        }
+
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            visibilityChanged?(false)
+        }
     }
 }
 
