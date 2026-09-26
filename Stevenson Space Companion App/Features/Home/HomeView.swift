@@ -2,6 +2,7 @@ import SwiftUI
 import ScheduleKit
 
 struct HomeView: View {
+    @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     // nil follows the live day, including midnight and foreground rollovers.
@@ -99,7 +100,7 @@ struct HomeView: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
-        .onChange(of: model.homeTodayRequest) { _, _ in
+        .onChange(of: navigation.homeTodayRequest) { _, _ in
             selectedDay = nil
             isTimerCompact = false
             scrollPosition.scrollTo(edge: .top)

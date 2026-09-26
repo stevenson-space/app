@@ -34,7 +34,7 @@ struct OpenAppTabIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        model.openTab(tab.rootTab)
+        model.navigation.openTab(tab.rootTab)
         return .result()
     }
 }
@@ -52,7 +52,7 @@ struct ShowStudentIDIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        switch try model.openStudentIDScanner() {
+        switch try model.navigation.openStudentIDScanner() {
         case .presented:
             return .result(dialog: "Here is your student ID.")
         case .opening:

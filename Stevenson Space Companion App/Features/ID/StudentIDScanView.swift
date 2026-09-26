@@ -9,7 +9,7 @@ struct StudentIDScanView: View {
     let card: StudentIDCard
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(AppModel.self) private var model
+    @Environment(SceneNavigation.self) private var navigation
 
     var body: some View {
         GeometryReader { proxy in
@@ -57,8 +57,8 @@ struct StudentIDScanView: View {
         .modifier(ScreenAwakeAtFullBrightness())
         .background {
             ScannerPresentationObserver(
-                visibilityChanged: { model.isStudentIDScannerPresented = $0 },
-                dismissalStarted: { model.isStudentIDScannerDismissing = true })
+                visibilityChanged: { navigation.isStudentIDScannerPresented = $0 },
+                dismissalStarted: { navigation.isStudentIDScannerDismissing = true })
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Student ID barcode, number "

@@ -80,4 +80,18 @@ import Testing
         #expect(inquiry.currentPeriod == nil)
         #expect(inquiry.nextClass == nil)
     }
+
+    @Test func unrecognizedCalendarEntryKeepsUnknownStatusDespiteEmptyResults() throws {
+        let map = try TestSupport.map(#"{"Unrecognized Schedule": ["9/14/2026"]}"#)
+        let inputs = TestSupport.inputs(map: map)
+        let inquiry = ScheduleInquiry(at: TestSupport.at(monday, 10, 0), inputs: inputs)
+
+        #expect(inquiry.state == .unknownSchedule(name: "Unrecognized Schedule"))
+        #expect(inquiry.timeline.kind == .unknownType(name: "Unrecognized Schedule"))
+        #expect(inquiry.timeline.blocks.isEmpty)
+        #expect(inquiry.nextClass == nil)
+        #expect(!inquiry.timeline.isSchoolDay)
+        #expect(LunchMenuLoader.menu(try LunchMenuParser.loadBundled(),
+                                   for: monday, inputs: inputs) == nil)
+    }
 }
