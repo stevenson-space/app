@@ -90,7 +90,15 @@ private struct ScannerPresentationObserver: UIViewControllerRepresentable {
 
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
-            if isBeingDismissed { dismissalStarted?() }
+            // SwiftUI dismisses the containing host, not this child controller.
+            var controller: UIViewController? = self
+            while let current = controller {
+                if current.isBeingDismissed {
+                    dismissalStarted?()
+                    break
+                }
+                controller = current.parent
+            }
         }
 
         override func viewDidAppear(_ animated: Bool) {
