@@ -169,6 +169,11 @@ import Testing
         #expect(result.date == instant)
     }
 
+    @Test func weekdayLabelNamesTheSchoolDay() {
+        #expect(TimeDisplay.shortWeekdayLabel(monday) == "Mon")
+        #expect(TimeDisplay.shortWeekdayLabel(monday.advanced(by: 6)) == "Sun")
+    }
+
     @Test func deepLinkOnlyAcceptsHomeToday() {
         #expect(WidgetTimelinePlanner.isHomeURL(WidgetTimelinePlanner.homeURL))
         #expect(!WidgetTimelinePlanner.isHomeURL(URL(string: "stevenson-space://settings/today")!))

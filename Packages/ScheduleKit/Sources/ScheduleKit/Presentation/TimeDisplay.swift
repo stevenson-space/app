@@ -26,6 +26,12 @@ public enum TimeDisplay {
         formatter.timeZone = SchoolTime.timeZone
         return formatter
     }()
+    private static let shortWeekday: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        formatter.timeZone = SchoolTime.timeZone
+        return formatter
+    }()
 
     public static var systemUses24Hour: Bool {
         DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current)?
@@ -100,5 +106,11 @@ public enum TimeDisplay {
     public static func shortDayLabel(_ day: DayKey) -> String {
         guard let date = day.date() else { return day.description }
         return shortWeekdayMonthDay.string(from: date)
+    }
+
+    /// "Wed"
+    public static func shortWeekdayLabel(_ day: DayKey) -> String {
+        guard let date = day.date() else { return day.description }
+        return shortWeekday.string(from: date)
     }
 }
