@@ -17,7 +17,9 @@ struct ScheduleWidgetView: View {
 
     var body: some View {
         Group {
-            if let schedule = entry.schedule {
+            if family == .accessoryCircular {
+                CircularScheduleView(entry: entry)
+            } else if let schedule = entry.schedule {
                 if family == .systemLarge {
                     large(schedule)
                 } else if let focus = schedule.focus {
@@ -560,10 +562,22 @@ private struct WidgetPeriodName: View {
     ScheduleProvider.example(at: HourMinute(hour: 8, minute: 15))
 }
 
+#Preview("Lock Screen · circular", as: .accessoryCircular) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0))
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 21))
+    ScheduleProvider.example(at: HourMinute(hour: 8, minute: 15))
+    ScheduleProvider.example(at: HourMinute(hour: 7, minute: 0))
+    ScheduleProvider.example(at: HourMinute(hour: 15, minute: 30))
+    ScheduleProvider.weekendExample
+}
+
 // PreviewProvider supports explicit WidgetPreviewContext for layout variants.
 struct ScheduleLayoutPreviews: PreviewProvider {
     static var previews: some View {
-        ForEach([WidgetFamily.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular], id: \.self) { family in
+        ForEach([WidgetFamily.systemSmall, .systemMedium, .systemLarge, .accessoryCircular, .accessoryRectangular],
+                id: \.self) { family in
             ScheduleWidgetView(entry: ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true, room: nil))
                 .containerBackground(.background, for: .widget)
                 .environment(\.dynamicTypeSize, .accessibility1)
@@ -591,7 +605,8 @@ struct ScheduleWidgetBackground: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        if let schedule = entry.schedule, schedule.focus == nil, family != .accessoryRectangular {
+        if let schedule = entry.schedule, schedule.focus == nil,
+           family != .accessoryRectangular, family != .accessoryCircular {
             RestingWidgetBackground()
         } else {
             Rectangle().fill(.background)
