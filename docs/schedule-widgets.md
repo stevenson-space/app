@@ -112,18 +112,29 @@ reuses the same provider, entries, and bounded countdown interval, drawn over
 and seconds left; during passing, “PASSING”; during the 15-minute lead-in, “STARTS IN”.
 The timer omits an hours field, so a block over an hour reads as minutes (Summer
 School's single block starts at “305:00”). Outside those states
-it shows the weekday and the next first bell (“MON” over “8:30”): today's before
-the lead-in, otherwise the next school day's. An unknown schedule, missing
-shared data, or no upcoming school day shows a calendar symbol instead. It carries
+it shows “TODAY” over today's first bell before the lead-in, otherwise the next
+school day's weekday and first bell (“MON” over “8:30”). VoiceOver retains the
+relative day or full date and the bell time with its meridiem in 12-hour mode.
+Countdown captions share ScheduleKit's tested compact and full caption rules.
+An unknown schedule, missing shared data, or no upcoming school day shows a
+calendar symbol instead. It carries
 no class names, rooms, or emoji, and caps Dynamic Type at Large because the circle
 cannot grow.
 
-Circular validation (September 26, 2026): all 244 ScheduleKit tests pass, and the
-app and embedded extension build for the iOS Simulator. The iOS 27 Simulator's
-Lock Screen editor opened without its customize controls, so the widget could not
+Initial circular validation (September 26, 2026): the then-current 244 ScheduleKit
+tests passed, and the app and embedded extension built for the iOS Simulator.
+The iOS 27 Simulator's Lock Screen editor opened without its customize controls, so the widget could not
 be placed there. Instead, the view was rendered offscreen at 68, 72, and 76 points
-for every state; each caption and timer fits inside the circle. Vibrant Lock Screen
-rendering and live countdown updates still need on-device verification.
+for every state. Those offscreen fit checks preceded later caption changes and
+do not validate the current text.
+
+Caption review validation (September 27, 2026): all 247 ScheduleKit tests pass,
+including compact/full countdown captions and compact first-bell labels for
+today, after dismissal, weekends, and long breaks. The app and embedded extension
+build for the iOS Simulator. Resting layouts consistently use the next school
+day's date, schedule label, and first bell. Current caption fit, vibrant Lock Screen
+rendering, and live countdown updates still need visual verification; Xcode preview
+rendering was unavailable because no workspace was open.
 
 ## Validation
 
