@@ -26,7 +26,7 @@ struct CircularScheduleView: View {
             if case .unknownSchedule = schedule.state {
                 symbol("calendar.badge.exclamationmark", label: "Schedule unavailable")
             } else if let interval = entry.countdownInterval {
-                labeled(caption(schedule)) {
+                labeled(schedule.widgetCaption(compact: true)) {
                     // Minutes only, even past an hour, so the text stays short.
                     Text(timerInterval: interval, pauseTime: entry.countdownPauseTime,
                          countsDown: true, showsHours: false)
@@ -34,8 +34,9 @@ struct CircularScheduleView: View {
                         .multilineTextAlignment(.center)
                         .contentTransition(.identity)
                 }
+                .accessibilityElement(children: .combine)
             } else if let bell = nextFirstBell(schedule) {
-                labeled(TimeDisplay.shortWeekdayLabel(bell.day).uppercased()) {
+                labeled(TimeDisplay.shortWeekdayLabel(bell.day)) {
                     Text(TimeDisplay.time(bell.time, format, includesMeridiem: false))
                 }
                 .accessibilityElement(children: .ignore)
@@ -51,6 +52,7 @@ struct CircularScheduleView: View {
     private func labeled(_ caption: String, @ViewBuilder value: () -> some View) -> some View {
         VStack(spacing: 0) {
             Text(caption)
+                .textCase(.uppercase)
                 .font(.caption2.weight(.semibold))
                 .widgetAccentable()
             value()
@@ -59,7 +61,6 @@ struct CircularScheduleView: View {
         }
         .lineLimit(1)
         .minimumScaleFactor(0.6)
-        .accessibilityElement(children: .combine)
     }
 
     private func symbol(_ name: String, label: String) -> some View {
@@ -68,18 +69,10 @@ struct CircularScheduleView: View {
             .accessibilityLabel(label)
     }
 
-    private func caption(_ schedule: WidgetScheduleEntry) -> String {
-        switch schedule.state {
-        case .beforeSchool: return "STARTS IN"
-        case .passing: return "PASSING"
-        default: return "ENDS IN"
-        }
-    }
-
     /// Today's first bell before school, or the next school day's afterward.
     private func nextFirstBell(_ schedule: WidgetScheduleEntry) -> (day: DayKey, time: Date)? {
-        if case .beforeSchool = schedule.state, let first = schedule.timeline.firstBell {
-            return (schedule.timeline.day, first)
+        if case .beforeSchool(let first) = schedule.state {
+            return (schedule.timeline.day, first.start)
         }
         guard let next = schedule.nextSchoolDay, let first = next.firstBell else { return nil }
         return (next.day, first)

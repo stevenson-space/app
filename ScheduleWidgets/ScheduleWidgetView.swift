@@ -3,6 +3,17 @@ import SwiftUI
 import UIKit
 import WidgetKit
 
+extension WidgetScheduleEntry {
+    func widgetCaption(compact: Bool = false) -> String {
+        switch state {
+        case .beforeSchool:
+            return compact ? "Starts in" : (isLeadIn ? "School starts in" : timeline.scheduleLabel)
+        case .passing: return compact ? "Passing" : "Passing · starts in"
+        default: return compact ? "Ends in" : "Period ends in"
+        }
+    }
+}
+
 struct ScheduleWidgetView: View {
     let entry: ScheduleWidgetEntry
     @Environment(\.widgetFamily) private var family
@@ -46,18 +57,10 @@ struct ScheduleWidgetView: View {
         return ScheduleStyle.tint(for: focus.role)
     }
 
-    private func caption(_ schedule: WidgetScheduleEntry) -> String {
-        switch schedule.state {
-        case .beforeSchool: return schedule.isLeadIn ? "School starts in" : schedule.timeline.scheduleLabel
-        case .passing: return "Passing · starts in"
-        default: return "Period ends in"
-        }
-    }
-
     private func active(_ schedule: WidgetScheduleEntry, focus: ResolvedBlock) -> some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: rectangular || typeSize.isAccessibilitySize ? 1 : 5) {
-                Text(caption(schedule))
+                Text(schedule.widgetCaption())
                     .font(rectangular ? .caption2 : .caption.weight(.semibold))
                     .foregroundStyle(accent(schedule, focus: focus))
                     .widgetAccentable()
