@@ -109,8 +109,8 @@ Example phrases using the current bundle name (the system substitutes the instal
 - “Open Lunch in Stevenson Space Companion App.”
 
 Actual Siri phrase recognition depends on device, OS, language, and system
-configuration. Validate it on a device before release; successful compilation
-and metadata extraction alone don't prove voice recognition.
+configuration. Real-device testing is complete and works, as confirmed by the
+maintainer; repeat the checks below when changing this integration.
 
 ## Validation
 
@@ -121,11 +121,12 @@ and metadata extraction alone don't prove voice recognition.
   manual overrides.
 - Simulator app build with Xcode 27 succeeds, including metadata extraction and
   English phrase training for all eight shortcuts, with no app build warnings.
-- The app installed and launched on an iOS 27 simulator. Xcode's code-snippet
-  runner timed out, so foreground intent execution and end-to-end Shortcuts/Siri
-  invocation remain manual verification items.
+- The app installed and launched on an iOS 27 simulator.
+- Real-device testing is complete and works, as confirmed by the maintainer.
+  Xcode's simulator code-snippet runner timed out during the earlier automated
+  validation; that timeout does not represent pending real-device testing.
 
-Before release, exercise these system-level flows on supported iOS versions:
+Use these system-level flows for future regression checks on supported iOS versions:
 
 1. Install and open the app once. Find all eight actions in Shortcuts. Run Get
    Schedule, select a result's Room/Start Time, and pass it to another action.
