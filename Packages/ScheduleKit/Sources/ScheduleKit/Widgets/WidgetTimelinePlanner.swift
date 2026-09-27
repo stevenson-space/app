@@ -25,11 +25,12 @@ public struct WidgetScheduleEntry: Sendable {
         return date < end.addingTimeInterval(5 * 60)
     }
 
-    public func widgetCaption() -> String {
+    public func widgetCaption(compact: Bool = false) -> String {
         switch state {
-        case .beforeSchool: return isLeadIn ? "School starts in" : timeline.scheduleLabel
-        case .passing: return "Passing · starts in"
-        default: return "Period ends in"
+        case .beforeSchool:
+            return isLeadIn ? (compact ? "Starts in" : "School starts in") : timeline.scheduleLabel
+        case .passing: return compact ? "Passing" : "Passing · starts in"
+        default: return compact ? "Ends in" : "Period ends in"
         }
     }
 

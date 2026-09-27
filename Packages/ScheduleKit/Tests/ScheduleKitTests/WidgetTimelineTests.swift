@@ -169,12 +169,13 @@ import Testing
         #expect(result.date == instant)
     }
 
-    @Test func captionsFollowTheCountdownState() {
+    @Test(arguments: [false, true])
+    func captionsFollowTheCountdownState(compact: Bool) {
         let early = entry(at: TestSupport.at(monday, 7, 0))
-        #expect(early.widgetCaption() == early.timeline.scheduleLabel)
-        #expect(entry(at: TestSupport.at(monday, 8, 15)).widgetCaption() == "School starts in")
-        #expect(entry(at: TestSupport.at(monday, 8, 30)).widgetCaption() == "Period ends in")
-        #expect(entry(at: TestSupport.at(monday, 9, 21)).widgetCaption() == "Passing · starts in")
+        #expect(early.widgetCaption(compact: compact) == early.timeline.scheduleLabel)
+        #expect(entry(at: TestSupport.at(monday, 8, 15)).widgetCaption(compact: compact) == (compact ? "Starts in" : "School starts in"))
+        #expect(entry(at: TestSupport.at(monday, 8, 30)).widgetCaption(compact: compact) == (compact ? "Ends in" : "Period ends in"))
+        #expect(entry(at: TestSupport.at(monday, 9, 21)).widgetCaption(compact: compact) == (compact ? "Passing" : "Passing · starts in"))
     }
 
     @Test func firstBellUsesTodayBeforeSchoolAndNextSchoolDayAfterward() throws {
@@ -206,6 +207,19 @@ import Testing
         #expect(TimeDisplay.shortDayLabel(bell.day) == formatter.string(from: bell.time))
         formatter.dateFormat = "EEEE, MMM d"
         #expect(TimeDisplay.dayLabel(bell.day, relativeTo: summer) == formatter.string(from: bell.time))
+    }
+
+    @Test func compactFirstBellLabelsUseTodayOrWeekday() throws {
+        let formatter = DateFormatter()
+        formatter.timeZone = SchoolTime.timeZone
+        formatter.dateFormat = "EEE"
+        for date in [TestSupport.at(monday, 7, 0), TestSupport.at(monday, 15, 30),
+                     TestSupport.at(monday.advanced(by: -1), 9, 0), TestSupport.at(day(2026, 6, 15), 9, 0)] {
+            let schedule = entry(at: date)
+            let bell = try #require(schedule.nextFirstBell)
+            let expected = bell.day == schedule.timeline.day ? "Today" : formatter.string(from: bell.time)
+            #expect(TimeDisplay.dayLabel(bell.day, relativeTo: schedule.timeline.day, compact: true) == expected)
+        }
     }
 
     @Test func deepLinkOnlyAcceptsHomeToday() {
