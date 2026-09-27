@@ -14,6 +14,12 @@ public enum TimeDisplay {
     private static let twelveHour = makeFormatter("h:mm a")
     private static let twelveHourShort = makeFormatter("h:mm")
     private static let twentyFourHour = makeFormatter("H:mm")
+    private static let shortWeekday: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        formatter.timeZone = SchoolTime.timeZone
+        return formatter
+    }()
     private static let weekdayMonthDay: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d"
@@ -88,12 +94,12 @@ public enum TimeDisplay {
         return "under a minute"
     }
 
-    /// "Today" / "Tomorrow" / "Monday, Aug 24"
-    public static func dayLabel(_ day: DayKey, relativeTo today: DayKey) -> String {
+    /// "Today" / "Tomorrow" / "Monday, Aug 24"; compact uses "Today" / "Mon".
+    public static func dayLabel(_ day: DayKey, relativeTo today: DayKey, compact: Bool = false) -> String {
         if day == today { return "Today" }
-        if day == today.advanced(by: 1) { return "Tomorrow" }
+        if !compact, day == today.advanced(by: 1) { return "Tomorrow" }
         guard let date = day.date() else { return day.description }
-        return weekdayMonthDay.string(from: date)
+        return (compact ? shortWeekday : weekdayMonthDay).string(from: date)
     }
 
     /// "Wed, Aug 12"
