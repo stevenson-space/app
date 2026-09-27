@@ -170,8 +170,11 @@ import Testing
     }
 
     @Test func weekdayLabelNamesTheSchoolDay() {
-        #expect(TimeDisplay.shortWeekdayLabel(monday) == "Mon")
-        #expect(TimeDisplay.shortWeekdayLabel(monday.advanced(by: 6)) == "Sun")
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        // Weekday symbols start with Sunday and match the user's locale.
+        #expect(TimeDisplay.shortWeekdayLabel(monday) == formatter.shortWeekdaySymbols[1])
+        #expect(TimeDisplay.shortWeekdayLabel(monday.advanced(by: 6)) == formatter.shortWeekdaySymbols[0])
     }
 
     @Test func deepLinkOnlyAcceptsHomeToday() {
