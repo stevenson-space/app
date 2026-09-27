@@ -1,7 +1,7 @@
 # Schedule widgets
 
 One iOS 18+ WidgetKit extension supports small, medium, and large Home Screen widgets and
-an accessory rectangular Lock Screen widget. Tap any family to select Home and
+accessory circular and rectangular Lock Screen widgets. Tap any family to select Home and
 reset its date to today. Live Activities and Dynamic Island are deferred.
 
 ## Data and timing
@@ -104,6 +104,27 @@ successfully in light and dark appearance, including the longer World Literature
 name and five-digit room number. Rows retain emojis, the header keeps a visible
 accent gradient, and upcoming dots are removed.
 
+## Circular Lock Screen layout
+
+The circular family is the smallest Lock Screen size (68–76 points on iPhone). It
+reuses the same provider, entries, and bounded countdown interval, drawn over
+`AccessoryWidgetBackground`. During a period it shows “ENDS IN” above the minutes
+and seconds left; during passing, “PASSING”; during the 15-minute lead-in, “STARTS IN”.
+The timer omits an hours field, so a block over an hour reads as minutes (Summer
+School's single block starts at “305:00”). Outside those states
+it shows the weekday and the next first bell (“MON” over “8:30”): today's before
+the lead-in, otherwise the next school day's. An unknown schedule, missing
+shared data, or no upcoming school day shows a calendar symbol instead. It carries
+no class names, rooms, or emoji, and caps Dynamic Type at Large because the circle
+cannot grow.
+
+Circular validation (September 26, 2026): all 244 ScheduleKit tests pass, and the
+app and embedded extension build for the iOS Simulator. The iOS 27 Simulator's
+Lock Screen editor opened without its customize controls, so the widget could not
+be placed there. Instead, the view was rendered offscreen at 68, 72, and 76 points
+for every state; each caption and timer fits inside the circle. Vibrant Lock Screen
+rendering and live countdown updates still need on-device verification.
+
 ## Validation
 
 ### Debug time travel
@@ -132,7 +153,7 @@ xcodebuild -project 'Stevenson Space Companion App.xcodeproj' \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-The widget view provides previews for all four families, lead-in, passing,
+The widget view provides previews for all five families, lead-in, passing,
 completion, long names, missing rooms, custom emoji, and larger text. In Xcode,
 use appearance, text size, and widget rendering variants to inspect light, dark,
 accented, and vibrant modes.
@@ -156,7 +177,7 @@ Before release, validate on a signed device **without the debugger attached**:
 
 - Upgrade an existing install; verify names, rooms, emoji, 12/24-hour preference,
   overrides, cached calendar, and student ID still work. Open the app once.
-- Add small, medium, large, and rectangular widgets. Test light/dark/tinted appearance,
+- Add small, medium, large, circular, and rectangular widgets. Test light/dark/tinted appearance,
   increased contrast, large text, and VoiceOver. Check long names and absent rooms.
 - Leave the app suspended across a period end, passing, and the next period start;
   confirm timer text counts down and stops at zero if a transition is delayed.
