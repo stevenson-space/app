@@ -380,13 +380,13 @@ struct ScheduleWidgetView: View {
                         Text(name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
-                    if let next = schedule.nextSchoolDay, let bell = schedule.nextFirstBell {
+                    if let next = schedule.nextSchoolDay, let start = next.firstBell {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("BACK TO SCHOOL")
                                 .font(.system(size: 9, weight: .bold))
                                 .tracking(1)
                                 .foregroundStyle(.secondary)
-                            Text(TimeDisplay.shortDayLabel(bell.day))
+                            Text(TimeDisplay.shortDayLabel(next.day))
                                 .font(.subheadline.weight(.semibold))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
@@ -395,7 +395,7 @@ struct ScheduleWidgetView: View {
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
-                            Text(TimeDisplay.time(bell.time, format))
+                            Text(TimeDisplay.time(start, format))
                                 .font(.caption.weight(.semibold))
                         }
                         .padding(.leading, 10)
@@ -444,11 +444,11 @@ struct ScheduleWidgetView: View {
             if case .unknownSchedule(let name) = schedule.state {
                 Text(name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-            if let next = schedule.nextSchoolDay, let bell = schedule.nextFirstBell {
+            if let next = schedule.nextSchoolDay, let start = next.firstBell {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(TimeDisplay.shortDayLabel(bell.day))
+                    Text(TimeDisplay.shortDayLabel(next.day))
                         .font(rectangular ? .caption : .subheadline.weight(.semibold))
-                    Text("\(next.scheduleLabel) · \(TimeDisplay.time(bell.time, format))")
+                    Text("\(next.scheduleLabel) · \(TimeDisplay.time(start, format))")
                         .font(.caption).foregroundStyle(.secondary)
                         .lineLimit(rectangular ? 1 : 2)
                 }
