@@ -169,6 +169,59 @@ import Testing
         #expect(result.date == instant)
     }
 
+    @Test(arguments: [false, true])
+    func captionsFollowTheCountdownState(compact: Bool) {
+        let early = entry(at: TestSupport.at(monday, 7, 0))
+        #expect(early.widgetCaption(compact: compact) == early.timeline.scheduleLabel)
+        #expect(entry(at: TestSupport.at(monday, 8, 15)).widgetCaption(compact: compact) == (compact ? "Starts in" : "School starts in"))
+        #expect(entry(at: TestSupport.at(monday, 8, 30)).widgetCaption(compact: compact) == (compact ? "Ends in" : "Period ends in"))
+        #expect(entry(at: TestSupport.at(monday, 9, 21)).widgetCaption(compact: compact) == (compact ? "Passing" : "Passing · starts in"))
+    }
+
+    @Test func firstBellUsesTodayBeforeSchoolAndNextSchoolDayAfterward() throws {
+        for hour in [7, 8] {
+            let bell = try #require(entry(at: TestSupport.at(monday, hour, 15)).nextFirstBell)
+            #expect(bell.day == monday)
+            #expect(bell.time == TestSupport.at(monday, 8, 30))
+        }
+        let tomorrow = monday.advanced(by: 1)
+        let after = try #require(entry(at: TestSupport.at(monday, 15, 30)).nextFirstBell)
+        #expect(after.day == tomorrow)
+        #expect(after.time == TestSupport.at(tomorrow, 8, 30))
+        let weekend = try #require(entry(at: TestSupport.at(monday.advanced(by: -1), 9, 0)).nextFirstBell)
+        #expect(weekend.day == monday)
+        #expect(weekend.time == TestSupport.at(monday, 8, 30))
+        #expect(entry(at: day(2040, 9, 14).date()!).nextFirstBell == nil)
+    }
+
+    @Test func firstBellLabelsDistinguishRelativeDaysAndLongBreaks() throws {
+        #expect(TimeDisplay.dayLabel(monday, relativeTo: monday) == "Today")
+        #expect(TimeDisplay.dayLabel(monday, relativeTo: monday.advanced(by: -1)) == "Tomorrow")
+        let summer = day(2026, 6, 15)
+        let bell = try #require(entry(at: TestSupport.at(summer, 9, 0)).nextFirstBell)
+        #expect(bell.day.month == 8)
+        #expect(bell.time == TestSupport.at(bell.day, 8, 30))
+        let formatter = DateFormatter()
+        formatter.timeZone = SchoolTime.timeZone
+        formatter.dateFormat = "EEE, MMM d"
+        #expect(TimeDisplay.shortDayLabel(bell.day) == formatter.string(from: bell.time))
+        formatter.dateFormat = "EEEE, MMM d"
+        #expect(TimeDisplay.dayLabel(bell.day, relativeTo: summer) == formatter.string(from: bell.time))
+    }
+
+    @Test func compactFirstBellLabelsUseTodayOrWeekday() throws {
+        let formatter = DateFormatter()
+        formatter.timeZone = SchoolTime.timeZone
+        formatter.dateFormat = "EEE"
+        for date in [TestSupport.at(monday, 7, 0), TestSupport.at(monday, 15, 30),
+                     TestSupport.at(monday.advanced(by: -1), 9, 0), TestSupport.at(day(2026, 6, 15), 9, 0)] {
+            let schedule = entry(at: date)
+            let bell = try #require(schedule.nextFirstBell)
+            let expected = bell.day == schedule.timeline.day ? "Today" : formatter.string(from: bell.time)
+            #expect(TimeDisplay.dayLabel(bell.day, relativeTo: schedule.timeline.day, compact: true) == expected)
+        }
+    }
+
     @Test func deepLinkOnlyAcceptsHomeToday() {
         #expect(WidgetTimelinePlanner.isHomeURL(WidgetTimelinePlanner.homeURL))
         #expect(!WidgetTimelinePlanner.isHomeURL(URL(string: "stevenson-space://settings/today")!))
