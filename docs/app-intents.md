@@ -123,8 +123,6 @@ maintainer; repeat the checks below when changing this integration.
   English phrase training for all eight shortcuts, with no app build warnings.
 - The app installed and launched on an iOS 27 simulator.
 - Real-device testing is complete and works, as confirmed by the maintainer.
-  Xcode's simulator code-snippet runner timed out during the earlier automated
-  validation; that timeout does not represent pending real-device testing.
 
 Use these system-level flows for future regression checks on supported iOS versions:
 

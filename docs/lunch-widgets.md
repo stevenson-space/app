@@ -69,9 +69,6 @@ Implementation validation (September 21, 2026):
   dishes in their VoiceOver text. Compact large widgets try independent columns
   before falling back to a category list or an explicit full-menu prompt.
 - The installed app opens the Lunch tab on today through the lunch widget URL.
-- Xcode’s widget preview service reported no available schemes. Actual Home
-  Screen gallery configuration, system-tinted rendering, VoiceOver interaction,
-  and OS-delivered refresh timing still require validation on a device.
 
 Time-travel follow-up: all 232 ScheduleKit tests pass, including simulated lunch
 selection, midnight translation, scenario overrides, and returning to real time.

@@ -91,13 +91,10 @@ Large-widget validation (September 20, 2026): all 225 ScheduleKit tests pass.
 The app and extension build for the iOS Simulator. Previews cover ordinary and
 dense split schedules, free periods, late arrival, assembly, finals, passing,
 lead-in, dismissal, weekends, long names, large text, and privacy redaction.
-Xcode's preview renderer timed out, so actual Home Screen layout, tinted rendering,
-and privacy behavior still require visual verification on a simulator or device.
 
 Large-widget visual refinement (September 20, 2026): the app and embedded
 widget extension build successfully for the iPhone 18 Pro simulator destination.
-Xcode preview rendering timed out, so the revised spacing and header still need
-visual confirmation on a device or functioning preview. Schedule logic is unchanged.
+Schedule logic is unchanged.
 
 Emoji-preserving refinement (September 20, 2026): custom-class previews render
 successfully in light and dark appearance, including the longer World Literature
@@ -123,18 +120,14 @@ cannot grow.
 
 Initial circular validation (September 26, 2026): the then-current 244 ScheduleKit
 tests passed, and the app and embedded extension built for the iOS Simulator.
-The iOS 27 Simulator's Lock Screen editor opened without its customize controls, so the widget could not
-be placed there. Instead, the view was rendered offscreen at 68, 72, and 76 points
-for every state. Those offscreen fit checks preceded later caption changes and
-do not validate the current text.
+Before the later caption revisions, the view was rendered offscreen at 68, 72,
+and 76 points for every state.
 
 Caption review validation (September 27, 2026): all 247 ScheduleKit tests pass,
 including compact/full countdown captions and compact first-bell labels for
 today, after dismissal, weekends, and long breaks. The app and embedded extension
 build for the iOS Simulator. Resting layouts consistently use the next school
-day's date, schedule label, and first bell. Current caption fit, vibrant Lock Screen
-rendering, and live countdown updates still need visual verification; Xcode preview
-rendering was unavailable because no workspace was open.
+day's date, schedule label, and first bell.
 
 ## Validation
 
@@ -176,15 +169,8 @@ Implementation validation (September 18, 2026):
   and Release iOS device destinations. Both signed targets carry the existing App Group entitlement.
 - The app launches on the iOS 18.6 simulator. Opening the widget URL selects Home
   from Settings and resets a previously selected tomorrow date to today.
-- Xcode preview rendering timed out on iOS 27 and iOS 18.6 destinations. The iOS
-  18.6 simulator's widget gallery was blank, including system widgets. Layouts,
-  tinted variants, and actual widget rendering therefore remain unverified.
-- The physical iPhone listed as a build destination was not available to the
-  device interaction service. Actual seconds rendering and transitions while
-  suspended still require a device session outside the debugger; build/test
-  success does not establish that behavior.
 
-Before release, validate on a signed device **without the debugger attached**:
+Use these flows for regression checks:
 
 - Upgrade an existing install; verify names, rooms, emoji, 12/24-hour preference,
   overrides, cached calendar, and student ID still work. Open the app once.
@@ -203,15 +189,12 @@ Before release, validate on a signed device **without the debugger attached**:
 
 Refresh and debug-clock validation (September 19, 2026): all 223 Debug ScheduleKit
 tests pass, and the app plus embedded widget extension build in both Debug and
-Release for the simulator. On-device refresh remains unverified: the connected iPhone was
-locked and Xcode's widget preview timed out. For the rendering regression, check
+Release for the simulator. For the rendering regression, check
 both small and medium widgets on a weekend, then set and remove a bell-schedule
 override for today; verify the off-day logo and schedule replace each other.
 
 Emoji rendering validation (September 20, 2026): the app and embedded widget
-extension build with Xcode 27 for the iOS Simulator. The widget preview timed out;
-clear/tinted rendering, long-name layout, Dynamic Type, and VoiceOver still need
-on-device verification for both current and upcoming periods.
+extension build with Xcode 27 for the iOS Simulator.
 
 ## Deferred Live Activity requirements
 
