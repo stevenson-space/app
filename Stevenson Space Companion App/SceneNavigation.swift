@@ -143,10 +143,11 @@ final class AppNavigation {
         }
     }
 
-    func openStudentIDScanner() throws -> StudentIDPresentationResult {
+    func openStudentIDScanner(model: AppModel) throws -> StudentIDPresentationResult {
         guard let target else {
+            model.reloadStudentIDIfUnread()
             pending = .scanner
-            return .opening
+            return model.studentID == nil ? .needsImport : .opening
         }
         pending = nil
         return try target.openStudentIDScanner()
