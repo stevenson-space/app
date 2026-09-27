@@ -36,11 +36,11 @@ struct CircularScheduleView: View {
                 }
                 .accessibilityElement(children: .combine)
             } else if let bell = nextFirstBell(schedule) {
-                labeled(TimeDisplay.shortWeekdayLabel(bell.day)) {
+                labeled(TimeDisplay.shortDayLabel(bell.day)) {
                     Text(TimeDisplay.time(bell.time, format, includesMeridiem: false))
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("First bell \(TimeDisplay.shortDayLabel(bell.day)), \(TimeDisplay.time(bell.time, format))")
+                .accessibilityLabel("First bell \(TimeDisplay.dayLabel(bell.day, relativeTo: schedule.timeline.day)), \(TimeDisplay.time(bell.time, format))")
             } else {
                 symbol("calendar", label: "No upcoming school day")
             }
