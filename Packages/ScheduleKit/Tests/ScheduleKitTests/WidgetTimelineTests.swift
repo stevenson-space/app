@@ -169,11 +169,43 @@ import Testing
         #expect(result.date == instant)
     }
 
-    @Test func weekdayLabelNamesTheSchoolDay() {
+    @Test func captionsFollowTheCountdownState() {
+        let early = entry(at: TestSupport.at(monday, 7, 0))
+        #expect(early.widgetCaption() == early.timeline.scheduleLabel)
+        #expect(entry(at: TestSupport.at(monday, 8, 15)).widgetCaption() == "School starts in")
+        #expect(entry(at: TestSupport.at(monday, 8, 30)).widgetCaption() == "Period ends in")
+        #expect(entry(at: TestSupport.at(monday, 9, 21)).widgetCaption() == "Passing · starts in")
+    }
+
+    @Test func firstBellUsesTodayBeforeSchoolAndNextSchoolDayAfterward() throws {
+        for hour in [7, 8] {
+            let bell = try #require(entry(at: TestSupport.at(monday, hour, 15)).nextFirstBell)
+            #expect(bell.day == monday)
+            #expect(bell.time == TestSupport.at(monday, 8, 30))
+        }
+        let tomorrow = monday.advanced(by: 1)
+        let after = try #require(entry(at: TestSupport.at(monday, 15, 30)).nextFirstBell)
+        #expect(after.day == tomorrow)
+        #expect(after.time == TestSupport.at(tomorrow, 8, 30))
+        let weekend = try #require(entry(at: TestSupport.at(monday.advanced(by: -1), 9, 0)).nextFirstBell)
+        #expect(weekend.day == monday)
+        #expect(weekend.time == TestSupport.at(monday, 8, 30))
+        #expect(entry(at: day(2040, 9, 14).date()!).nextFirstBell == nil)
+    }
+
+    @Test func firstBellLabelsDistinguishRelativeDaysAndLongBreaks() throws {
+        #expect(TimeDisplay.dayLabel(monday, relativeTo: monday) == "Today")
+        #expect(TimeDisplay.dayLabel(monday, relativeTo: monday.advanced(by: -1)) == "Tomorrow")
+        let summer = day(2026, 6, 15)
+        let bell = try #require(entry(at: TestSupport.at(summer, 9, 0)).nextFirstBell)
+        #expect(bell.day.month == 8)
+        #expect(bell.time == TestSupport.at(bell.day, 8, 30))
         let formatter = DateFormatter()
-        // Weekday symbols start with Sunday and match the user's locale.
-        #expect(TimeDisplay.shortWeekdayLabel(monday) == formatter.shortWeekdaySymbols[1])
-        #expect(TimeDisplay.shortWeekdayLabel(monday.advanced(by: 6)) == formatter.shortWeekdaySymbols[0])
+        formatter.timeZone = SchoolTime.timeZone
+        formatter.dateFormat = "EEE, MMM d"
+        #expect(TimeDisplay.shortDayLabel(bell.day) == formatter.string(from: bell.time))
+        formatter.dateFormat = "EEEE, MMM d"
+        #expect(TimeDisplay.dayLabel(bell.day, relativeTo: summer) == formatter.string(from: bell.time))
     }
 
     @Test func deepLinkOnlyAcceptsHomeToday() {

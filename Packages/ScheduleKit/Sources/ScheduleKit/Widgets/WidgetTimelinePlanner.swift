@@ -25,6 +25,23 @@ public struct WidgetScheduleEntry: Sendable {
         return date < end.addingTimeInterval(5 * 60)
     }
 
+    public func widgetCaption() -> String {
+        switch state {
+        case .beforeSchool: return isLeadIn ? "School starts in" : timeline.scheduleLabel
+        case .passing: return "Passing · starts in"
+        default: return "Period ends in"
+        }
+    }
+
+    /// Today's first bell before school, or the next school day's afterward.
+    public var nextFirstBell: (day: DayKey, time: Date)? {
+        if case .beforeSchool(let first) = state {
+            return (timeline.day, first.start)
+        }
+        guard let next = nextSchoolDay, let first = next.firstBell else { return nil }
+        return (next.day, first)
+    }
+
     /// Apple renders the countdown within this closed interval, stopping at zero
     /// even if the OS delivers the following timeline entry late.
     public var countdownInterval: ClosedRange<Date>? {
