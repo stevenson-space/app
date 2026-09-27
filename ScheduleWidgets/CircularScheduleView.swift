@@ -26,7 +26,7 @@ struct CircularScheduleView: View {
             if case .unknownSchedule = schedule.state {
                 symbol("calendar.badge.exclamationmark", label: "Schedule unavailable")
             } else if let interval = entry.countdownInterval {
-                labeled(countdownCaption(schedule)) {
+                labeled(schedule.widgetCaption(compact: true)) {
                     // Minutes only, even past an hour, so the text stays short.
                     Text(timerInterval: interval, pauseTime: entry.countdownPauseTime,
                          countsDown: true, showsHours: false)
@@ -36,7 +36,7 @@ struct CircularScheduleView: View {
                 }
                 .accessibilityElement(children: .combine)
             } else if let bell = schedule.nextFirstBell {
-                labeled(TimeDisplay.shortDayLabel(bell.day)) {
+                labeled(TimeDisplay.dayLabel(bell.day, relativeTo: schedule.timeline.day, compact: true)) {
                     Text(TimeDisplay.time(bell.time, format, includesMeridiem: false))
                 }
                 .accessibilityElement(children: .ignore)
@@ -67,13 +67,5 @@ struct CircularScheduleView: View {
         Image(systemName: name)
             .font(.title2)
             .accessibilityLabel(label)
-    }
-
-    private func countdownCaption(_ schedule: WidgetScheduleEntry) -> String {
-        switch schedule.state {
-        case .beforeSchool: return "Starts in"
-        case .passing: return "Passing"
-        default: return "Ends in"
-        }
     }
 }
