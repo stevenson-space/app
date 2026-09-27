@@ -2,6 +2,7 @@ import SwiftUI
 import ScheduleKit
 
 struct LunchMenuView: View {
+    @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
     @State private var selectedDay: DayKey?
 
@@ -38,8 +39,8 @@ struct LunchMenuView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Lunch")
-            .onChange(of: model.lunchTodayRequest, initial: true) {
-                guard model.lunchTodayRequest > 0 else { return }
+            .onChange(of: navigation.lunchTodayRequest, initial: true) {
+                guard navigation.lunchTodayRequest > 0 else { return }
                 selectedDay = model.today
             }
             .toolbar {
@@ -365,7 +366,9 @@ private struct LunchStationCard: View {
 
 #Preview {
     let defaults = UserDefaults(suiteName: "lunch-menu-preview")!
+    let model = AppModel(store: SharedStore(defaults: defaults,
+                                           secrets: InMemorySecretStore()))
     LunchMenuView()
-        .environment(AppModel(store: SharedStore(defaults: defaults,
-                                                  secrets: InMemorySecretStore())))
+        .environment(model)
+        .environment(SceneNavigation(model: model))
 }

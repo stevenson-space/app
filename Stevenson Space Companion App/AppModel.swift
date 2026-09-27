@@ -8,19 +8,10 @@ import WidgetKit
 /// Root observable store. Owns the resolver inputs (persisted via SharedStore),
 /// derives today's timeline, and coordinates sync + notifications. All schedule
 /// math lives in ScheduleKit; this type only orchestrates.
-enum RootTab: Hashable {
-    case home
-    case lunch
-    case id
-    case settings
-}
-
 @Observable
 @MainActor
 final class AppModel {
-    var selectedTab: RootTab = .home
-    private(set) var homeTodayRequest = 0
-    private(set) var lunchTodayRequest = 0
+    let navigation = AppNavigation()
     private var scheduleDataReady = false
 
     let store: SharedStore
@@ -391,7 +382,7 @@ final class AppModel {
     /// Picks up an ID that could not be read at launch because the device was
     /// locked. Both the card and the photo are protected until first unlock, and
     /// the app can be launched into the background before that happens.
-    private func reloadStudentIDIfUnread() {
+    func reloadStudentIDIfUnread() {
         // The hide-photo flag is in the App Group plist, which is as unreadable
         // as the card itself before first unlock. Left alone it stays at the
         // `false` that a locked launch read, and a photo the student chose to
@@ -561,23 +552,11 @@ final class AppModel {
         reloadScheduleWidgets()
     }
 
-    func openWidgetURL(_ url: URL) {
-        if url == LunchWidgetTimelinePlanner.lunchURL {
-            #if DEBUG
-            timeTravelOffset = 0
-            #endif
-            refreshDerived()
-            selectedTab = .lunch
-            lunchTodayRequest += 1
-            return
-        }
-        guard WidgetTimelinePlanner.isHomeURL(url) else { return }
+    func prepareForNavigation() {
         #if DEBUG
         timeTravelOffset = 0
         #endif
         refreshDerived()
-        selectedTab = .home
-        homeTodayRequest += 1
     }
 
     // MARK: - Notifications

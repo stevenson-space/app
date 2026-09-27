@@ -5,15 +5,23 @@
 
 import SwiftUI
 import ScheduleKit
+import AppIntents
 
 @main
 struct Stevenson_Space_Companion_AppApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        let model = AppModel()
+        _model = State(initialValue: model)
+        AppDependencyManager.shared.add(dependency: model)
+        StevensonShortcuts.updateAppShortcutParameters()
+    }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(model: model)
                 .environment(model)
         }
         // `initial: true` matters on a cold launch: when the scene is already
