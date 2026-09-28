@@ -136,7 +136,7 @@ The app only fetches from `raw.githubusercontent.com` (`SharedStore.allowedHosts
 redirects included.
 
 Home and Lunch stay quiet about data freshness until their respective feed has
-gone seven days without a successful update check. A successful check clears
+gone five days without a successful update check. A successful check clears
 the reminder even when the data is unchanged. Installs that have never synced
 get the same grace period from their first attempt; failed retries do not reset
 it. Reminders ask students to connect to the internet with the app open and offer
