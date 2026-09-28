@@ -31,7 +31,7 @@ struct HomeView: View {
                         // selected schedule date and DEBUG time travel.
                         if model.fetchMetadata.isUpdateCheckOverdue(at: context.date) {
                             UpdateCheckReminder(
-                                message: "It's been a while since we could check for schedule updates. Connect to the internet with the app open, then check again.",
+                                title: "Schedule updates",
                                 isChecking: model.isSyncing
                             ) {
                                 await model.sync(force: true)

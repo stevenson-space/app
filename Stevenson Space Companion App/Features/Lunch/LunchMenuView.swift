@@ -34,7 +34,7 @@ struct LunchMenuView: View {
 
                         if model.lunchFetchMetadata.isUpdateCheckOverdue(at: context.date) {
                             UpdateCheckReminder(
-                                message: "It's been a while since we could check for lunch menu updates. Connect to the internet with the app open, then check again.",
+                                title: "Lunch menu updates",
                                 isChecking: model.isLunchSyncing
                             ) {
                                 await model.syncLunch(force: true)
