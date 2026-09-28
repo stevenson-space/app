@@ -415,19 +415,44 @@ final class StubURLProtocol: URLProtocol {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         store.cachedMapData = validJSON
-        store.fetchMetadata = FetchMetadata(etag: "\"abc\"")
+        let t0 = TestSupport.at(day(2026, 9, 1), 12, 0)
+        let t1 = TestSupport.at(day(2026, 9, 10), 12, 0)
+        store.fetchMetadata = FetchMetadata(lastSuccess: t0, lastChanged: t0, etag: "\"abc\"")
+        #expect(store.fetchMetadata.isUpdateCheckOverdue(at: t1))
         StubURLProtocol.handler = { request in
             #expect(request.value(forHTTPHeaderField: "If-None-Match") == "\"abc\"")
             return (304, [:], Data())
         }
 
-        let t1 = Date(timeIntervalSince1970: 1_800_100_000)
         let result = await makeService(store).refresh(force: true, now: t1)
 
         #expect(result == .notModified)
         #expect(store.cachedMapData == validJSON)
         #expect(store.fetchMetadata.lastSuccess == t1)
-        #expect(store.fetchMetadata.lastChanged == nil)
+        #expect(store.fetchMetadata.lastChanged == t0)
+        #expect(!store.fetchMetadata.isUpdateCheckOverdue(at: t1))
+    }
+
+    @Test(arguments: [false, true])
+    func offlineRetriesPreserveTheFirstAttemptAcrossLaunches(legacy: Bool) async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let first = TestSupport.at(day(2026, 9, 1), 12, 0)
+        let later = TestSupport.at(day(2026, 9, 9), 12, 0)
+        if legacy {
+            store.fetchMetadata = FetchMetadata(lastAttempt: first, lastError: "Offline")
+        }
+        StubURLProtocol.handler = { _ in throw URLError(.notConnectedToInternet) }
+        if !legacy {
+            _ = await makeService(store).refresh(force: false, now: first)
+            #expect(!store.fetchMetadata.isUpdateCheckOverdue(at: first))
+        }
+
+        let reopenedStore = SharedStore(defaults: defaults, secrets: InMemorySecretStore())
+        _ = await makeService(reopenedStore).refresh(force: false, now: later)
+        #expect(reopenedStore.fetchMetadata.firstAttempt == first)
+        #expect(reopenedStore.fetchMetadata.lastSuccess == nil)
+        #expect(reopenedStore.fetchMetadata.isUpdateCheckOverdue(at: later))
     }
 
     @Test func garbagePayloadNeverTouchesLastGoodCache() async {
@@ -483,6 +508,8 @@ final class StubURLProtocol: URLProtocol {
         let result = await makeService(store).refresh(force: true, now: t0)
         #expect(result == .notModified)
         #expect(store.fetchMetadata.lastChanged == nil)
+        #expect(store.fetchMetadata.lastSuccess == t0)
+        #expect(!store.fetchMetadata.isUpdateCheckOverdue(at: t0))
     }
 
     @Test func changedContentUpdatesCache() async {

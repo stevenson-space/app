@@ -65,7 +65,9 @@ public actor ScheduleSyncService {
             return .skippedThrottled
         }
 
+        metadata.firstAttempt = metadata.firstAttempt ?? metadata.lastAttempt ?? now
         metadata.lastAttempt = now
+        store.fetchMetadata = metadata
 
         var request = URLRequest(url: store.mapURL)
         if let etag = metadata.etag {

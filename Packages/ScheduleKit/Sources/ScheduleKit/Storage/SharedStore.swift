@@ -437,9 +437,10 @@ public final class SharedStore: @unchecked Sendable {
     }
 }
 
-/// Sync bookkeeping, shown in Settings ("last updated" / "last changed") and
-/// used for throttling and staleness hints.
+/// Sync bookkeeping used for throttling and overdue update-check reminders.
 public struct FetchMetadata: Equatable, Sendable {
+    /// Starts the reminder grace period for installs that have never synced.
+    public var firstAttempt: Date?
     public var lastAttempt: Date?
     /// Last time the server was reached and the payload validated (200 or 304).
     public var lastSuccess: Date?
@@ -448,23 +449,36 @@ public struct FetchMetadata: Equatable, Sendable {
     public var etag: String?
     public var lastError: String?
 
-    public init(lastAttempt: Date? = nil, lastSuccess: Date? = nil,
+    public init(firstAttempt: Date? = nil, lastAttempt: Date? = nil, lastSuccess: Date? = nil,
                 lastChanged: Date? = nil, etag: String? = nil, lastError: String? = nil) {
+        self.firstAttempt = firstAttempt
         self.lastAttempt = lastAttempt
         self.lastSuccess = lastSuccess
         self.lastChanged = lastChanged
         self.etag = etag
         self.lastError = lastError
     }
+
+    /// Quiet for seven days after a successful check, even if the content has
+    /// not changed. Failed retries must not restart a never-synced install's
+    /// grace period. Older metadata falls back to its last recorded attempt.
+    public func isUpdateCheckOverdue(at now: Date) -> Bool {
+        guard let reference = lastSuccess ?? firstAttempt ?? lastAttempt,
+              let deadline = SchoolTime.calendar.date(byAdding: .day, value: 7, to: reference) else {
+            return false
+        }
+        return now >= deadline
+    }
 }
 
 extension FetchMetadata: Codable {
     private enum CodingKeys: String, CodingKey {
-        case lastAttempt, lastSuccess, lastChanged, etag, lastError
+        case firstAttempt, lastAttempt, lastSuccess, lastChanged, etag, lastError
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        firstAttempt = try c.decodeIfPresent(Date.self, forKey: .firstAttempt)
         lastAttempt = try c.decodeIfPresent(Date.self, forKey: .lastAttempt)
         lastSuccess = try c.decodeIfPresent(Date.self, forKey: .lastSuccess)
         lastChanged = try c.decodeIfPresent(Date.self, forKey: .lastChanged)
