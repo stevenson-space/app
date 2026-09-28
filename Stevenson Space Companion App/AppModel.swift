@@ -431,28 +431,33 @@ final class AppModel {
     private var syncGeneration = 0
 
     func sync(force: Bool) async {
-        // Coalesce onto any in-flight sync. A non-forced request is satisfied by
-        // the one already running; a forced request waits its turn and then runs,
-        // so a URL/ETag change is queued instead of discarded.
-        if let inFlight = pendingSync {
+        if let inFlight = pendingSync, !force {
             await inFlight.value
-            if !force { return }
+            return
         }
+
+        // Reserve the successor before awaiting so forced requests form a
+        // serial chain and keep the reminder busy through each handoff.
+        let predecessor = pendingSync
         syncGeneration += 1
         let generation = syncGeneration
+        isSyncing = true
         let task = Task { @MainActor [weak self] in
+            if let predecessor {
+                await predecessor.value
+            }
             guard let self else { return }
             await self.performSync(force: force)
         }
         pendingSync = task
         await task.value
-        if syncGeneration == generation { pendingSync = nil }
+        if syncGeneration == generation {
+            pendingSync = nil
+            isSyncing = false
+        }
     }
 
     private func performSync(force: Bool) async {
-        isSyncing = true
-        defer { isSyncing = false }
-
         // Throttling runs on the real clock even while time-traveling.
         let result = await syncService.refresh(force: force, now: Date())
         fetchMetadata = store.fetchMetadata
