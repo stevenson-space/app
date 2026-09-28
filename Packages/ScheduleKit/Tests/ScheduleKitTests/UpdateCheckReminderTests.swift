@@ -15,8 +15,8 @@ private func instant(_ year: Int, _ month: Int, _ date: Int, _ hour: Int, _ minu
         #expect(!metadata.isUpdateCheckOverdue(at: now))
     }
 
-    @Test func reminderStartsAfterSevenCalendarDaysIncludingDST() {
-        let metadata = FetchMetadata(lastSuccess: instant(2026, 3, 2, 12, 0))
+    @Test func reminderStartsAfterFiveCalendarDaysIncludingDST() {
+        let metadata = FetchMetadata(lastSuccess: instant(2026, 3, 4, 12, 0))
         // Chicago changes to daylight saving time on March 8.
         #expect(!metadata.isUpdateCheckOverdue(at: instant(2026, 3, 9, 11, 59)))
         #expect(metadata.isUpdateCheckOverdue(at: instant(2026, 3, 9, 12, 0)))
@@ -34,7 +34,7 @@ private func instant(_ year: Int, _ month: Int, _ date: Int, _ hour: Int, _ minu
     @Test func newInstallGetsAGracePeriodEvenWhenRetriesFail() {
         #expect(!FetchMetadata().isUpdateCheckOverdue(at: instant(2026, 9, 28, 12, 0)))
         let metadata = FetchMetadata(
-            firstAttempt: instant(2026, 9, 21, 12, 0),
+            firstAttempt: instant(2026, 9, 23, 12, 0),
             lastAttempt: instant(2026, 9, 28, 12, 0),
             lastError: "Offline")
         #expect(!metadata.isUpdateCheckOverdue(at: instant(2026, 9, 27, 12, 0)))
@@ -46,11 +46,12 @@ private func instant(_ year: Int, _ month: Int, _ date: Int, _ hour: Int, _ minu
             firstAttempt: instant(2026, 9, 1, 12, 0),
             lastSuccess: instant(2026, 9, 28, 12, 0))
         #expect(!metadata.isUpdateCheckOverdue(at: instant(2026, 9, 28, 12, 0)))
-        #expect(metadata.isUpdateCheckOverdue(at: instant(2026, 10, 5, 12, 0)))
+        #expect(!metadata.isUpdateCheckOverdue(at: instant(2026, 10, 3, 11, 59)))
+        #expect(metadata.isUpdateCheckOverdue(at: instant(2026, 10, 3, 12, 0)))
     }
 
     @Test func legacyMetadataUsesItsKnownAttemptUntilTheNextCheck() throws {
-        let legacy = FetchMetadata(lastAttempt: instant(2026, 9, 21, 12, 0))
+        let legacy = FetchMetadata(lastAttempt: instant(2026, 9, 23, 12, 0))
         let data = try JSONEncoder().encode(legacy)
         let decoded = try JSONDecoder().decode(FetchMetadata.self, from: data)
         #expect(decoded.firstAttempt == nil)
