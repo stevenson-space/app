@@ -21,10 +21,22 @@ struct HomeView: View {
 
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                VStack(spacing: 22) {
-                    HomeDayPicker(day: day, today: today, select: selectDay)
-                    if timeline.isSchoolDay {
-                        HomeHeaderView(timeline: timeline)
+                TimelineView(.everyMinute) { context in
+                    VStack(spacing: 22) {
+                        HomeDayPicker(day: day, today: today, select: selectDay)
+                        if timeline.isSchoolDay {
+                            HomeHeaderView(timeline: timeline)
+                        }
+                        // Check freshness on the real clock, independent of the
+                        // selected schedule date and DEBUG time travel.
+                        if model.fetchMetadata.isUpdateCheckOverdue(at: context.date) {
+                            UpdateCheckReminder(
+                                message: "It's been a while since we could check for schedule updates. Connect to the internet with the app open, then check again.",
+                                isChecking: model.isSyncing
+                            ) {
+                                await model.sync(force: true)
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 16)

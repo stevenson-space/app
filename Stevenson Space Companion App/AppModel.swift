@@ -518,13 +518,6 @@ final class AppModel {
         Task { await syncLunch(force: false) }
     }
 
-    /// Data is stale enough to mention only when a sync hasn't succeeded for a
-    /// week — absence of exceptions is otherwise normal, not a warning.
-    var isDataStale: Bool {
-        guard let lastSuccess = fetchMetadata.lastSuccess else { return store.cachedMapData == nil }
-        return now().timeIntervalSince(lastSuccess) > 7 * 24 * 3600
-    }
-
     // MARK: - Widgets
 
     private func reloadLunchWidgets() {

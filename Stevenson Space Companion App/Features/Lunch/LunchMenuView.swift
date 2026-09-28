@@ -22,16 +22,27 @@ struct LunchMenuView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
-                    WeekPicker(
-                        weekdays: weekdays,
-                        selectedDay: day,
-                        today: model.today,
-                        hasMenu: { model.lunchMenu(for: $0) != nil },
-                        select: { selectedDay = $0 },
-                        moveWeek: moveWeek)
+                TimelineView(.everyMinute) { context in
+                    VStack(spacing: 18) {
+                        WeekPicker(
+                            weekdays: weekdays,
+                            selectedDay: day,
+                            today: model.today,
+                            hasMenu: { model.lunchMenu(for: $0) != nil },
+                            select: { selectedDay = $0 },
+                            moveWeek: moveWeek)
 
-                    menuContent
+                        if model.lunchFetchMetadata.isUpdateCheckOverdue(at: context.date) {
+                            UpdateCheckReminder(
+                                message: "It's been a while since we could check for lunch menu updates. Connect to the internet with the app open, then check again.",
+                                isChecking: model.isLunchSyncing
+                            ) {
+                                await model.syncLunch(force: true)
+                            }
+                        }
+
+                        menuContent
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -68,8 +79,6 @@ struct LunchMenuView: View {
                         LunchStationCard(section: section)
                     }
                 }
-
-                sourceStatus
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else if model.lunchMenu == nil {
@@ -84,23 +93,6 @@ struct LunchMenuView: View {
                 systemImage: "calendar.badge.minus",
                 description: Text("Lunch is not served on this date, or the published menu does not cover it."))
             .frame(minHeight: 320)
-        }
-    }
-
-    @ViewBuilder
-    private var sourceStatus: some View {
-        if model.lunchFetchMetadata.lastSuccess == nil,
-           model.lunchFetchMetadata.lastError != nil {
-            Label("Showing the menu included with the app. Live updates are temporarily unavailable.",
-                  systemImage: "wifi.exclamationmark")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, 2)
-        } else if let updated = model.lunchFetchMetadata.lastChanged {
-            Text("Menu updated \(updated.formatted(.relative(presentation: .named)))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, 2)
         }
     }
 
