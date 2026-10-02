@@ -36,7 +36,12 @@ struct HomeHeaderView: View {
             }
 
             badges
-            dataFreshnessLine
+
+            if model.map == nil {
+                Label("Special schedules not synced yet", systemImage: "wifi.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: $showsOverrideEditor) {
@@ -74,19 +79,5 @@ struct HomeHeaderView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Capsule().fill(tint.opacity(0.15)))
-    }
-
-    @ViewBuilder private var dataFreshnessLine: some View {
-        if model.map == nil {
-            Label("Special schedules not synced yet — the app will fetch them when it's online.",
-                  systemImage: "wifi.slash")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        } else if let lastChanged = model.fetchMetadata.lastChanged {
-            Label("Schedule updated \(lastChanged.formatted(.relative(presentation: .named)))",
-                  systemImage: "clock.arrow.circlepath")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
     }
 }

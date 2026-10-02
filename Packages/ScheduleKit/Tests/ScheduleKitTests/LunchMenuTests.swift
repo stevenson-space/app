@@ -135,18 +135,21 @@ import Foundation
         #expect(await service.refresh(force: true, now: first) == .updated)
         let firstCache = try #require(store.cachedLunchMenuData)
 
-        // Same menu published again: reached, validated, nothing rewritten.
-        #expect(await service.refresh(force: true, now: first + 10) == .notModified)
+        // An overdue check clears the reminder even when the menu is unchanged.
+        let later = SchoolTime.calendar.date(byAdding: .day, value: 8, to: first)!
+        #expect(store.lunchFetchMetadata.isUpdateCheckOverdue(at: later))
+        #expect(await service.refresh(force: true, now: later) == .notModified)
         #expect(store.cachedLunchMenuData == firstCache)
         #expect(store.lunchFetchMetadata.lastChanged == first)
-        #expect(store.lunchFetchMetadata.lastSuccess == first + 10)
+        #expect(store.lunchFetchMetadata.lastSuccess == later)
+        #expect(!store.lunchFetchMetadata.isUpdateCheckOverdue(at: later))
 
         // The kitchen publishes a new rotation.
         seed.value = "b"
-        #expect(await service.refresh(force: true, now: first + 20) == .updated)
+        #expect(await service.refresh(force: true, now: later + 10) == .updated)
         let secondCache = try #require(store.cachedLunchMenuData)
         #expect(secondCache != firstCache)
-        #expect(store.lunchFetchMetadata.lastChanged == first + 20)
+        #expect(store.lunchFetchMetadata.lastChanged == later + 10)
         let menu = try LunchMenuParser.parse(secondCache)
         let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
         #expect(tuesday.sections.first { $0.station == .comfort }?.items == ["b-comfort-w0-d1"])
@@ -176,6 +179,30 @@ import Foundation
         #expect(store.lunchFetchMetadata.lastError != nil)
         #expect(store.lunchFetchMetadata.lastChanged == first)
         #expect(store.lunchFetchMetadata.lastSuccess == first)
+    }
+
+    @Test(arguments: [false, true])
+    func offlineRetriesPreserveTheFirstAttemptAcrossLaunches(legacy: Bool) async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let first = TestSupport.at(day(2026, 9, 1), 12, 0)
+        let later = TestSupport.at(day(2026, 9, 9), 12, 0)
+        if legacy {
+            store.lunchFetchMetadata = FetchMetadata(lastAttempt: first, lastError: "Offline")
+        }
+        LunchStubURLProtocol.handler = { _ in throw URLError(.notConnectedToInternet) }
+        if !legacy {
+            let service = LunchMenuSyncService(store: store, session: makeStubSession())
+            _ = await service.refresh(force: false, now: first)
+            #expect(!store.lunchFetchMetadata.isUpdateCheckOverdue(at: first))
+        }
+
+        let reopenedStore = SharedStore(defaults: defaults, secrets: InMemorySecretStore())
+        let service = LunchMenuSyncService(store: reopenedStore, session: makeStubSession())
+        _ = await service.refresh(force: false, now: later)
+        #expect(reopenedStore.lunchFetchMetadata.firstAttempt == first)
+        #expect(reopenedStore.lunchFetchMetadata.lastSuccess == nil)
+        #expect(reopenedStore.lunchFetchMetadata.isUpdateCheckOverdue(at: later))
     }
 
     @Test func stationsThatDisagreeOnTheRotationKeepTheLastGoodMenu() async throws {

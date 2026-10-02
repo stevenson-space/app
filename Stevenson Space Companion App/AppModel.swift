@@ -27,10 +27,10 @@ final class AppModel {
     private(set) var prefs: NotificationPrefs
     private(set) var map: DayTypeMap?
     private(set) var fetchMetadata: FetchMetadata
-    private(set) var isSyncing = false
+    var isSyncing: Bool { scheduleSyncQueue.isRunning }
     private(set) var lunchMenu: LunchMenu?
     private(set) var lunchFetchMetadata: FetchMetadata
-    private(set) var isLunchSyncing = false
+    var isLunchSyncing: Bool { lunchSyncQueue.isRunning }
     /// Only ever written from a screenshot the extractor read; there is no code
     /// path, in this type or the UI, that builds one from typed input.
     private(set) var studentID: StudentIDCard?
@@ -427,32 +427,21 @@ final class AppModel {
         }
     }
 
-    private var pendingSync: Task<Void, Never>?
-    private var syncGeneration = 0
+    private let scheduleSyncQueue = SyncQueue()
+    private let lunchSyncQueue = SyncQueue()
 
     func sync(force: Bool) async {
-        // Coalesce onto any in-flight sync. A non-forced request is satisfied by
-        // the one already running; a forced request waits its turn and then runs,
-        // so a URL/ETag change is queued instead of discarded.
-        if let inFlight = pendingSync {
-            await inFlight.value
-            if !force { return }
+        // Skip a throttled automatic check before it reaches the queue, so it
+        // never marks the feed busy and hides an overdue reminder for a frame.
+        if !force, fetchMetadata.isThrottled(at: Date(), interval: ScheduleSyncService.throttleInterval) {
+            return
         }
-        syncGeneration += 1
-        let generation = syncGeneration
-        let task = Task { @MainActor [weak self] in
-            guard let self else { return }
-            await self.performSync(force: force)
+        await scheduleSyncQueue.run(force: force) { [weak self] in
+            await self?.performSync(force: force)
         }
-        pendingSync = task
-        await task.value
-        if syncGeneration == generation { pendingSync = nil }
     }
 
     private func performSync(force: Bool) async {
-        isSyncing = true
-        defer { isSyncing = false }
-
         // Throttling runs on the real clock even while time-traveling.
         let result = await syncService.refresh(force: force, now: Date())
         fetchMetadata = store.fetchMetadata
@@ -464,34 +453,12 @@ final class AppModel {
         }
     }
 
-    private var pendingLunchSync: Task<Void, Never>?
-    private var lunchSyncGeneration = 0
-
     func syncLunch(force: Bool) async {
-        if let inFlight = pendingLunchSync, !force {
-            await inFlight.value
+        if !force, lunchFetchMetadata.isThrottled(at: Date(), interval: LunchMenuSyncService.throttleInterval) {
             return
         }
-
-        // Forced refreshes reserve a successor before awaiting the current
-        // task. Concurrent callers therefore build one serial chain instead of
-        // resuming together and starting overlapping requests.
-        let predecessor = pendingLunchSync
-        lunchSyncGeneration += 1
-        let generation = lunchSyncGeneration
-        isLunchSyncing = true
-        let task = Task { @MainActor [weak self] in
-            if let predecessor {
-                await predecessor.value
-            }
-            guard let self else { return }
-            await self.performLunchSync(force: force)
-        }
-        pendingLunchSync = task
-        await task.value
-        if lunchSyncGeneration == generation {
-            pendingLunchSync = nil
-            isLunchSyncing = false
+        await lunchSyncQueue.run(force: force) { [weak self] in
+            await self?.performLunchSync(force: force)
         }
     }
 
@@ -516,13 +483,6 @@ final class AppModel {
         rescheduleNotifications()
         Task { await sync(force: false) }
         Task { await syncLunch(force: false) }
-    }
-
-    /// Data is stale enough to mention only when a sync hasn't succeeded for a
-    /// week — absence of exceptions is otherwise normal, not a warning.
-    var isDataStale: Bool {
-        guard let lastSuccess = fetchMetadata.lastSuccess else { return store.cachedMapData == nil }
-        return now().timeIntervalSince(lastSuccess) > 7 * 24 * 3600
     }
 
     // MARK: - Widgets
