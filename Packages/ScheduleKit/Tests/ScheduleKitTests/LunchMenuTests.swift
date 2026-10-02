@@ -13,11 +13,16 @@ import Foundation
         #expect(items(.soup, in: openingTuesday) == ["Smokey Poblano", "Chicken Noodle"])
         #expect(items(.special, in: openingTuesday) == ["Tacos Tuesday"])
 
-        // The website advances the four-week rotation every seven elapsed
-        // calendar days from validFrom (Tuesday in this manifest).
+        // The website advances the rotation every seven calendar days from
+        // validFrom, which it anchors to a Monday so a whole school week
+        // shares one rotation week.
         let nextTuesday = try #require(menu.menu(for: day(2026, 8, 18)))
         #expect(items(.comfort, in: nextTuesday) == ["Moroccan Chickpea Stew with Naan"])
         #expect(items(.international, in: nextTuesday) == ["Pasta Bowl"])
+
+        #expect(menu.validFrom.weekday() == 2)
+        let monday = try #require(menu.menu(for: day(2026, 8, 17)))
+        #expect(items(.international, in: monday) == ["Pasta Bowl"])
     }
 
     @Test func weekendAndOutOfRangeDatesHaveNoMenu() throws {
