@@ -74,6 +74,14 @@ struct LunchMenuView: View {
                     .font(.title2.weight(.bold))
                     .accessibilityAddTraits(.isHeader)
 
+                if model.lunchFetchMetadata.lastSuccess == nil,
+                   model.lunchFetchMetadata.lastError != nil {
+                    Label("Showing the menu included with the app. Live updates are temporarily unavailable.",
+                          systemImage: "wifi.exclamationmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
                     ForEach(menu.sections) { section in
                         LunchStationCard(section: section)
