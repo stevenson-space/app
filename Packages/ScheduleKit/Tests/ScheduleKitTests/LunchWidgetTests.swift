@@ -3,6 +3,15 @@ import Testing
 @testable import ScheduleKit
 
 @Suite struct LunchWidgetTests {
+    @Test(arguments: [nil, Data("broken".utf8)] as [Data?])
+    func unavailableBundleFallsBackToValidCache(bundledData: Data?) throws {
+        let cachedData = try LunchMenuParser.bundledData()
+        let cached = try LunchMenuParser.parse(cachedData)
+        #expect(LunchMenuLoader.load(cachedData: cachedData, bundledData: bundledData) == cached)
+        #expect(LunchMenuLoader.load(cachedData: nil, bundledData: bundledData) == nil)
+        #expect(LunchMenuLoader.load(cachedData: Data("broken cache".utf8), bundledData: bundledData) == nil)
+    }
+
     @Test func invalidCachesFallBackToBundledMenu() throws {
         let bundled = try LunchMenuParser.loadBundled()
         #expect(LunchMenuLoader.load(cachedData: Data("broken".utf8)) == bundled)
