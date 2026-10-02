@@ -73,6 +73,29 @@ import Foundation
         #expect(menu.menu(for: day(2027, 6, 1)) == nil)
     }
 
+    @Test(arguments: 10...16, [0, 3])
+    func rotationAdvancesOnMondayRegardlessOfStartWeekday(startDay: Int, offset: Int) throws {
+        let menu = try LunchMenuParser.parse(validManifest(validFrom: "2026-08-\(startDay)", offset: offset))
+        #expect(menu.menu(for: day(2026, 8, startDay).advanced(by: -1)) == nil)
+        for weekday in 0..<5 {
+            let firstWeekDay = day(2026, 8, 10 + weekday)
+            if firstWeekDay >= menu.validFrom {
+                let firstWeek = try #require(menu.menu(for: firstWeekDay))
+                #expect(items(.comfort, in: firstWeek) == ["week-\(offset)"])
+            }
+            let nextWeek = try #require(menu.menu(for: day(2026, 8, 17 + weekday)))
+            #expect(items(.comfort, in: nextWeek) == ["week-\((offset + 1) % 4)"])
+        }
+    }
+
+    @Test func mondayRotationUsesCalendarDaysAcrossDST() throws {
+        let menu = try LunchMenuParser.parse(validManifest(validFrom: "2026-10-28"))
+        let monday = try #require(menu.menu(for: day(2026, 11, 2)))
+        #expect(items(.comfort, in: monday) == ["week-1"])
+        let followingMonday = try #require(menu.menu(for: day(2026, 11, 9)))
+        #expect(items(.comfort, in: followingMonday) == ["week-2"])
+    }
+
     @Test func semesterSwitchChangesSpecialRotation() throws {
         let menu = try LunchMenuParser.loadBundled()
         let firstSemesterThursday = try #require(menu.menu(for: day(2026, 12, 31)))
@@ -389,14 +412,14 @@ private func makeStubSession() -> URLSession {
     ScheduleSyncService.makeSession(protocolClasses: [LunchStubURLProtocol.self])
 }
 
-private func validManifest(weeks: Int = 4, soupWeeks: Int? = nil,
+private func validManifest(weeks: Int = 4, soupWeeks: Int? = nil, validFrom: String = "2026-08-11",
                            offset: Int = 0, specialWeekdays: Int = 5,
                            comfort: [String]? = nil, sides: [[String]]? = nil) -> Data {
     let weeklyStrings = (0..<weeks).map { "week-\($0)" }
     let weeklyPairs = (0..<(soupWeeks ?? weeks)).map { ["week-\($0)-a", "week-\($0)-b"] }
     let special = Array(repeating: "special", count: specialWeekdays)
     let object: [String: Any] = [
-        "validFrom": "2026-08-11",
+        "validFrom": validFrom,
         "validTo": "2027-05-31",
         "semesterSwitch": "2027-01-01",
         "offset": offset,
