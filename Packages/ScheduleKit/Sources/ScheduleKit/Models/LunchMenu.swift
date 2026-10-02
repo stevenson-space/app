@@ -86,13 +86,15 @@ public struct LunchMenu: Equatable, Sendable {
         // such as "?? No Information". Leave those stations off the day rather
         // than listing the placeholder as a dish.
         return LunchMenuDay(day: day, sections: sections.compactMap { section in
-            let items = section.items.filter { !Self.isPlaceholder($0) }
+            let items = section.items
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !Self.isPlaceholder($0) }
             return items.isEmpty ? nil : LunchMenuSection(station: section.station, items: items)
         })
     }
 
     private static func isPlaceholder(_ item: String) -> Bool {
-        item.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("??")
+        item.hasPrefix("??")
     }
 }
 

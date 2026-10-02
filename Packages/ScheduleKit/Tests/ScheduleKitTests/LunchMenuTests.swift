@@ -66,6 +66,20 @@ import Foundation
         #expect(items(.mindful, in: tuesday) == ["week-0"])
     }
 
+    @Test func dishNamesAreTrimmedBeforeDisplay() throws {
+        let menu = try LunchMenuParser.parse(validManifest(
+            comfort: [" \tRoasted Chicken\n", "week-1", "week-2", "week-3"],
+            sides: [[" ?? No Information ", " Maple Whipped Sweet Potatoes "],
+                    ["week-1-a", "week-1-b"], ["week-2-a", "week-2-b"], ["week-3-a", "week-3-b"]]))
+        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
+        #expect(items(.comfort, in: tuesday) == ["Roasted Chicken"])
+        #expect(items(.sides, in: tuesday) == ["Maple Whipped Sweet Potatoes"])
+
+        let bundled = try LunchMenuParser.loadBundled()
+        let friday = try #require(bundled.menu(for: day(2026, 8, 28)))
+        #expect(items(.sides, in: friday) == ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"])
+    }
+
     @Test func weekendAndOutOfRangeDatesHaveNoMenu() throws {
         let menu = try LunchMenuParser.loadBundled()
         #expect(menu.menu(for: day(2026, 8, 9)) == nil)
