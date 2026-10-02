@@ -3,23 +3,42 @@ import Testing
 @testable import ScheduleKit
 
 @Suite struct LunchWidgetTests {
-    @Test func invalidAndExpiredCachesFallBackToBundledMenu() throws {
+    @Test func invalidCachesFallBackToBundledMenu() throws {
         let today = DayKey(year: 2026, month: 9, day: 14)
         let bundled = try LunchMenuParser.loadBundled()
         #expect(LunchMenuLoader.load(cachedData: Data("broken".utf8), on: today) == bundled)
         var json = try #require(JSONSerialization.jsonObject(with: LunchMenuParser.bundledData()) as? [String: Any])
-        json["validTo"] = "2026-08-31"
-        json["semesterSwitch"] = "2026-08-20"
-        let expired = try JSONSerialization.data(withJSONObject: json)
-        #expect(LunchMenuLoader.load(cachedData: expired, on: today) == bundled)
+        json["stations"] = [:]
+        let invalid = try JSONSerialization.data(withJSONObject: json)
+        #expect(LunchMenuLoader.load(cachedData: invalid, on: today) == bundled)
+        #expect(LunchMenuLoader.load(cachedData: Data(repeating: 0x20, count: LunchMenuParser.maxBytes + 1),
+                                     on: today) == bundled)
     }
 
-    @Test func validCacheWins() throws {
+    @Test(arguments: [false, true])
+    func cachedStationsUseCurrentBundledDatesAndOffset(previousYear: Bool) throws {
         let today = DayKey(year: 2026, month: 9, day: 14)
         var json = try #require(JSONSerialization.jsonObject(with: LunchMenuParser.bundledData()) as? [String: Any])
+        let bundled = try LunchMenuParser.loadBundled()
+        var stations = try #require(json["stations"] as? [String: Any])
+        stations["comfort"] = ["cadence": "weekly",
+                               "data": Array(repeating: "Cached comfort", count: bundled.rotationWeeks)]
+        json["stations"] = stations
+        let expected = try LunchMenuParser.parse(JSONSerialization.data(withJSONObject: json))
+        json["validFrom"] = previousYear ? "2025-08-12" : "2026-08-11"
+        json["validTo"] = previousYear ? "2026-05-29" : "2027-05-28"
+        json["semesterSwitch"] = previousYear ? "2026-01-06" : "2027-01-12"
         json["offset"] = 1
         let cached = try JSONSerialization.data(withJSONObject: json)
-        #expect(LunchMenuLoader.load(cachedData: cached, on: today) == (try LunchMenuParser.parse(cached)))
+        let loaded = try #require(LunchMenuLoader.load(cachedData: cached, on: today))
+        #expect(loaded == expected)
+        #expect(loaded.menu(for: today)?.sections.first { $0.station == .comfort }?.items == ["Cached comfort"])
+        #expect(loaded.menu(for: bundled.validTo.advanced(by: 1)) == nil)
+
+        // Widgets use the same corrected metadata without opening or refreshing the app.
+        let entries = LunchWidgetTimelinePlanner.entries(from: today.date()!, cachedData: cached,
+                                                          inputs: ResolverInputs(catalog: TestSupport.catalog))
+        #expect(entries.first?.menu == expected.menu(for: today))
     }
 
     @Test func calendarRulesAndTerminalEntry() throws {

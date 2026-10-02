@@ -19,8 +19,10 @@ selected category’s menu, including visually truncated text.
 
 ## Data and updates
 
-- `LunchMenuLoader` is shared by the app and widgets. It prefers a valid cache,
-  falls back to the bundled rotation, and uses the existing school calendar to
+- `LunchMenuLoader` is shared by the app and widgets. It applies the current
+  bundle's date range, semester switch, and starting week to cached station data
+  before validation. It prefers that valid cache, falls back to the bundled
+  rotation, and uses the existing school calendar to
   exclude weekends, breaks, asynchronous days, and Summer schedules.
 - Widgets read the existing App Group cache without initializing `SharedStore`,
   running migrations, or accessing student identity data. They do not fetch a
