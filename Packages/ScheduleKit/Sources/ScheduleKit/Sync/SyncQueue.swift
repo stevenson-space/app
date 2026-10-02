@@ -3,12 +3,14 @@ import Observation
 /// Coalesces automatic checks and serializes forced checks for one feed.
 @Observable
 @MainActor
-final class SyncQueue {
-    private(set) var isRunning = false
+public final class SyncQueue {
+    public private(set) var isRunning = false
     @ObservationIgnored private var pending: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
 
-    func run(force: Bool, operation: @escaping @MainActor () async -> Void) async {
+    public init() {}
+
+    public func run(force: Bool, operation: @escaping @MainActor () async -> Void) async {
         if let pending, !force {
             await pending.value
             return
