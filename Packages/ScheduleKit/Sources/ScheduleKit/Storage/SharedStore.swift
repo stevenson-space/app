@@ -469,11 +469,20 @@ public struct FetchMetadata: Equatable, Sendable {
     /// not changed. Failed retries must not restart a never-synced install's
     /// grace period. Older metadata falls back to its last recorded attempt.
     public func isUpdateCheckOverdue(at now: Date) -> Bool {
-        guard let reference = lastSuccess ?? firstAttempt ?? lastAttempt,
-              let deadline = SchoolTime.calendar.date(byAdding: .day, value: 5, to: reference) else {
+        guard let reference = lastSuccess ?? firstAttempt ?? lastAttempt else {
             return false
         }
+        // A check recorded with an incorrect clock must not silence the
+        // reminder for months after the device clock is corrected.
+        if reference > now { return true }
+        guard let deadline = updateCheckDeadline else { return false }
         return now >= deadline
+    }
+
+    /// The single time at which a valid check date becomes overdue.
+    public var updateCheckDeadline: Date? {
+        guard let reference = lastSuccess ?? firstAttempt ?? lastAttempt else { return nil }
+        return SchoolTime.calendar.date(byAdding: .day, value: 5, to: reference)
     }
 }
 
