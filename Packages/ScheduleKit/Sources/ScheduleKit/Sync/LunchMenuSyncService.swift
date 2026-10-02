@@ -24,8 +24,7 @@ public actor LunchMenuSyncService {
             return .skippedThrottled
         }
 
-        metadata.firstAttempt = metadata.firstAttempt ?? metadata.lastAttempt ?? now
-        metadata.lastAttempt = now
+        metadata.recordAttempt(at: now)
         // Six documents have no single entity tag between them, so the lunch
         // path does not make conditional requests; freshness comes from
         // comparing the assembled bytes. Clear any tag a previous build stored
