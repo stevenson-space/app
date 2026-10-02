@@ -35,10 +35,19 @@ public struct LunchMenuDay: Equatable, Sendable {
 /// website publishes under `src/data/lunch-rotating` plus the rotation dates
 /// the bundled manifest carries.
 public struct LunchMenu: Equatable, Sendable {
-    public let validFrom: DayKey
-    public let validTo: DayKey
-    public let semesterSwitch: DayKey
-    public let offset: Int
+    struct RotationSettings: Equatable, Sendable {
+        let validFrom: DayKey
+        let validTo: DayKey
+        let semesterSwitch: DayKey
+        let offset: Int
+    }
+
+    /// Bundled settings that must agree before reusing cached station data.
+    let rotationSettings: RotationSettings
+    public var validFrom: DayKey { rotationSettings.validFrom }
+    public var validTo: DayKey { rotationSettings.validTo }
+    public var semesterSwitch: DayKey { rotationSettings.semesterSwitch }
+    public var offset: Int { rotationSettings.offset }
     /// How many weeks the rotation runs before repeating. Read from the
     /// published station data, which has already changed from four to five.
     public let rotationWeeks: Int

@@ -61,10 +61,8 @@ public enum LunchMenuParser {
         }
 
         return LunchMenu(
-            validFrom: validFrom,
-            validTo: validTo,
-            semesterSwitch: semesterSwitch,
-            offset: wire.offset,
+            rotationSettings: .init(validFrom: validFrom, validTo: validTo,
+                                    semesterSwitch: semesterSwitch, offset: wire.offset),
             rotationWeeks: weeks,
             comfort: comfort,
             mindful: mindful,

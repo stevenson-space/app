@@ -12,10 +12,7 @@ public enum LunchMenuLoader {
         guard let bundled else { return cached }
         // A bundle update must not carry old dishes onto new rotation dates.
         guard let cached,
-              cached.validFrom == bundled.validFrom,
-              cached.validTo == bundled.validTo,
-              cached.semesterSwitch == bundled.semesterSwitch,
-              cached.offset == bundled.offset else { return bundled }
+              cached.rotationSettings == bundled.rotationSettings else { return bundled }
         return cached
     }
 
