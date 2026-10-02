@@ -104,7 +104,7 @@ final class AppModel {
         self.map = map
         self.prefs = store.notificationPrefs
         self.fetchMetadata = store.fetchMetadata
-        self.lunchMenu = Self.loadLunchMenu(from: store)
+        self.lunchMenu = LunchMenuLoader.load(cachedData: store.cachedLunchMenuData)
         self.lunchFetchMetadata = store.lunchFetchMetadata
 
         // Both the card and its photo are protected while the device is locked,
@@ -158,10 +158,6 @@ final class AppModel {
                 self?.reloadStudentIDIfUnread()
             }
         }
-    }
-
-    private static func loadLunchMenu(from store: SharedStore) -> LunchMenu? {
-        LunchMenuLoader.load(cachedData: store.cachedLunchMenuData)
     }
 
     // MARK: - Clock
@@ -504,7 +500,7 @@ final class AppModel {
         prefs = store.notificationPrefs
         map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
         fetchMetadata = store.fetchMetadata
-        lunchMenu = Self.loadLunchMenu(from: store)
+        lunchMenu = LunchMenuLoader.load(cachedData: store.cachedLunchMenuData)
         lunchFetchMetadata = store.lunchFetchMetadata
         scheduleDataReady = true
         refreshDerived()
