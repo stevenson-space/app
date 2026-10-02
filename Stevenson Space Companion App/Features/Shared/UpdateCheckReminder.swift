@@ -3,10 +3,13 @@ import SwiftUI
 /// A quiet, actionable reminder shown only when a feed's check is overdue.
 struct UpdateCheckReminder: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var isRequestPending = false
 
     let title: LocalizedStringKey
     let isChecking: Bool
     let checkForUpdates: () async -> Void
+
+    private var isBusy: Bool { isChecking || isRequestPending }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -35,10 +38,15 @@ struct UpdateCheckReminder: View {
             }
 
             Button {
-                Task { await checkForUpdates() }
+                guard !isBusy else { return }
+                isRequestPending = true
+                Task {
+                    defer { isRequestPending = false }
+                    await checkForUpdates()
+                }
             } label: {
                 HStack(spacing: 8) {
-                    if isChecking {
+                    if isBusy {
                         ProgressView()
                             .controlSize(.small)
                             .accessibilityHidden(true)
@@ -46,7 +54,7 @@ struct UpdateCheckReminder: View {
                         Image(systemName: "arrow.clockwise")
                             .accessibilityHidden(true)
                     }
-                    Text(isChecking ? "Checking…" : "Check for Updates")
+                    Text(isBusy ? "Checking…" : "Check for Updates")
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .font(.subheadline.weight(.semibold))
@@ -55,7 +63,7 @@ struct UpdateCheckReminder: View {
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: 12))
             .tint(StevensonPalette.accent)
-            .disabled(isChecking)
+            .disabled(isBusy)
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground),
