@@ -32,7 +32,8 @@ struct HomeView: View {
                         if model.fetchMetadata.isUpdateCheckOverdue(at: context.date) {
                             UpdateCheckReminder(
                                 title: "Schedule updates",
-                                isChecking: model.isSyncing
+                                isChecking: model.isSyncing,
+                                lastError: model.fetchMetadata.lastError
                             ) {
                                 await model.sync(force: true)
                             }
