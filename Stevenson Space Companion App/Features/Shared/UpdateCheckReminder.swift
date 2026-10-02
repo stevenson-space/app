@@ -6,6 +6,7 @@ struct UpdateCheckSection<Content: View>: View {
     @State private var isRequestPending = false
     @State private var didManualCheckFail = false
     @State private var isOverdue = false
+    @State private var clockChanges = 0
 
     let title: LocalizedStringKey
     let metadata: FetchMetadata
@@ -36,25 +37,39 @@ struct UpdateCheckSection<Content: View>: View {
                 }
             }
         }
-        .task(id: metadata) {
-            let now = Date()
-            isOverdue = metadata.isUpdateCheckOverdue(at: now)
-            guard !isOverdue,
-                  let deadline = metadata.updateCheckDeadline,
-                  deadline > now else { return }
-            do {
-                // One wakeup at the deadline; SwiftUI cancels it if the feed
-                // is refreshed or this section leaves the view hierarchy.
-                try await Task.sleep(for: .seconds(deadline.timeIntervalSince(now)))
-                isOverdue = metadata.isUpdateCheckOverdue(at: Date())
-            } catch {
-                return
+        .task(id: OverdueTimerID(metadata: metadata, clockChanges: clockChanges)) {
+            // Task.sleep doesn't follow wall-clock changes, so an early wakeup
+            // re-checks and sleeps again until the deadline is reached.
+            while true {
+                let now = Date()
+                isOverdue = metadata.isUpdateCheckOverdue(at: now)
+                guard !isOverdue,
+                      let deadline = metadata.updateCheckDeadline,
+                      deadline > now else { return }
+                do {
+                    // SwiftUI cancels the wait if the feed is refreshed, the
+                    // clock changes, or this section leaves the view hierarchy.
+                    try await Task.sleep(for: .seconds(deadline.timeIntervalSince(now)))
+                } catch {
+                    return
+                }
+            }
+        }
+        .task {
+            for await _ in NotificationCenter.default.notifications(named: .NSSystemClockDidChange) {
+                clockChanges += 1
             }
         }
         .onChange(of: metadata.lastSuccess) {
             didManualCheckFail = false
         }
     }
+}
+
+/// Restarts the overdue timer when the feed is refreshed or the clock changes.
+private struct OverdueTimerID: Equatable {
+    let metadata: FetchMetadata
+    let clockChanges: Int
 }
 
 /// A quiet, actionable reminder shown only when a feed's check is overdue.
