@@ -16,11 +16,6 @@ public enum LunchMenuParser {
     public static let maxBytes = 65_536
 
     public static func parse(_ data: Data) throws -> LunchMenu {
-        try parse(data, rotationMetadata: nil)
-    }
-
-    /// Cached station data uses the current bundle's rotation settings.
-    static func parse(_ data: Data, rotationMetadata: LunchMenu?) throws -> LunchMenu {
         guard data.count <= maxBytes else {
             throw LunchMenuParserError.tooLarge(bytes: data.count)
         }
@@ -32,10 +27,9 @@ public enum LunchMenuParser {
             throw LunchMenuParserError.invalid("invalid lunch-menu JSON: \(error.localizedDescription)")
         }
 
-        let validFrom = try rotationMetadata?.validFrom ?? parseDay(wire.validFrom, field: "validFrom")
-        let validTo = try rotationMetadata?.validTo ?? parseDay(wire.validTo, field: "validTo")
-        let semesterSwitch = try rotationMetadata?.semesterSwitch ?? parseDay(wire.semesterSwitch, field: "semesterSwitch")
-        let offset = rotationMetadata?.offset ?? wire.offset
+        let validFrom = try parseDay(wire.validFrom, field: "validFrom")
+        let validTo = try parseDay(wire.validTo, field: "validTo")
+        let semesterSwitch = try parseDay(wire.semesterSwitch, field: "semesterSwitch")
         guard validFrom < validTo else {
             throw LunchMenuParserError.invalid("validFrom must be before validTo")
         }
@@ -47,7 +41,7 @@ public enum LunchMenuParser {
         // four: it has already changed once. Every station must agree on it,
         // because a single week index addresses all of them.
         let weeks = try rotationWeeks(wire.stations)
-        guard (0..<weeks).contains(offset) else {
+        guard (0..<weeks).contains(wire.offset) else {
             throw LunchMenuParserError.invalid("offset must be in 0..<\(weeks)")
         }
 
@@ -70,7 +64,7 @@ public enum LunchMenuParser {
             validFrom: validFrom,
             validTo: validTo,
             semesterSwitch: semesterSwitch,
-            offset: offset,
+            offset: wire.offset,
             rotationWeeks: weeks,
             comfort: comfort,
             mindful: mindful,

@@ -15,8 +15,8 @@ import Testing
                                      on: today) == bundled)
     }
 
-    @Test(arguments: [false, true])
-    func cachedStationsUseCurrentBundledDatesAndOffset(previousYear: Bool) throws {
+    @Test(arguments: ["matching", "validFrom", "validTo", "semesterSwitch", "offset", "previousYear"])
+    func cacheRequiresMatchingBundledRotationSettings(changedSetting: String) throws {
         let today = DayKey(year: 2026, month: 9, day: 14)
         var json = try #require(JSONSerialization.jsonObject(with: LunchMenuParser.bundledData()) as? [String: Any])
         let bundled = try LunchMenuParser.loadBundled()
@@ -24,18 +24,28 @@ import Testing
         stations["comfort"] = ["cadence": "weekly",
                                "data": Array(repeating: "Cached comfort", count: bundled.rotationWeeks)]
         json["stations"] = stations
-        let expected = try LunchMenuParser.parse(JSONSerialization.data(withJSONObject: json))
-        json["validFrom"] = previousYear ? "2025-08-12" : "2026-08-11"
-        json["validTo"] = previousYear ? "2026-05-29" : "2027-05-28"
-        json["semesterSwitch"] = previousYear ? "2026-01-06" : "2027-01-12"
-        json["offset"] = 1
+        let matchingCache = try LunchMenuParser.parse(JSONSerialization.data(withJSONObject: json))
+        switch changedSetting {
+        case "validFrom": json["validFrom"] = "2026-08-11"
+        case "validTo": json["validTo"] = "2027-05-27"
+        case "semesterSwitch": json["semesterSwitch"] = "2027-01-12"
+        case "offset": json["offset"] = 1
+        case "previousYear":
+            json["validFrom"] = "2025-08-12"
+            json["validTo"] = "2026-05-29"
+            json["semesterSwitch"] = "2026-01-06"
+        default: break
+        }
         let cached = try JSONSerialization.data(withJSONObject: json)
+        // Each cache is valid on its own; only its saved settings decide whether it is reusable.
+        _ = try LunchMenuParser.parse(cached)
+        let expected = changedSetting == "matching" ? matchingCache : bundled
         let loaded = try #require(LunchMenuLoader.load(cachedData: cached, on: today))
         #expect(loaded == expected)
-        #expect(loaded.menu(for: today)?.sections.first { $0.station == .comfort }?.items == ["Cached comfort"])
+        #expect(loaded.menu(for: today) == expected.menu(for: today))
         #expect(loaded.menu(for: bundled.validTo.advanced(by: 1)) == nil)
 
-        // Widgets use the same corrected metadata without opening or refreshing the app.
+        // Widgets make the same cache decision without opening or refreshing the app.
         let entries = LunchWidgetTimelinePlanner.entries(from: today.date()!, cachedData: cached,
                                                           inputs: ResolverInputs(catalog: TestSupport.catalog))
         #expect(entries.first?.menu == expected.menu(for: today))
