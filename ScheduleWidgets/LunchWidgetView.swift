@@ -126,8 +126,8 @@ struct LunchWidgetView: View {
                         Spacer(minLength: 24)
                     }
                     HStack(alignment: .top, spacing: 22) {
-                        ForEach(row.sections) { section in
-                            menuCell(section, spacing: 9)
+                        ForEach(row.sections.indices, id: \.self) { index in
+                            menuCell(row.sections[index], spacing: 9)
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)
@@ -153,8 +153,8 @@ struct LunchWidgetView: View {
             // Three paired rows preserve reading order and balance longer sides.
             ForEach(menuRows(menu), id: \.station) { row in
                 GridRow(alignment: .top) {
-                    ForEach(row.sections) { section in
-                        menuCell(section)
+                    ForEach(row.sections.indices, id: \.self) { index in
+                        menuCell(row.sections[index])
                     }
                 }
             }
@@ -162,28 +162,34 @@ struct LunchWidgetView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func menuRows(_ menu: LunchMenuDay) -> [(station: LunchMenuStation, sections: [LunchMenuSection])] {
+    private func menuRows(_ menu: LunchMenuDay) -> [(station: LunchMenuStation, sections: [LunchMenuSection?])] {
         let pairs: [[LunchMenuStation]] = [[.comfort, .mindful], [.sides, .soup], [.international, .special]]
         return pairs.compactMap { pair in
-            let sections = pair.compactMap { station in
+            let sections = pair.map { station in
                 menu.sections.first { $0.station == station }
             }
-            // Keep a row when either station has dishes; skip only empty pairs.
-            return sections.isEmpty ? nil : (station: pair[0], sections: sections)
+            // Preserve both column positions, but skip wholly empty pairs.
+            return sections.allSatisfy { $0 == nil } ? nil : (station: pair[0], sections: sections)
         }
     }
 
-    private func menuCell(_ section: LunchMenuSection, spacing: CGFloat = 5) -> some View {
-        VStack(alignment: .leading, spacing: spacing) {
-            Label(section.station.title, systemImage: section.station.icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(categoryAccent(section.station))
-                .widgetAccentable()
-            menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items, spacing: spacing)
-                .font(.subheadline.weight(.medium))
+    @ViewBuilder
+    private func menuCell(_ section: LunchMenuSection?, spacing: CGFloat = 5) -> some View {
+        if let section {
+            VStack(alignment: .leading, spacing: spacing) {
+                Label(section.station.title, systemImage: section.station.icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(categoryAccent(section.station))
+                    .widgetAccentable()
+                menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items, spacing: spacing)
+                    .font(.subheadline.weight(.medium))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        } else {
+            Color.clear.frame(height: 0)
+                .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 
     private func menuOptions(_ items: [String], spacing: CGFloat = 5) -> some View {
