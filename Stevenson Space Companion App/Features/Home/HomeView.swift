@@ -21,7 +21,16 @@ struct HomeView: View {
 
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                VStack(spacing: 22) {
+                UpdateCheckSection(
+                    title: "Schedule updates",
+                    metadata: model.fetchMetadata,
+                    isChecking: model.isSyncing,
+                    spacing: 22,
+                    checkForUpdates: {
+                        await model.sync(force: true)
+                        return model.fetchMetadata.lastError == nil
+                    }
+                ) {
                     HomeDayPicker(day: day, today: today, select: selectDay)
                     if timeline.isSchoolDay {
                         HomeHeaderView(timeline: timeline)
