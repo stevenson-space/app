@@ -59,8 +59,32 @@ private func instant(_ year: Int, _ month: Int, _ date: Int, _ hour: Int, _ minu
         #expect(try JSONDecoder().decode(FetchMetadata.self, from: Data("{}".utf8)) == FetchMetadata())
     }
 
-    @Test func clockEarlierThanTheLastCheckDoesNotWarn() {
-        let metadata = FetchMetadata(lastSuccess: instant(2026, 9, 28, 12, 0))
-        #expect(!metadata.isUpdateCheckOverdue(at: instant(2026, 9, 27, 12, 0)))
+    @Test func futureCheckCannotSuppressReminderAfterClockCorrection() {
+        let now = instant(2026, 9, 28, 12, 0)
+        let metadata = FetchMetadata(
+            lastAttempt: now,
+            lastSuccess: instant(2027, 9, 28, 12, 0),
+            lastError: "Offline")
+        #expect(metadata.isUpdateCheckOverdue(at: now))
+    }
+
+    @Test func futureAttemptCannotSuppressNeverSyncedOrLegacyReminder() {
+        let now = instant(2026, 9, 28, 12, 0)
+        let future = instant(2027, 9, 28, 12, 0)
+        #expect(FetchMetadata(firstAttempt: future, lastAttempt: now).isUpdateCheckOverdue(at: now))
+        #expect(FetchMetadata(lastAttempt: future).isUpdateCheckOverdue(at: now))
+    }
+
+    @Test func reminderDeadlineUsesTheSameCalendarGracePeriod() {
+        #expect(FetchMetadata().updateCheckDeadline == nil)
+        let metadata = FetchMetadata(lastSuccess: instant(2026, 3, 4, 12, 0))
+        #expect(metadata.updateCheckDeadline == instant(2026, 3, 9, 12, 0))
+    }
+
+    @Test func successfulCheckAfterClockCorrectionRestoresGracePeriod() {
+        let now = instant(2026, 9, 28, 12, 0)
+        let metadata = FetchMetadata(
+            firstAttempt: instant(2027, 9, 28, 12, 0), lastAttempt: now, lastSuccess: now)
+        #expect(!metadata.isUpdateCheckOverdue(at: now))
     }
 }
