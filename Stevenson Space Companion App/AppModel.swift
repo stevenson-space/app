@@ -431,6 +431,11 @@ final class AppModel {
     private let lunchSyncQueue = SyncQueue()
 
     func sync(force: Bool) async {
+        // Skip a throttled automatic check before it reaches the queue, so it
+        // never marks the feed busy and hides an overdue reminder for a frame.
+        if !force, fetchMetadata.isThrottled(at: Date(), interval: ScheduleSyncService.throttleInterval) {
+            return
+        }
         await scheduleSyncQueue.run(force: force) { [weak self] in
             await self?.performSync(force: force)
         }
@@ -449,6 +454,9 @@ final class AppModel {
     }
 
     func syncLunch(force: Bool) async {
+        if !force, lunchFetchMetadata.isThrottled(at: Date(), interval: LunchMenuSyncService.throttleInterval) {
+            return
+        }
         await lunchSyncQueue.run(force: force) { [weak self] in
             await self?.performLunchSync(force: force)
         }

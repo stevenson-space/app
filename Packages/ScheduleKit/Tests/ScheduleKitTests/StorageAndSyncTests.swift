@@ -542,4 +542,14 @@ final class StubURLProtocol: URLProtocol {
         let later = soon.addingTimeInterval(ScheduleSyncService.throttleInterval + 1)
         #expect(await service.refresh(force: false, now: later) == .notModified)
     }
+
+    @Test func throttleWindowCoversOnlyRecentPastAttempts() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let interval = ScheduleSyncService.throttleInterval
+        #expect(!FetchMetadata().isThrottled(at: now, interval: interval))
+        #expect(FetchMetadata(lastAttempt: now - 600).isThrottled(at: now, interval: interval))
+        #expect(!FetchMetadata(lastAttempt: now - interval).isThrottled(at: now, interval: interval))
+        // A clock corrected backwards must not stall automatic checks.
+        #expect(!FetchMetadata(lastAttempt: now + 600).isThrottled(at: now, interval: interval))
+    }
 }
