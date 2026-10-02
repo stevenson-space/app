@@ -80,6 +80,27 @@ import Foundation
         #expect(items(.sides, in: friday) == ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"])
     }
 
+    @Test func allPlaceholderStationsHaveNoMenu() throws {
+        var json = try #require(JSONSerialization.jsonObject(with: validManifest()) as? [String: Any])
+        let placeholder = " ?? No Information "
+        var stations: [String: Any] = [:]
+        for name in ["comfort", "mindful", "international"] {
+            stations[name] = ["cadence": "weekly", "data": Array(repeating: placeholder, count: 4)]
+        }
+        for name in ["sides", "soup"] {
+            stations[name] = ["cadence": "weekly",
+                              "data": Array(repeating: [placeholder, placeholder], count: 4)]
+        }
+        json["stations"] = stations
+        json["special"] = Array(repeating: Array(repeating: placeholder, count: 5), count: 2)
+        let menu = try LunchMenuParser.parse(JSONSerialization.data(withJSONObject: json))
+        let monday = day(2026, 9, 14)
+
+        #expect(menu.menu(for: monday) == nil)
+        #expect(LunchMenuLoader.menu(menu, for: monday,
+                                     inputs: ResolverInputs(catalog: TestSupport.catalog)) == nil)
+    }
+
     @Test func weekendAndOutOfRangeDatesHaveNoMenu() throws {
         let menu = try LunchMenuParser.loadBundled()
         #expect(menu.menu(for: day(2026, 8, 9)) == nil)
