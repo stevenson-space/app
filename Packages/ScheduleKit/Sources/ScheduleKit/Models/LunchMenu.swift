@@ -59,7 +59,10 @@ public struct LunchMenu: Equatable, Sendable {
               let elapsedDays = SchoolTime.calendar.dateComponents(
                 [.day], from: start, to: target).day else { return nil }
 
-        let week = (elapsedDays / 7 + offset) % rotationWeeks
+        // A partial opening week still advances on the following Monday.
+        let startWeekday = SchoolTime.calendar.component(.weekday, from: start)
+        let daysFromMonday = (startWeekday + 5) % 7
+        let week = ((elapsedDays + daysFromMonday) / 7 + offset) % rotationWeeks
         let weekdayIndex = weekday - 2 // Monday = 0, Friday = 4
         let semester = day < semesterSwitch ? 0 : 1
         let weekdayName = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][weekdayIndex]
