@@ -465,6 +465,15 @@ public struct FetchMetadata: Equatable, Sendable {
         lastAttempt = now
     }
 
+    /// Automatic checks wait `interval` after the last attempt. An attempt
+    /// stamped in the future never throttles, so a clock correction can't
+    /// stall syncing.
+    public func isThrottled(at now: Date, interval: TimeInterval) -> Bool {
+        guard let lastAttempt else { return false }
+        let elapsed = now.timeIntervalSince(lastAttempt)
+        return elapsed >= 0 && elapsed < interval
+    }
+
     /// Quiet for five days after a successful check, even if the content has
     /// not changed. Failed retries must not restart a never-synced install's
     /// grace period. Older metadata falls back to its last recorded attempt.

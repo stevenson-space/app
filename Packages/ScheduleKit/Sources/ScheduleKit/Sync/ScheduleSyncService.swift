@@ -59,9 +59,7 @@ public actor ScheduleSyncService {
         // without committing (the queued forced refresh does the real work).
         let generation = invalidationGeneration
 
-        if !force, let lastAttempt = metadata.lastAttempt,
-           now.timeIntervalSince(lastAttempt) < Self.throttleInterval,
-           now.timeIntervalSince(lastAttempt) >= 0 {
+        if !force, metadata.isThrottled(at: now, interval: Self.throttleInterval) {
             return .skippedThrottled
         }
 
