@@ -28,7 +28,7 @@ public enum LunchWidgetTimelinePlanner {
             let timeline = resolveDay(day, inputs: inputs)
             let serving = timeline.isSchoolDay && timeline.family != .summer && !day.isWeekend
             let menu = offset < 7 ? LunchMenuLoader.menu(
-                LunchMenuLoader.load(cachedData: cachedData, on: day), for: day, inputs: inputs) : nil
+                LunchMenuLoader.load(cachedData: cachedData), for: day, inputs: inputs) : nil
             return LunchWidgetEntry(date: offset == 0 ? now : day.date()!, day: day,
                                     menu: menu, isServingDay: serving)
         }
