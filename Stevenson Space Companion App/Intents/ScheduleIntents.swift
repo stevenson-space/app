@@ -116,7 +116,7 @@ struct GetLunchMenuIntent: AppIntent {
     func perform() async throws -> some IntentResult & ReturnsValue<String?> & ProvidesDialog & ShowsSnippetView {
         let context = try IntentScheduleContext()
         let timeline = context.timeline(on: date)
-        let menu = LunchMenuLoader.load(cachedData: context.cachedMenu, on: timeline.day)
+        let menu = LunchMenuLoader.load(cachedData: context.cachedMenu)
         let lunch = LunchMenuLoader.menu(menu, for: timeline.day, inputs: context.inputs)
         let heading = "Lunch for \(TimeDisplay.shortDayLabel(timeline.day))"
         let text = lunch.map { day in

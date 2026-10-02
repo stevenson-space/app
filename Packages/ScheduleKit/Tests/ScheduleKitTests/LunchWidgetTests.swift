@@ -4,15 +4,13 @@ import Testing
 
 @Suite struct LunchWidgetTests {
     @Test func invalidCachesFallBackToBundledMenu() throws {
-        let today = DayKey(year: 2026, month: 9, day: 14)
         let bundled = try LunchMenuParser.loadBundled()
-        #expect(LunchMenuLoader.load(cachedData: Data("broken".utf8), on: today) == bundled)
+        #expect(LunchMenuLoader.load(cachedData: Data("broken".utf8)) == bundled)
         var json = try #require(JSONSerialization.jsonObject(with: LunchMenuParser.bundledData()) as? [String: Any])
         json["stations"] = [:]
         let invalid = try JSONSerialization.data(withJSONObject: json)
-        #expect(LunchMenuLoader.load(cachedData: invalid, on: today) == bundled)
-        #expect(LunchMenuLoader.load(cachedData: Data(repeating: 0x20, count: LunchMenuParser.maxBytes + 1),
-                                     on: today) == bundled)
+        #expect(LunchMenuLoader.load(cachedData: invalid) == bundled)
+        #expect(LunchMenuLoader.load(cachedData: Data(repeating: 0x20, count: LunchMenuParser.maxBytes + 1)) == bundled)
     }
 
     @Test(arguments: ["matching", "validFrom", "validTo", "semesterSwitch", "offset", "previousYear"])
@@ -40,7 +38,7 @@ import Testing
         // Each cache is valid on its own; only its saved settings decide whether it is reusable.
         _ = try LunchMenuParser.parse(cached)
         let expected = changedSetting == "matching" ? matchingCache : bundled
-        let loaded = try #require(LunchMenuLoader.load(cachedData: cached, on: today))
+        let loaded = try #require(LunchMenuLoader.load(cachedData: cached))
         #expect(loaded == expected)
         #expect(loaded.menu(for: today) == expected.menu(for: today))
         #expect(loaded.menu(for: bundled.validTo.advanced(by: 1)) == nil)

@@ -2,7 +2,7 @@ import Foundation
 
 /// Shared cache selection and serving-day rules for the app and widgets.
 public enum LunchMenuLoader {
-    public static func load(cachedData: Data?, on _: DayKey) -> LunchMenu? {
+    public static func load(cachedData: Data?) -> LunchMenu? {
         let bundled = try? LunchMenuParser.loadBundled()
         // A bundle update must not carry old dishes onto new rotation dates.
         guard let bundled,
