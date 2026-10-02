@@ -22,16 +22,16 @@ struct LunchMenuView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                TimelineView(.everyMinute) { context in
-                    VStack(spacing: 18) {
-                        WeekPicker(
-                            weekdays: weekdays,
-                            selectedDay: day,
-                            today: model.today,
-                            hasMenu: { model.lunchMenu(for: $0) != nil },
-                            select: { selectedDay = $0 },
-                            moveWeek: moveWeek)
+                VStack(spacing: 18) {
+                    WeekPicker(
+                        weekdays: weekdays,
+                        selectedDay: day,
+                        today: model.today,
+                        hasMenu: { model.lunchMenu(for: $0) != nil },
+                        select: { selectedDay = $0 },
+                        moveWeek: moveWeek)
 
+                    TimelineView(.everyMinute) { context in
                         if model.lunchFetchMetadata.isUpdateCheckOverdue(at: context.date) {
                             UpdateCheckReminder(
                                 title: "Lunch menu updates",
@@ -41,9 +41,9 @@ struct LunchMenuView: View {
                                 await model.syncLunch(force: true)
                             }
                         }
-
-                        menuContent
                     }
+
+                    menuContent
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
