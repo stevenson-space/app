@@ -118,18 +118,20 @@ struct LunchWidgetView: View {
     }
 
     private func spaciousMenu(_ menu: LunchMenuDay) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(menu.sections.filter { [.comfort, .sides, .international].contains($0.station) }) { section in
-                if section.station != .comfort {
-                    Spacer(minLength: 24)
-                }
-                HStack(alignment: .top, spacing: 22) {
-                    menuCell(section, spacing: 9)
-                    if let paired = menu.sections.first(where: { $0.station == partner(for: section.station) }) {
-                        menuCell(paired, spacing: 9)
+        let rows = menuRows(menu)
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(rows, id: \.station) { row in
+                VStack(alignment: .leading, spacing: 0) {
+                    if row.station != rows.first?.station {
+                        Spacer(minLength: 24)
                     }
+                    HStack(alignment: .top, spacing: 22) {
+                        ForEach(row.sections) { section in
+                            menuCell(section, spacing: 9)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
@@ -149,11 +151,10 @@ struct LunchWidgetView: View {
     private func menuGrid(_ menu: LunchMenuDay, spacing: CGFloat) -> some View {
         Grid(alignment: .topLeading, horizontalSpacing: 18, verticalSpacing: spacing) {
             // Three paired rows preserve reading order and balance longer sides.
-            ForEach(menu.sections.filter { [.comfort, .sides, .international].contains($0.station) }) { section in
+            ForEach(menuRows(menu), id: \.station) { row in
                 GridRow(alignment: .top) {
-                    menuCell(section)
-                    if let paired = menu.sections.first(where: { $0.station == partner(for: section.station) }) {
-                        menuCell(paired)
+                    ForEach(row.sections) { section in
+                        menuCell(section)
                     }
                 }
             }
@@ -161,11 +162,14 @@ struct LunchWidgetView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func partner(for station: LunchMenuStation) -> LunchMenuStation {
-        switch station {
-        case .comfort: .mindful
-        case .sides: .soup
-        default: .special
+    private func menuRows(_ menu: LunchMenuDay) -> [(station: LunchMenuStation, sections: [LunchMenuSection])] {
+        let pairs: [[LunchMenuStation]] = [[.comfort, .mindful], [.sides, .soup], [.international, .special]]
+        return pairs.compactMap { pair in
+            let sections = pair.compactMap { station in
+                menu.sections.first { $0.station == station }
+            }
+            // Keep a row when either station has dishes; skip only empty pairs.
+            return sections.isEmpty ? nil : (station: pair[0], sections: sections)
         }
     }
 
@@ -234,4 +238,10 @@ struct LunchWidgetBackground: View {
 } timeline: {
     LunchWidgetData.example()
     LunchTimelineEntry(date: Date(), lunch: nil)
+}
+
+#Preview("Lunch · missing stations", as: .systemLarge) {
+    LunchMenuWidget()
+} timeline: {
+    LunchWidgetData.example(day: DayKey(year: 2026, month: 10, day: 12))
 }

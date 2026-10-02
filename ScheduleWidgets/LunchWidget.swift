@@ -66,8 +66,8 @@ enum LunchWidgetData {
             }
     }
 
-    static func example(station: LunchMenuStation = .comfort) -> LunchTimelineEntry {
-        let day = DayKey(year: 2026, month: 9, day: 3)
+    static func example(day: DayKey = DayKey(year: 2026, month: 9, day: 3),
+                        station: LunchMenuStation = .comfort) -> LunchTimelineEntry {
         let date = day.date()!
         return LunchTimelineEntry(date: date, lunch: LunchWidgetEntry(date: date, day: day,
             menu: (try? LunchMenuParser.loadBundled())?.menu(for: day), isServingDay: true), station: station)
