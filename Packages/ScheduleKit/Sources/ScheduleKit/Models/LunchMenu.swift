@@ -51,7 +51,7 @@ public struct LunchMenu: Equatable, Sendable {
     let special: [[String]]
 
     /// Resolves a weekday using the same date math as the website. Returns nil
-    /// for weekends or dates outside the manifest's advertised range.
+    /// for weekends, dates outside the advertised range, or days without dishes.
     public func menu(for day: DayKey) -> LunchMenuDay? {
         guard validFrom <= day, day <= validTo,
               let weekday = day.weekday(), (2...6).contains(weekday),
@@ -85,12 +85,14 @@ public struct LunchMenu: Equatable, Sendable {
         // The website fills slots the kitchen hasn't planned with placeholders
         // such as "?? No Information". Leave those stations off the day rather
         // than listing the placeholder as a dish.
-        return LunchMenuDay(day: day, sections: sections.compactMap { section in
+        let availableSections = sections.compactMap { section -> LunchMenuSection? in
             let items = section.items
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !Self.isPlaceholder($0) }
             return items.isEmpty ? nil : LunchMenuSection(station: section.station, items: items)
-        })
+        }
+        guard !availableSections.isEmpty else { return nil }
+        return LunchMenuDay(day: day, sections: availableSections)
     }
 
     private static func isPlaceholder(_ item: String) -> Bool {
