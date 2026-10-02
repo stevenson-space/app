@@ -88,7 +88,7 @@ public struct LunchMenu: Equatable, Sendable {
             LunchMenuSection(station: .international,
                              items: [international.value(week: week, weekday: weekdayIndex)]),
             LunchMenuSection(station: .special,
-                             items: [special[semester][weekdayIndex] + " " + weekdayName]),
+                             items: [special[semester][weekdayIndex]]),
         ]
 
         // The website fills slots the kitchen hasn't planned with placeholders
@@ -98,6 +98,7 @@ public struct LunchMenu: Equatable, Sendable {
             let items = section.items
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !Self.isPlaceholder($0) }
+                .map { section.station == .special ? $0 + " " + weekdayName : $0 }
             return items.isEmpty ? nil : LunchMenuSection(station: section.station, items: items)
         }
         guard !availableSections.isEmpty else { return nil }
@@ -105,7 +106,7 @@ public struct LunchMenu: Equatable, Sendable {
     }
 
     private static func isPlaceholder(_ item: String) -> Bool {
-        item.hasPrefix("??")
+        item.hasPrefix("??") || ["no information", "tbd"].contains(item.lowercased())
     }
 }
 

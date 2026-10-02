@@ -54,10 +54,11 @@ import Foundation
         #expect(items(.sides, in: tuesday) == ["Vegetable Medley", "Mashed Potato"])
     }
 
-    @Test func placeholderItemsAreDroppedFromLiveData() throws {
+    @Test(arguments: [" ?? No Information ", " No Information ", " TBD ", " no information ", " tbd "])
+    func placeholderItemsAreDroppedFromLiveData(placeholder: String) throws {
         let menu = try LunchMenuParser.parse(validManifest(
-            comfort: ["?? No Information", "week-1", "week-2", "week-3"],
-            sides: [[" ?? TBD", "week-0-b"], ["week-1-a", "week-1-b"],
+            comfort: [placeholder, "week-1", "week-2", "week-3"],
+            sides: [[placeholder, "week-0-b"], ["week-1-a", "week-1-b"],
                     ["week-2-a", "week-2-b"], ["week-3-a", "week-3-b"]]))
 
         let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
@@ -80,9 +81,9 @@ import Foundation
         #expect(items(.sides, in: friday) == ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"])
     }
 
-    @Test func allPlaceholderStationsHaveNoMenu() throws {
+    @Test(arguments: [" ?? No Information ", " No Information ", " TBD ", " no information ", " tbd "])
+    func allPlaceholderStationsHaveNoMenu(placeholder: String) throws {
         var json = try #require(JSONSerialization.jsonObject(with: validManifest()) as? [String: Any])
-        let placeholder = " ?? No Information "
         var stations: [String: Any] = [:]
         for name in ["comfort", "mindful", "international"] {
             stations[name] = ["cadence": "weekly", "data": Array(repeating: placeholder, count: 4)]
