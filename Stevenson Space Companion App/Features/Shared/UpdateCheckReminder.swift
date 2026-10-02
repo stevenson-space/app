@@ -1,22 +1,76 @@
 import SwiftUI
+import ScheduleKit
+
+/// Keeps the optional reminder and its spacing inside the scheduled container.
+struct UpdateCheckSection<Content: View>: View {
+    @State private var isRequestPending = false
+    @State private var didManualCheckFail = false
+    @State private var isOverdue = false
+
+    let title: LocalizedStringKey
+    let metadata: FetchMetadata
+    let isChecking: Bool
+    let spacing: CGFloat
+    let checkForUpdates: () async -> Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: spacing) {
+            content()
+            // Use the real clock, independent of the selected day and DEBUG
+            // time travel. Automatic checks need no user action.
+            if isOverdue, metadata.isUpdateCheckOverdue(at: Date()),
+               !isChecking || isRequestPending {
+                UpdateCheckReminder(
+                    title: title,
+                    isChecking: isChecking || isRequestPending,
+                    didManualCheckFail: didManualCheckFail
+                ) {
+                    guard !isChecking, !isRequestPending else { return }
+                    isRequestPending = true
+                    didManualCheckFail = false
+                    Task {
+                        didManualCheckFail = !(await checkForUpdates())
+                        isRequestPending = false
+                    }
+                }
+            }
+        }
+        .task(id: metadata) {
+            let now = Date()
+            isOverdue = metadata.isUpdateCheckOverdue(at: now)
+            guard !isOverdue,
+                  let deadline = metadata.updateCheckDeadline,
+                  deadline > now else { return }
+            do {
+                // One wakeup at the deadline; SwiftUI cancels it if the feed
+                // is refreshed or this section leaves the view hierarchy.
+                try await Task.sleep(for: .seconds(deadline.timeIntervalSince(now)))
+                isOverdue = metadata.isUpdateCheckOverdue(at: Date())
+            } catch {
+                return
+            }
+        }
+        .onChange(of: metadata.lastSuccess) {
+            didManualCheckFail = false
+        }
+    }
+}
 
 /// A quiet, actionable reminder shown only when a feed's check is overdue.
 struct UpdateCheckReminder: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var isRequestPending = false
 
     let title: LocalizedStringKey
     let isChecking: Bool
-    var lastError: String? = nil
-    let checkForUpdates: () async -> Void
-
-    private var isBusy: Bool { isChecking || isRequestPending }
+    var didManualCheckFail = false
+    let checkForUpdates: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 if !dynamicTypeSize.isAccessibilitySize {
-                    Image(systemName: "wifi")
+                    Image(systemName: "arrow.clockwise")
                         .font(.body.weight(.semibold))
                         .foregroundStyle(StevensonPalette.accent)
                         .frame(width: 36, height: 36)
@@ -29,7 +83,7 @@ struct UpdateCheckReminder: View {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text("Connect to the internet with the app open to check for anything new.")
+                    Text("Check for updates to make sure you have the latest information.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -38,23 +92,16 @@ struct UpdateCheckReminder: View {
                 .accessibilityElement(children: .combine)
             }
 
-            if !isBusy, let lastError {
-                Text("Couldn't check for updates: \(lastError)")
+            if !isChecking, didManualCheckFail {
+                Text("Couldn't check for updates. Please try again later.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Button {
-                guard !isBusy else { return }
-                isRequestPending = true
-                Task {
-                    defer { isRequestPending = false }
-                    await checkForUpdates()
-                }
-            } label: {
+            Button(action: checkForUpdates) {
                 HStack(spacing: 8) {
-                    if isBusy {
+                    if isChecking {
                         ProgressView()
                             .controlSize(.small)
                             .accessibilityHidden(true)
@@ -62,7 +109,7 @@ struct UpdateCheckReminder: View {
                         Image(systemName: "arrow.clockwise")
                             .accessibilityHidden(true)
                     }
-                    Text(isBusy ? "Checking…" : "Check for Updates")
+                    Text(isChecking ? "Checking…" : "Check for Updates")
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .font(.subheadline.weight(.semibold))
@@ -71,7 +118,7 @@ struct UpdateCheckReminder: View {
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: 12))
             .tint(StevensonPalette.accent)
-            .disabled(isBusy)
+            .disabled(isChecking)
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground),
@@ -116,7 +163,7 @@ struct UpdateCheckReminder: View {
     UpdateCheckReminder(
         title: "Schedule updates",
         isChecking: false,
-        lastError: "The Internet connection appears to be offline.",
+        didManualCheckFail: true,
         checkForUpdates: {})
         .padding()
         .background(Color(.systemGroupedBackground))

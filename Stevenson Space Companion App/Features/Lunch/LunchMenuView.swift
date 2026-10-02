@@ -23,24 +23,23 @@ struct LunchMenuView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
-                    WeekPicker(
-                        weekdays: weekdays,
-                        selectedDay: day,
-                        today: model.today,
-                        hasMenu: { model.lunchMenu(for: $0) != nil },
-                        select: { selectedDay = $0 },
-                        moveWeek: moveWeek)
-
-                    TimelineView(.everyMinute) { context in
-                        if model.lunchFetchMetadata.isUpdateCheckOverdue(at: context.date) {
-                            UpdateCheckReminder(
-                                title: "Lunch menu updates",
-                                isChecking: model.isLunchSyncing,
-                                lastError: model.lunchFetchMetadata.lastError
-                            ) {
-                                await model.syncLunch(force: true)
-                            }
+                    UpdateCheckSection(
+                        title: "Lunch menu updates",
+                        metadata: model.lunchFetchMetadata,
+                        isChecking: model.isLunchSyncing,
+                        spacing: 18,
+                        checkForUpdates: {
+                            await model.syncLunch(force: true)
+                            return model.lunchFetchMetadata.lastError == nil
                         }
+                    ) {
+                        WeekPicker(
+                            weekdays: weekdays,
+                            selectedDay: day,
+                            today: model.today,
+                            hasMenu: { model.lunchMenu(for: $0) != nil },
+                            select: { selectedDay = $0 },
+                            moveWeek: moveWeek)
                     }
 
                     menuContent
