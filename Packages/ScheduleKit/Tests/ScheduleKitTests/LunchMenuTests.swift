@@ -10,7 +10,7 @@ import Foundation
         #expect(items(.comfort, in: openingTuesday) == ["Chicken Shawarma with Pita"])
         #expect(items(.sides, in: openingTuesday)
                 == ["Simple Green Salad", "Lemon Rice with Tzatziki Sauce"])
-        #expect(items(.soup, in: openingTuesday) == ["Smokey Poblano", "Chicken Noodle"])
+        #expect(items(.soup, in: openingTuesday) == ["Smoky Poblano", "Chicken Noodle"])
         #expect(items(.special, in: openingTuesday) == ["Tacos Tuesday"])
 
         // The website advances the rotation every seven calendar days from
@@ -23,6 +23,17 @@ import Foundation
         #expect(menu.validFrom.weekday() == 2)
         let monday = try #require(menu.menu(for: day(2026, 8, 17)))
         #expect(items(.international, in: monday) == ["Pasta Bowl"])
+
+        // Five weeks in, the rotation wraps back to its first week. The
+        // website's own tests pin this menu for September 14.
+        #expect(menu.rotationWeeks == 5)
+        let wrapped = try #require(menu.menu(for: day(2026, 9, 14)))
+        #expect(items(.comfort, in: wrapped) == ["Cheese Tortellini"])
+        #expect(items(.mindful, in: wrapped) == ["Lemon Garlic Baked Chicken"])
+        #expect(items(.sides, in: wrapped) == ["Roasted Carrots", "Roasted Red Potatoes"])
+        #expect(items(.soup, in: wrapped) == ["Smoky Poblano", "Chicken Noodle"])
+        #expect(items(.international, in: wrapped) == ["Asian Bowl"])
+        #expect(items(.special, in: wrapped) == ["Sushi Monday"])
     }
 
     @Test func weekendAndOutOfRangeDatesHaveNoMenu() throws {
