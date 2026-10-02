@@ -459,6 +459,12 @@ public struct FetchMetadata: Equatable, Sendable {
         self.lastError = lastError
     }
 
+    /// Preserve the first known attempt so failed retries cannot restart the grace period.
+    public mutating func recordAttempt(at now: Date) {
+        firstAttempt = firstAttempt ?? lastAttempt ?? now
+        lastAttempt = now
+    }
+
     /// Quiet for five days after a successful check, even if the content has
     /// not changed. Failed retries must not restart a never-synced install's
     /// grace period. Older metadata falls back to its last recorded attempt.
