@@ -4,6 +4,7 @@ import ScheduleKit
 /// Zone 1 — the schedule-type indicator. Quiet on Standard days, loud on
 /// anything else, with honesty badges for overrides and uncertain rotations.
 struct HomeHeaderView: View {
+    @Environment(AppModel.self) private var model
     let timeline: DayTimeline
     @State private var showsOverrideEditor = false
 
@@ -35,6 +36,12 @@ struct HomeHeaderView: View {
             }
 
             badges
+
+            if model.map == nil {
+                Label("Special schedules not synced yet", systemImage: "wifi.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: $showsOverrideEditor) {
