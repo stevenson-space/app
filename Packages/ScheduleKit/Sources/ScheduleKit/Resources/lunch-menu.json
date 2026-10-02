@@ -7,19 +7,21 @@
     "comfort": {
       "cadence": "daily",
       "data": [
-        ["Cheese Tortellini", "Chicken Shawarma with Pita", "Beef Meatloaf", "Baked Mostaccioli", "BBQ Pulled Chicken Sandwich"],
+        ["Cheese Tortellini", "Chicken Shawarma with Pita", "Beef Meatloaf", "Baked Mostaccioli", "Southwest Beefy Mac and Cheese"],
         ["BBQ Pulled Chicken Sandwich", "Moroccan Chickpea Stew with Naan", "Chicken Tetrazini", "Turkey Sloppy Joe", "Roasted Italian Chicken Thigh"],
-        ["Eggplant Parmesan", "Three Cheese Penne", "Falafel Sandwich", "Fried Chicken", "Baked Turkey Meatloaf with Chipotle BBQ Sauce"],
-        ["Spicy Whole Wheat Spaghetti", "Swedish Meatballs with Egg Noodles", "Cheese Enchilada Casserole", "Tuna Noodle Casserole", "Baked Battered Cod"]
+        ["Vegetarian Paella", "Three Cheese Penne", "Falafel Sandwich", "Fried Chicken", "Baked Turkey Meatloaf with Chipotle BBQ Sauce"],
+        ["Spicy Whole Wheat Spaghetti", "Swedish Meatballs with Egg Noodles", "Cheese Enchilada Casserole", "Tuna Noodle Casserole", "Baked Battered Cod"],
+        ["?? No Information", "Poblano White Cheddar Chicken", "Vegetable Fajitas", "Mushroom Stroganoff with Egg Noodles", "Cheese Lasagna Roll"]
       ]
     },
     "mindful": {
       "cadence": "daily",
       "data": [
-        ["Lemon Garlic Baked Chicken", "Gyro Sandwich with Pita", "Roast Turkey Breast", "Chicken Tinga", "Southwest Beef Macaroni"],
+        ["Lemon Garlic Baked Chicken", "Gyro Sandwich with Pita", "Roast Turkey Breast", "Chicken Tinga", "Blackened Tilapia"],
         ["Jerk Chicken", "Butter Chicken", "Tortilla Crusted Tilapia", "Dijon Chicken", "Baked Herb Cod"],
         ["Baked Chicken Parmesan", "Biryani Chicken", "Gyro Sandwich with Pita", "Chopped Steak with Onion Gravy", "Cajun Shrimp Pasta"],
-        ["Chicken Marsala", "Chicken Tikka Masala", "Chipotle Orange Chicken", "Adobo Roasted Turkey Breast", "Chicken Vesuvio"]
+        ["Chicken Marsala", "Chicken Tikka Masala", "Chipotle Orange Chicken", "Adobo Roasted Turkey Breast", "Chicken Vesuvio"],
+        ["?? No Information", "Salisbury Steak Meatball", "Chicken Fajitas", "Fried Chicken with Waffles", "Shrimp Paella"]
       ]
     },
     "sides": {
@@ -44,7 +46,7 @@
           ["Lemon Pepper Green Beans", "Yellow Rice"],
           ["Cucumber Salad with Tzatiki Sauce", "Lemon Rice"],
           ["Roasted Asparagus", "Scalloped Potatoes"],
-          ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"]
+          ["Roasted Vegetables", "Maple Whipped Sweet Potatoes "]
         ],
         [
           ["Lemon Pepper Green Beans", "Italian Roasted Red Potatoes"],
@@ -52,25 +54,33 @@
           ["Roasted Broccolini", "Rice Pilaf"],
           ["Roasted Corn", "Cauliflower"],
           ["Roasted Vegetables", "Roasted Potato Wedges"]
+        ],
+        [
+          ["?? No Information", "?? No Information"],
+          ["Vegetable Medley", "Mashed Potato"],
+          ["Refried Beans", "Mexican Rice"],
+          ["Peas & Carrots", "Corn Souffle"],
+          ["Asparagus", "Roasted Root Vegetables"]
         ]
       ]
     },
     "soup": {
       "cadence": "weekly",
       "data": [
-        ["Smokey Poblano", "Chicken Noodle"],
-        ["Tomato Basil Bisque", "Broccoli Cheddar"],
+        ["Smoky Poblano", "Chicken Noodle"],
+        ["Chicken & Dumplings", "Broccoli Cheddar"],
         ["Lasagna Soup", "Cream of Potato"],
-        ["Street Corn Soup", "Chicken Gumbo"]
+        ["Street Corn Soup", "Chicken Gumbo"],
+        ["Garden Vegetable Soup", "New England Clam Chowder"]
       ]
     },
     "international": {
       "cadence": "weekly",
-      "data": ["Asian Bowl", "Pasta Bowl", "Burrito Bowl", "Macaroni and Cheese Bowl"]
+      "data": ["Asian Bowl", "Pasta Bowl", "Burrito Bowl", "Macaroni and Cheese Bowl", "Mediterranean"]
     }
   },
   "special": [
-    ["Poké Bowl", "Tacos", "Wings", "Nachos", "Sushi"],
-    ["Poké Bowl", "Tacos", "Wings", "Chilli", "Sushi"]
+    ["Sushi", "Tacos", "Wings", "Nachos", "Sushi"],
+    ["Sushi", "Tacos", "Wings", "Chilli", "Sushi"]
   ]
 }
