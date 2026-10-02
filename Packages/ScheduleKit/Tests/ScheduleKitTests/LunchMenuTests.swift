@@ -36,6 +36,36 @@ import Foundation
         #expect(items(.special, in: wrapped) == ["Sushi Monday"])
     }
 
+    @Test func bundledPlaceholderStationsAreLeftOffTheDay() throws {
+        let menu = try LunchMenuParser.loadBundled()
+
+        // Week five's Monday has no comfort, mindful or sides plan yet; the
+        // website publishes "?? No Information" in those slots.
+        let monday = try #require(menu.menu(for: day(2026, 10, 12)))
+        #expect(items(.comfort, in: monday) == nil)
+        #expect(items(.mindful, in: monday) == nil)
+        #expect(items(.sides, in: monday) == nil)
+        #expect(items(.soup, in: monday) == ["Garden Vegetable Soup", "New England Clam Chowder"])
+        #expect(items(.international, in: monday) == ["Mediterranean"])
+        #expect(items(.special, in: monday) == ["Sushi Monday"])
+
+        let tuesday = try #require(menu.menu(for: day(2026, 10, 13)))
+        #expect(items(.comfort, in: tuesday) == ["Poblano White Cheddar Chicken"])
+        #expect(items(.sides, in: tuesday) == ["Vegetable Medley", "Mashed Potato"])
+    }
+
+    @Test func placeholderItemsAreDroppedFromLiveData() throws {
+        let menu = try LunchMenuParser.parse(validManifest(
+            comfort: ["?? No Information", "week-1", "week-2", "week-3"],
+            sides: [[" ?? TBD", "week-0-b"], ["week-1-a", "week-1-b"],
+                    ["week-2-a", "week-2-b"], ["week-3-a", "week-3-b"]]))
+
+        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
+        #expect(items(.comfort, in: tuesday) == nil)
+        #expect(items(.sides, in: tuesday) == ["week-0-b"])
+        #expect(items(.mindful, in: tuesday) == ["week-0"])
+    }
+
     @Test func weekendAndOutOfRangeDatesHaveNoMenu() throws {
         let menu = try LunchMenuParser.loadBundled()
         #expect(menu.menu(for: day(2026, 8, 9)) == nil)
@@ -360,7 +390,8 @@ private func makeStubSession() -> URLSession {
 }
 
 private func validManifest(weeks: Int = 4, soupWeeks: Int? = nil,
-                           offset: Int = 0, specialWeekdays: Int = 5) -> Data {
+                           offset: Int = 0, specialWeekdays: Int = 5,
+                           comfort: [String]? = nil, sides: [[String]]? = nil) -> Data {
     let weeklyStrings = (0..<weeks).map { "week-\($0)" }
     let weeklyPairs = (0..<(soupWeeks ?? weeks)).map { ["week-\($0)-a", "week-\($0)-b"] }
     let special = Array(repeating: "special", count: specialWeekdays)
@@ -370,10 +401,10 @@ private func validManifest(weeks: Int = 4, soupWeeks: Int? = nil,
         "semesterSwitch": "2027-01-01",
         "offset": offset,
         "stations": [
-            "comfort": ["cadence": "weekly", "data": weeklyStrings],
+            "comfort": ["cadence": "weekly", "data": comfort ?? weeklyStrings],
             "mindful": ["cadence": "weekly", "data": weeklyStrings],
             "sides": ["cadence": "weekly",
-                      "data": (0..<weeks).map { ["week-\($0)-a", "week-\($0)-b"] }],
+                      "data": sides ?? (0..<weeks).map { ["week-\($0)-a", "week-\($0)-b"] }],
             "soup": ["cadence": "weekly", "data": weeklyPairs],
             "international": ["cadence": "weekly", "data": weeklyStrings],
         ],

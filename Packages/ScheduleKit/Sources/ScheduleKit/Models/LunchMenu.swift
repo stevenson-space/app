@@ -64,7 +64,7 @@ public struct LunchMenu: Equatable, Sendable {
         let semester = day < semesterSwitch ? 0 : 1
         let weekdayName = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][weekdayIndex]
 
-        return LunchMenuDay(day: day, sections: [
+        let sections = [
             LunchMenuSection(station: .comfort,
                              items: [comfort.value(week: week, weekday: weekdayIndex)]),
             LunchMenuSection(station: .mindful,
@@ -77,7 +77,19 @@ public struct LunchMenu: Equatable, Sendable {
                              items: [international.value(week: week, weekday: weekdayIndex)]),
             LunchMenuSection(station: .special,
                              items: [special[semester][weekdayIndex] + " " + weekdayName]),
-        ])
+        ]
+
+        // The website fills slots the kitchen hasn't planned with placeholders
+        // such as "?? No Information". Leave those stations off the day rather
+        // than listing the placeholder as a dish.
+        return LunchMenuDay(day: day, sections: sections.compactMap { section in
+            let items = section.items.filter { !Self.isPlaceholder($0) }
+            return items.isEmpty ? nil : LunchMenuSection(station: section.station, items: items)
+        })
+    }
+
+    private static func isPlaceholder(_ item: String) -> Bool {
+        item.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("??")
     }
 }
 
