@@ -27,10 +27,10 @@ final class AppModel {
     private(set) var prefs: NotificationPrefs
     private(set) var map: DayTypeMap?
     private(set) var fetchMetadata: FetchMetadata
-    private(set) var isSyncing = false
+    var isSyncing: Bool { scheduleSyncQueue.isRunning }
     private(set) var lunchMenu: LunchMenu?
     private(set) var lunchFetchMetadata: FetchMetadata
-    private(set) var isLunchSyncing = false
+    var isLunchSyncing: Bool { lunchSyncQueue.isRunning }
     /// Only ever written from a screenshot the extractor read; there is no code
     /// path, in this type or the UI, that builds one from typed input.
     private(set) var studentID: StudentIDCard?
@@ -427,33 +427,12 @@ final class AppModel {
         }
     }
 
-    private var pendingSync: Task<Void, Never>?
-    private var syncGeneration = 0
+    private let scheduleSyncQueue = SyncQueue()
+    private let lunchSyncQueue = SyncQueue()
 
     func sync(force: Bool) async {
-        if let inFlight = pendingSync, !force {
-            await inFlight.value
-            return
-        }
-
-        // Reserve the successor before awaiting so forced requests form a
-        // serial chain and keep the reminder busy through each handoff.
-        let predecessor = pendingSync
-        syncGeneration += 1
-        let generation = syncGeneration
-        isSyncing = true
-        let task = Task { @MainActor [weak self] in
-            if let predecessor {
-                await predecessor.value
-            }
-            guard let self else { return }
-            await self.performSync(force: force)
-        }
-        pendingSync = task
-        await task.value
-        if syncGeneration == generation {
-            pendingSync = nil
-            isSyncing = false
+        await scheduleSyncQueue.run(force: force) { [weak self] in
+            await self?.performSync(force: force)
         }
     }
 
@@ -469,34 +448,9 @@ final class AppModel {
         }
     }
 
-    private var pendingLunchSync: Task<Void, Never>?
-    private var lunchSyncGeneration = 0
-
     func syncLunch(force: Bool) async {
-        if let inFlight = pendingLunchSync, !force {
-            await inFlight.value
-            return
-        }
-
-        // Forced refreshes reserve a successor before awaiting the current
-        // task. Concurrent callers therefore build one serial chain instead of
-        // resuming together and starting overlapping requests.
-        let predecessor = pendingLunchSync
-        lunchSyncGeneration += 1
-        let generation = lunchSyncGeneration
-        isLunchSyncing = true
-        let task = Task { @MainActor [weak self] in
-            if let predecessor {
-                await predecessor.value
-            }
-            guard let self else { return }
-            await self.performLunchSync(force: force)
-        }
-        pendingLunchSync = task
-        await task.value
-        if lunchSyncGeneration == generation {
-            pendingLunchSync = nil
-            isLunchSyncing = false
+        await lunchSyncQueue.run(force: force) { [weak self] in
+            await self?.performLunchSync(force: force)
         }
     }
 
