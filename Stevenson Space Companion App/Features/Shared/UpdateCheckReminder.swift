@@ -7,6 +7,7 @@ struct UpdateCheckReminder: View {
 
     let title: LocalizedStringKey
     let isChecking: Bool
+    var lastError: String? = nil
     let checkForUpdates: () async -> Void
 
     private var isBusy: Bool { isChecking || isRequestPending }
@@ -35,6 +36,13 @@ struct UpdateCheckReminder: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
+            }
+
+            if !isBusy, let lastError {
+                Text("Couldn't check for updates: \(lastError)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Button {
@@ -102,4 +110,14 @@ struct UpdateCheckReminder: View {
         .padding()
         .background(Color(.systemGroupedBackground))
         .environment(\.dynamicTypeSize, .accessibility3)
+}
+
+#Preview("Failed check") {
+    UpdateCheckReminder(
+        title: "Schedule updates",
+        isChecking: false,
+        lastError: "The Internet connection appears to be offline.",
+        checkForUpdates: {})
+        .padding()
+        .background(Color(.systemGroupedBackground))
 }
