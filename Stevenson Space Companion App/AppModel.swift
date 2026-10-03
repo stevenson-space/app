@@ -28,7 +28,9 @@ final class AppModel {
     private(set) var map: DayTypeMap?
     private(set) var fetchMetadata: FetchMetadata
     var isSyncing: Bool { scheduleSyncQueue.isRunning }
-    private(set) var lunchMenu: LunchMenu?
+    private var loadedLunchMenu: (menu: LunchMenu?, isBundled: Bool)
+    var lunchMenu: LunchMenu? { loadedLunchMenu.menu }
+    var isLunchMenuBundled: Bool { loadedLunchMenu.isBundled }
     private(set) var lunchFetchMetadata: FetchMetadata
     var isLunchSyncing: Bool { lunchSyncQueue.isRunning }
     /// Only ever written from a screenshot the extractor read; there is no code
@@ -104,7 +106,7 @@ final class AppModel {
         self.map = map
         self.prefs = store.notificationPrefs
         self.fetchMetadata = store.fetchMetadata
-        self.lunchMenu = Self.loadLunchMenu(from: store, on: today)
+        self.loadedLunchMenu = LunchMenuLoader.loadWithSource(cachedData: store.cachedLunchMenuData)
         self.lunchFetchMetadata = store.lunchFetchMetadata
 
         // Both the card and its photo are protected while the device is locked,
@@ -158,10 +160,6 @@ final class AppModel {
                 self?.reloadStudentIDIfUnread()
             }
         }
-    }
-
-    private static func loadLunchMenu(from store: SharedStore, on today: DayKey) -> LunchMenu? {
-        LunchMenuLoader.load(cachedData: store.cachedLunchMenuData, on: today)
     }
 
     // MARK: - Clock
@@ -466,7 +464,7 @@ final class AppModel {
         let result = await lunchSyncService.refresh(force: force, now: Date())
         lunchFetchMetadata = store.lunchFetchMetadata
         if result == .updated, let cached = store.cachedLunchMenuData {
-            lunchMenu = LunchMenuLoader.load(cachedData: cached, on: DayKey(date: Date()))
+            loadedLunchMenu = LunchMenuLoader.loadWithSource(cachedData: cached)
             reloadLunchWidgets()
         }
     }
@@ -504,7 +502,7 @@ final class AppModel {
         prefs = store.notificationPrefs
         map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
         fetchMetadata = store.fetchMetadata
-        lunchMenu = Self.loadLunchMenu(from: store, on: DayKey(date: Date()))
+        loadedLunchMenu = LunchMenuLoader.loadWithSource(cachedData: store.cachedLunchMenuData)
         lunchFetchMetadata = store.lunchFetchMetadata
         scheduleDataReady = true
         refreshDerived()
