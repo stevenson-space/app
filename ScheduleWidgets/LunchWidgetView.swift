@@ -84,8 +84,7 @@ struct LunchWidgetView: View {
     }
 
     private func fullMenu(_ menu: LunchMenuDay) -> some View {
-        let rows = menuRows(menu)
-        return ViewThatFits(in: .vertical) {
+        ViewThatFits(in: .vertical) {
             // Only a complete menu needs to spread across the widget's height.
             if menu.sections.count == LunchMenuStation.allCases.count {
                 spaciousMenu(menu)
@@ -94,10 +93,11 @@ struct LunchWidgetView: View {
             menuGrid(menu, spacing: 13)
             menuGrid(menu, spacing: 7)
             HStack(alignment: .top, spacing: 18) {
-                menuColumn(rows.compactMap { $0.sections.first })
-                menuColumn(rows.compactMap { $0.sections.dropFirst().first })
+                menuColumn(menu, column: 0)
+                menuColumn(menu, column: 1)
             }
             .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .contain)
             // A future longer menu or accessibility text must not silently clip.
             VStack(alignment: .leading, spacing: 8) {
                 Text("Today’s categories").font(.headline)
@@ -141,10 +141,13 @@ struct LunchWidgetView: View {
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
-    private func menuColumn(_ sections: [LunchMenuSection]) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            ForEach(sections) { section in
+    private func menuColumn(_ menu: LunchMenuDay, column: Int) -> some View {
+        let sections = menu.sections.enumerated().filter { $0.offset % 2 == column }
+        return VStack(alignment: .leading, spacing: 7) {
+            ForEach(sections, id: \.element.id) { index, section in
                 menuCell(section)
+                    // Preserve menu order across the independently sized columns.
+                    .accessibilitySortPriority(-Double(index))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
