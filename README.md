@@ -1,8 +1,18 @@
-# Stevenson Space Companion App
+# Stevenson Space
 
 iOS bell-schedule app for Adlai E. Stevenson High School (D125). One glance answers:
 **what period is it, how long until it changes, and what's next** — especially on the
 days the normal times are wrong (Late Arrival, finals, assemblies, e-learning days).
+
+The full app name and App Store listing name are **Stevenson Space**. The Home
+Screen icon uses **SHS Space**. Set the **Name** field in App Store Connect to
+`Stevenson Space`; it is separate from the installed app's display name.
+[App Store name](https://developer.apple.com/help/app-store-connect/reference/app-information/app-information/),
+[Home Screen display name](https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundledisplayname).
+
+The bundle identifiers, App Group, Keychain service, and `stevenson-space` URL
+scheme retain their existing values so the name change preserves app identity
+and access to saved data.
 
 ## Architecture
 
@@ -28,7 +38,7 @@ Packages/StudentIDKit/         Student ID logic — no UI.
     StudentIDCard.swift        The model; its initializer is internal by design
     StudentIDPhotoStore.swift  The cropped headshot, on disk with complete file protection
   Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
-Stevenson Space Companion App/ SwiftUI app target: Home, Lunch, ID, Settings
+Stevenson Space/               SwiftUI app target: Home, Lunch, ID, Settings
 ScheduleWidgets/              Schedule widgets and small/large lunch widgets
 ```
 
@@ -151,7 +161,7 @@ deadline. Future timestamps cannot suppress a reminder after a clock correction.
 
 - Logic tests (fast, no simulator): `swift test --package-path Packages/ScheduleKit`
   and `swift test --package-path Packages/StudentIDKit`
-- App build: `xcodebuild -scheme "Stevenson Space Companion App" -destination 'generic/platform=iOS Simulator' build`
+- App build: `xcodebuild -scheme "Stevenson Space" -destination 'generic/platform=iOS Simulator' build`
 - **Time travel**: DEBUG builds have a Developer section in Settings — jump the
   app clock to any instant or use one-tap scenarios (finals rotations, async
   days, breaks…). A purple banner shows whenever the clock is shifted.

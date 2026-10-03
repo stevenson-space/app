@@ -19,7 +19,7 @@
 - All date/time math stays in `America/Chicago` via `SchoolTime.calendar`; no `+24h` arithmetic.
 - Public API changes must keep existing call sites compiling (`config.lunch`, `config.lunch?.choice = …`, `config.advisory = nil`, `config.freePeriods.contains/insert/remove`, `setPairedAdvisory`, `clearAdvisory`, memberwise `UserConfig(lunch:advisory:freePeriods:customizations:hideFreePeriods:timeFormat:appearance:)`).
 - Stored blobs written by the current release must decode losslessly (legacy fields → grid); new blobs must keep writing the legacy fields alongside `periodPlans` for downgrade tolerance.
-- Tests: `swift test --package-path Packages/ScheduleKit`. App build: `xcodebuild -scheme "Stevenson Space Companion App" -destination 'generic/platform=iOS Simulator' build`.
+- Tests: `swift test --package-path Packages/ScheduleKit`. App build: `xcodebuild -scheme "Stevenson Space" -destination 'generic/platform=iOS Simulator' build`.
 
 ---
 
@@ -87,7 +87,7 @@ Resolution algorithm (splittable schedules): per numbered period emit either one
 > **Superseded by v2:** executed as written, then replaced the same day — `DayTimelineListView` was rebuilt on the shared `ScheduleCardRow` (`Features/Home/ScheduleCardRow.swift`), which renders `spanLabel` on each card. The v1 description below no longer matches shipped code.
 
 **Files:**
-- Modify: `Stevenson Space Companion App/Features/Home/DayTimelineListView.swift:69-76`
+- Modify: `Stevenson Space/Features/Home/DayTimelineListView.swift:69-76`
 
 `BlockRow` capsule condition becomes `if let label = block.spanLabel` rendering `Text(label)` (was `block.periodID.storageKey + half.rawValue`).
 
@@ -99,7 +99,7 @@ Resolution algorithm (splittable schedules): per numbered period emit either one
 > **Superseded by v2:** the layout/split editor below shipped in v1, then was replaced the same day by the card-based editor — `PeriodEditorView` is now a card list of `ScheduleCardRow`s with tap-to-edit sheets (Class/Lunch/Free, name/room/emoji fields, Length menu incl. 1½ periods in either direction; freshman advisory rides the lunch sheet as a paired toggle). See the spec's v2 section for the shipped design.
 
 **Files:**
-- Rewrite: `Stevenson Space Companion App/Features/Settings/PeriodEditorView.swift`
+- Rewrite: `Stevenson Space/Features/Settings/PeriodEditorView.swift`
 
 **Interfaces:**
 - Consumes: `plan(for:)`, `setSlot`, `setClassExtended`, `classSpan`, `customizations`, `setPairedAdvisory`, derived `lunch`.
@@ -120,7 +120,7 @@ Design (per spec):
 > **Superseded by v2:** rather than reworking the midday section, v2 removed it from Settings entirely — the card editor (grid) is the single source of truth, and Settings keeps only a pointer line to Periods & Classes.
 
 **Files:**
-- Modify: `Stevenson Space Companion App/Features/Settings/SettingsView.swift:40-133`
+- Modify: `Stevenson Space/Features/Settings/SettingsView.swift:40-133`
 
 Pickers already write through `config.lunch` / `setPairedAdvisory` — they now hit the derived setters (verify semantics: changing lunch period keeps wave; clearing sets nil). Add footer: "Have a class that runs 1½ periods? Set its length in Periods & Classes — lunch and the leftover half live there too." Show a read-only line when lunch was set from the grid into a shape the quick pickers can't express (defensive: pickers cover all `SplitAssignment` shapes, so only needed if advisory unpaired — skip).
 
@@ -130,5 +130,5 @@ Pickers already write through `config.lunch` / `setPairedAdvisory` — they now 
 ### Task 7: Verification gate
 
 - [x] `swift test --package-path Packages/ScheduleKit` — all green (153 at v2; suite has since grown).
-- [x] `xcodebuild -scheme "Stevenson Space Companion App" -destination 'generic/platform=iOS Simulator' build` — succeeds.
+- [x] `xcodebuild -scheme "Stevenson Space" -destination 'generic/platform=iOS Simulator' build` — succeeds.
 - [x] Re-read spec; confirm each requirement maps to shipped code; update spec if implementation diverged (spec's v2 section documents the shipped UI).

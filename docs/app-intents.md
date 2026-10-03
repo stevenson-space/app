@@ -97,20 +97,25 @@ database solely to attach a schema. Future schema adoption should follow an
 actual matching capability. No Foundation Models integration or legacy SiriKit
 intent-definition file is needed for this action surface.
 
-Example phrases using the current bundle name (the system substitutes the installed app's name):
+The full app name is **Stevenson Space**. The installed display name is
+**SHS Space**, which the system uses for the `\(.applicationName)` phrase token
+and the Home Screen icon.
+[Bundle display name](https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundledisplayname).
 
-- “Show my student ID in Stevenson Space Companion App.”
-- “What's my current class in Stevenson Space Companion App?”
-- “What period is it in Stevenson Space Companion App?”
-- “Where is my next class in Stevenson Space Companion App?”
-- “What's for lunch in Stevenson Space Companion App?”
-- “Show my schedule in Stevenson Space Companion App.”
-- “What's today's schedule type in Stevenson Space Companion App?”
-- “Open Lunch in Stevenson Space Companion App.”
+Example phrases using the installed app's display name:
+
+- “Show my student ID in SHS Space.”
+- “What's my current class in SHS Space?”
+- “What period is it in SHS Space?”
+- “Where is my next class in SHS Space?”
+- “What's for lunch in SHS Space?”
+- “Show my schedule in SHS Space.”
+- “What's today's schedule type in SHS Space?”
+- “Open Lunch in SHS Space.”
 
 Actual Siri phrase recognition depends on device, OS, language, and system
-configuration. Real-device testing is complete and works, as confirmed by the
-maintainer; repeat the checks below when changing this integration.
+configuration. The maintainer previously confirmed these actions work on a real
+device; repeat the checks below with the new **SHS Space** display name.
 
 ## Validation
 
