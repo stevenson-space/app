@@ -35,10 +35,19 @@ public struct LunchMenuDay: Equatable, Sendable {
 /// website publishes under `src/data/lunch-rotating` plus the rotation dates
 /// the bundled manifest carries.
 public struct LunchMenu: Equatable, Sendable {
-    public let validFrom: DayKey
-    public let validTo: DayKey
-    public let semesterSwitch: DayKey
-    public let offset: Int
+    struct RotationSettings: Equatable, Sendable {
+        let validFrom: DayKey
+        let validTo: DayKey
+        let semesterSwitch: DayKey
+        let offset: Int
+    }
+
+    /// Bundled settings that must agree before reusing cached station data.
+    let rotationSettings: RotationSettings
+    public var validFrom: DayKey { rotationSettings.validFrom }
+    public var validTo: DayKey { rotationSettings.validTo }
+    public var semesterSwitch: DayKey { rotationSettings.semesterSwitch }
+    public var offset: Int { rotationSettings.offset }
     /// How many weeks the rotation runs before repeating. Read from the
     /// published station data, which has already changed from four to five.
     public let rotationWeeks: Int
@@ -51,7 +60,7 @@ public struct LunchMenu: Equatable, Sendable {
     let special: [[String]]
 
     /// Resolves a weekday using the same date math as the website. Returns nil
-    /// for weekends or dates outside the manifest's advertised range.
+    /// for weekends, dates outside the advertised range, or days without dishes.
     public func menu(for day: DayKey) -> LunchMenuDay? {
         guard validFrom <= day, day <= validTo,
               let weekday = day.weekday(), (2...6).contains(weekday),
@@ -59,12 +68,15 @@ public struct LunchMenu: Equatable, Sendable {
               let elapsedDays = SchoolTime.calendar.dateComponents(
                 [.day], from: start, to: target).day else { return nil }
 
-        let week = (elapsedDays / 7 + offset) % rotationWeeks
+        // A partial opening week still advances on the following Monday.
+        let startWeekday = SchoolTime.calendar.component(.weekday, from: start)
+        let daysFromMonday = (startWeekday + 5) % 7
+        let week = ((elapsedDays + daysFromMonday) / 7 + offset) % rotationWeeks
         let weekdayIndex = weekday - 2 // Monday = 0, Friday = 4
         let semester = day < semesterSwitch ? 0 : 1
         let weekdayName = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][weekdayIndex]
 
-        return LunchMenuDay(day: day, sections: [
+        let sections = [
             LunchMenuSection(station: .comfort,
                              items: [comfort.value(week: week, weekday: weekdayIndex)]),
             LunchMenuSection(station: .mindful,
@@ -76,8 +88,26 @@ public struct LunchMenu: Equatable, Sendable {
             LunchMenuSection(station: .international,
                              items: [international.value(week: week, weekday: weekdayIndex)]),
             LunchMenuSection(station: .special,
-                             items: [special[semester][weekdayIndex] + " " + weekdayName]),
-        ])
+                             items: [special[semester][weekdayIndex]]),
+        ]
+
+        // The website fills slots the kitchen hasn't planned with placeholders
+        // such as "?? No Information" (its older menus used "None Specified").
+        // Leave those stations off the day rather than listing the placeholder
+        // as a dish.
+        let availableSections = sections.compactMap { section -> LunchMenuSection? in
+            let items = section.items
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !Self.isPlaceholder($0) }
+                .map { section.station == .special ? $0 + " " + weekdayName : $0 }
+            return items.isEmpty ? nil : LunchMenuSection(station: section.station, items: items)
+        }
+        guard !availableSections.isEmpty else { return nil }
+        return LunchMenuDay(day: day, sections: availableSections)
+    }
+
+    private static func isPlaceholder(_ item: String) -> Bool {
+        item.hasPrefix("??") || ["no information", "none specified", "tbd"].contains(item.lowercased())
     }
 }
 

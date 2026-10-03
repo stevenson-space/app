@@ -10,14 +10,96 @@ import Foundation
         #expect(items(.comfort, in: openingTuesday) == ["Chicken Shawarma with Pita"])
         #expect(items(.sides, in: openingTuesday)
                 == ["Simple Green Salad", "Lemon Rice with Tzatziki Sauce"])
-        #expect(items(.soup, in: openingTuesday) == ["Smokey Poblano", "Chicken Noodle"])
+        #expect(items(.soup, in: openingTuesday) == ["Smoky Poblano", "Chicken Noodle"])
         #expect(items(.special, in: openingTuesday) == ["Tacos Tuesday"])
 
-        // The website advances the four-week rotation every seven elapsed
-        // calendar days from validFrom (Tuesday in this manifest).
+        // The website advances the rotation every seven calendar days from
+        // validFrom, which it anchors to a Monday so a whole school week
+        // shares one rotation week.
         let nextTuesday = try #require(menu.menu(for: day(2026, 8, 18)))
         #expect(items(.comfort, in: nextTuesday) == ["Moroccan Chickpea Stew with Naan"])
         #expect(items(.international, in: nextTuesday) == ["Pasta Bowl"])
+
+        #expect(menu.validFrom.weekday() == 2)
+        let monday = try #require(menu.menu(for: day(2026, 8, 17)))
+        #expect(items(.international, in: monday) == ["Pasta Bowl"])
+
+        // Five weeks in, the rotation wraps back to its first week. The
+        // website's own tests pin this menu for September 14.
+        #expect(menu.rotationWeeks == 5)
+        let wrapped = try #require(menu.menu(for: day(2026, 9, 14)))
+        #expect(items(.comfort, in: wrapped) == ["Cheese Tortellini"])
+        #expect(items(.mindful, in: wrapped) == ["Lemon Garlic Baked Chicken"])
+        #expect(items(.sides, in: wrapped) == ["Roasted Carrots", "Roasted Red Potatoes"])
+        #expect(items(.soup, in: wrapped) == ["Smoky Poblano", "Chicken Noodle"])
+        #expect(items(.international, in: wrapped) == ["Asian Bowl"])
+        #expect(items(.special, in: wrapped) == ["Sushi Monday"])
+    }
+
+    @Test func bundledPlaceholderStationsAreLeftOffTheDay() throws {
+        let menu = try LunchMenuParser.loadBundled()
+
+        // Week five's Monday has no comfort, mindful or sides plan yet; the
+        // website publishes "?? No Information" in those slots.
+        let monday = try #require(menu.menu(for: day(2026, 10, 12)))
+        #expect(items(.comfort, in: monday) == nil)
+        #expect(items(.mindful, in: monday) == nil)
+        #expect(items(.sides, in: monday) == nil)
+        #expect(items(.soup, in: monday) == ["Garden Vegetable Soup", "New England Clam Chowder"])
+        #expect(items(.international, in: monday) == ["Mediterranean"])
+        #expect(items(.special, in: monday) == ["Sushi Monday"])
+
+        let tuesday = try #require(menu.menu(for: day(2026, 10, 13)))
+        #expect(items(.comfort, in: tuesday) == ["Poblano White Cheddar Chicken"])
+        #expect(items(.sides, in: tuesday) == ["Vegetable Medley", "Mashed Potato"])
+    }
+
+    @Test(arguments: [" ?? No Information ", " No Information ", " None Specified ", " TBD ", " no information ", " tbd "])
+    func placeholderItemsAreDroppedFromLiveData(placeholder: String) throws {
+        let menu = try LunchMenuParser.parse(validManifest(
+            comfort: [placeholder, "week-1", "week-2", "week-3"],
+            sides: [[placeholder, "week-0-b"], ["week-1-a", "week-1-b"],
+                    ["week-2-a", "week-2-b"], ["week-3-a", "week-3-b"]]))
+
+        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
+        #expect(items(.comfort, in: tuesday) == nil)
+        #expect(items(.sides, in: tuesday) == ["week-0-b"])
+        #expect(items(.mindful, in: tuesday) == ["week-0"])
+    }
+
+    @Test func dishNamesAreTrimmedBeforeDisplay() throws {
+        let menu = try LunchMenuParser.parse(validManifest(
+            comfort: [" \tRoasted Chicken\n", "week-1", "week-2", "week-3"],
+            sides: [[" ?? No Information ", " Maple Whipped Sweet Potatoes "],
+                    ["week-1-a", "week-1-b"], ["week-2-a", "week-2-b"], ["week-3-a", "week-3-b"]]))
+        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
+        #expect(items(.comfort, in: tuesday) == ["Roasted Chicken"])
+        #expect(items(.sides, in: tuesday) == ["Maple Whipped Sweet Potatoes"])
+
+        let bundled = try LunchMenuParser.loadBundled()
+        let friday = try #require(bundled.menu(for: day(2026, 8, 28)))
+        #expect(items(.sides, in: friday) == ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"])
+    }
+
+    @Test(arguments: [" ?? No Information ", " No Information ", " None Specified ", " TBD ", " no information ", " tbd "])
+    func allPlaceholderStationsHaveNoMenu(placeholder: String) throws {
+        var json = try #require(JSONSerialization.jsonObject(with: validManifest()) as? [String: Any])
+        var stations: [String: Any] = [:]
+        for name in ["comfort", "mindful", "international"] {
+            stations[name] = ["cadence": "weekly", "data": Array(repeating: placeholder, count: 4)]
+        }
+        for name in ["sides", "soup"] {
+            stations[name] = ["cadence": "weekly",
+                              "data": Array(repeating: [placeholder, placeholder], count: 4)]
+        }
+        json["stations"] = stations
+        json["special"] = Array(repeating: Array(repeating: placeholder, count: 5), count: 2)
+        let menu = try LunchMenuParser.parse(JSONSerialization.data(withJSONObject: json))
+        let monday = day(2026, 9, 14)
+
+        #expect(menu.menu(for: monday) == nil)
+        #expect(LunchMenuLoader.menu(menu, for: monday,
+                                     inputs: ResolverInputs(catalog: TestSupport.catalog)) == nil)
     }
 
     @Test func weekendAndOutOfRangeDatesHaveNoMenu() throws {
@@ -25,6 +107,29 @@ import Foundation
         #expect(menu.menu(for: day(2026, 8, 9)) == nil)
         #expect(menu.menu(for: day(2026, 8, 15)) == nil)
         #expect(menu.menu(for: day(2027, 6, 1)) == nil)
+    }
+
+    @Test(arguments: 10...16, [0, 3])
+    func rotationAdvancesOnMondayRegardlessOfStartWeekday(startDay: Int, offset: Int) throws {
+        let menu = try LunchMenuParser.parse(validManifest(validFrom: "2026-08-\(startDay)", offset: offset))
+        #expect(menu.menu(for: day(2026, 8, startDay).advanced(by: -1)) == nil)
+        for weekday in 0..<5 {
+            let firstWeekDay = day(2026, 8, 10 + weekday)
+            if firstWeekDay >= menu.validFrom {
+                let firstWeek = try #require(menu.menu(for: firstWeekDay))
+                #expect(items(.comfort, in: firstWeek) == ["week-\(offset)"])
+            }
+            let nextWeek = try #require(menu.menu(for: day(2026, 8, 17 + weekday)))
+            #expect(items(.comfort, in: nextWeek) == ["week-\((offset + 1) % 4)"])
+        }
+    }
+
+    @Test func mondayRotationUsesCalendarDaysAcrossDST() throws {
+        let menu = try LunchMenuParser.parse(validManifest(validFrom: "2026-10-28"))
+        let monday = try #require(menu.menu(for: day(2026, 11, 2)))
+        #expect(items(.comfort, in: monday) == ["week-1"])
+        let followingMonday = try #require(menu.menu(for: day(2026, 11, 9)))
+        #expect(items(.comfort, in: followingMonday) == ["week-2"])
     }
 
     @Test func semesterSwitchChangesSpecialRotation() throws {
@@ -343,21 +448,22 @@ private func makeStubSession() -> URLSession {
     ScheduleSyncService.makeSession(protocolClasses: [LunchStubURLProtocol.self])
 }
 
-private func validManifest(weeks: Int = 4, soupWeeks: Int? = nil,
-                           offset: Int = 0, specialWeekdays: Int = 5) -> Data {
+private func validManifest(weeks: Int = 4, soupWeeks: Int? = nil, validFrom: String = "2026-08-11",
+                           offset: Int = 0, specialWeekdays: Int = 5,
+                           comfort: [String]? = nil, sides: [[String]]? = nil) -> Data {
     let weeklyStrings = (0..<weeks).map { "week-\($0)" }
     let weeklyPairs = (0..<(soupWeeks ?? weeks)).map { ["week-\($0)-a", "week-\($0)-b"] }
     let special = Array(repeating: "special", count: specialWeekdays)
     let object: [String: Any] = [
-        "validFrom": "2026-08-11",
+        "validFrom": validFrom,
         "validTo": "2027-05-31",
         "semesterSwitch": "2027-01-01",
         "offset": offset,
         "stations": [
-            "comfort": ["cadence": "weekly", "data": weeklyStrings],
+            "comfort": ["cadence": "weekly", "data": comfort ?? weeklyStrings],
             "mindful": ["cadence": "weekly", "data": weeklyStrings],
             "sides": ["cadence": "weekly",
-                      "data": (0..<weeks).map { ["week-\($0)-a", "week-\($0)-b"] }],
+                      "data": sides ?? (0..<weeks).map { ["week-\($0)-a", "week-\($0)-b"] }],
             "soup": ["cadence": "weekly", "data": weeklyPairs],
             "international": ["cadence": "weekly", "data": weeklyStrings],
         ],

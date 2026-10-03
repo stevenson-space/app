@@ -23,12 +23,13 @@ public enum LunchWidgetTimelinePlanner {
     /// terminal empty entry prevents the last menu persisting beyond its day.
     public static func entries(from now: Date, cachedData: Data?, inputs: ResolverInputs) -> [LunchWidgetEntry] {
         let today = DayKey(date: now)
+        let lunchMenu = LunchMenuLoader.load(cachedData: cachedData)
         return (0...7).map { offset in
             let day = today.advanced(by: offset)
             let timeline = resolveDay(day, inputs: inputs)
             let serving = timeline.isSchoolDay && timeline.family != .summer && !day.isWeekend
             let menu = offset < 7 ? LunchMenuLoader.menu(
-                LunchMenuLoader.load(cachedData: cachedData, on: day), for: day, inputs: inputs) : nil
+                lunchMenu, for: day, inputs: inputs) : nil
             return LunchWidgetEntry(date: offset == 0 ? now : day.date()!, day: day,
                                     menu: menu, isServingDay: serving)
         }

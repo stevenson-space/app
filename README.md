@@ -128,7 +128,9 @@ launch and deletes the plaintext copies only once the Keychain write succeeds.
    `https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-rotating/`,
    refetched on the same 1 h throttle. **Each year, update the bundled
    `Packages/ScheduleKit/Sources/ScheduleKit/Resources/lunch-menu.json`**:
-   `validFrom`/`validTo` (the menu's date range), `semesterSwitch` (when the
+   `validFrom`/`validTo` (the menu's date range; the rotation advances on Mondays,
+   starting with the week containing `validFrom`; align it with `rotatingMenuMap` in
+   `src/utils/food/rotating-map.ts`), `semesterSwitch` (when the
    `special` station moves to its second semester), and `offset` (which rotation
    week `validFrom` falls in). Outside that range the Lunch tab shows no menu.
 
