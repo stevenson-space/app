@@ -54,7 +54,7 @@ import Foundation
         #expect(items(.sides, in: tuesday) == ["Vegetable Medley", "Mashed Potato"])
     }
 
-    @Test(arguments: [" ?? No Information ", " No Information ", " TBD ", " no information ", " tbd "])
+    @Test(arguments: [" ?? No Information ", " No Information ", " None Specified ", " TBD ", " no information ", " tbd "])
     func placeholderItemsAreDroppedFromLiveData(placeholder: String) throws {
         let menu = try LunchMenuParser.parse(validManifest(
             comfort: [placeholder, "week-1", "week-2", "week-3"],
@@ -81,7 +81,7 @@ import Foundation
         #expect(items(.sides, in: friday) == ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"])
     }
 
-    @Test(arguments: [" ?? No Information ", " No Information ", " TBD ", " no information ", " tbd "])
+    @Test(arguments: [" ?? No Information ", " No Information ", " None Specified ", " TBD ", " no information ", " tbd "])
     func allPlaceholderStationsHaveNoMenu(placeholder: String) throws {
         var json = try #require(JSONSerialization.jsonObject(with: validManifest()) as? [String: Any])
         var stations: [String: Any] = [:]
