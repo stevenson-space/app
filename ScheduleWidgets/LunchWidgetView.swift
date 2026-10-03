@@ -29,7 +29,7 @@ struct LunchWidgetView: View {
                 } else if let section = menu.sections.first(where: { $0.station == entry.station }), !section.items.isEmpty {
                     category(section)
                 } else {
-                    empty(title: "Not on today’s menu", detail: "Check the app for more options.")
+                    empty(title: "Menu not posted", detail: "Check the app for other options.")
                 }
             } else if entry.lunch == nil {
                 empty(title: "Let’s do lunch", detail: "Open the app to load your menu.")
@@ -84,7 +84,8 @@ struct LunchWidgetView: View {
     }
 
     private func fullMenu(_ menu: LunchMenuDay) -> some View {
-        ViewThatFits(in: .vertical) {
+        let rows = menuRows(menu)
+        return ViewThatFits(in: .vertical) {
             // Only a complete menu needs to spread across the widget's height.
             if menu.sections.count == LunchMenuStation.allCases.count {
                 spaciousMenu(menu)
@@ -93,8 +94,8 @@ struct LunchWidgetView: View {
             menuGrid(menu, spacing: 13)
             menuGrid(menu, spacing: 7)
             HStack(alignment: .top, spacing: 18) {
-                menuColumn(menu, stations: [.comfort, .mindful, .international])
-                menuColumn(menu, stations: [.sides, .soup, .special])
+                menuColumn(rows.compactMap { $0.sections.first })
+                menuColumn(rows.compactMap { $0.sections.dropFirst().first })
             }
             .fixedSize(horizontal: false, vertical: true)
             // A future longer menu or accessibility text must not silently clip.
@@ -140,12 +141,10 @@ struct LunchWidgetView: View {
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
-    private func menuColumn(_ menu: LunchMenuDay, stations: [LunchMenuStation]) -> some View {
+    private func menuColumn(_ sections: [LunchMenuSection]) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            ForEach(stations, id: \.self) { station in
-                if let section = menu.sections.first(where: { $0.station == station }) {
-                    menuCell(section)
-                }
+            ForEach(sections) { section in
+                menuCell(section)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
