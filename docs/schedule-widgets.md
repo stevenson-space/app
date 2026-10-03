@@ -151,8 +151,8 @@ existing resolver, notification, personalization, storage, and sync tests:
 
 ```sh
 swift test --package-path Packages/ScheduleKit
-xcodebuild -project 'Stevenson Space Companion App.xcodeproj' \
-  -scheme 'Stevenson Space Companion App' \
+xcodebuild -project 'Stevenson Space.xcodeproj' \
+  -scheme 'Stevenson Space' \
   -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build
 ```
