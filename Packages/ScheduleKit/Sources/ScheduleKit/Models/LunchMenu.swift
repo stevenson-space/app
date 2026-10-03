@@ -92,8 +92,9 @@ public struct LunchMenu: Equatable, Sendable {
         ]
 
         // The website fills slots the kitchen hasn't planned with placeholders
-        // such as "?? No Information". Leave those stations off the day rather
-        // than listing the placeholder as a dish.
+        // such as "?? No Information" (its older menus used "None Specified").
+        // Leave those stations off the day rather than listing the placeholder
+        // as a dish.
         let availableSections = sections.compactMap { section -> LunchMenuSection? in
             let items = section.items
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -106,7 +107,7 @@ public struct LunchMenu: Equatable, Sendable {
     }
 
     private static func isPlaceholder(_ item: String) -> Bool {
-        item.hasPrefix("??") || ["no information", "tbd"].contains(item.lowercased())
+        item.hasPrefix("??") || ["no information", "none specified", "tbd"].contains(item.lowercased())
     }
 }
 
