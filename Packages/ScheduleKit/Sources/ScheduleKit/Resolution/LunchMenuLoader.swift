@@ -3,17 +3,22 @@ import Foundation
 /// Shared cache selection and serving-day rules for the app and widgets.
 public enum LunchMenuLoader {
     public static func load(cachedData: Data?) -> LunchMenu? {
-        load(cachedData: cachedData, bundledData: try? LunchMenuParser.bundledData())
+        loadWithSource(cachedData: cachedData).menu
     }
 
-    static func load(cachedData: Data?, bundledData: Data?) -> LunchMenu? {
+    /// Reports the source actually selected, independently of previous fetch successes.
+    public static func loadWithSource(cachedData: Data?) -> (menu: LunchMenu?, isBundled: Bool) {
+        loadWithSource(cachedData: cachedData, bundledData: try? LunchMenuParser.bundledData())
+    }
+
+    static func loadWithSource(cachedData: Data?, bundledData: Data?) -> (menu: LunchMenu?, isBundled: Bool) {
         let bundled = bundledData.flatMap { try? LunchMenuParser.parse($0) }
         let cached = cachedData.flatMap { try? LunchMenuParser.parse($0) }
-        guard let bundled else { return cached }
+        guard let bundled else { return (cached, false) }
         // A bundle update must not carry old dishes onto new rotation dates.
         guard let cached,
-              cached.rotationSettings == bundled.rotationSettings else { return bundled }
-        return cached
+              cached.rotationSettings == bundled.rotationSettings else { return (bundled, true) }
+        return (cached, false)
     }
 
     public static func menu(_ menu: LunchMenu?, for day: DayKey, inputs: ResolverInputs) -> LunchMenuDay? {

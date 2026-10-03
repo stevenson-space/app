@@ -7,9 +7,27 @@ import Testing
     func unavailableBundleFallsBackToValidCache(bundledData: Data?) throws {
         let cachedData = try LunchMenuParser.bundledData()
         let cached = try LunchMenuParser.parse(cachedData)
-        #expect(LunchMenuLoader.load(cachedData: cachedData, bundledData: bundledData) == cached)
-        #expect(LunchMenuLoader.load(cachedData: nil, bundledData: bundledData) == nil)
-        #expect(LunchMenuLoader.load(cachedData: Data("broken cache".utf8), bundledData: bundledData) == nil)
+        let loaded = LunchMenuLoader.loadWithSource(cachedData: cachedData, bundledData: bundledData)
+        #expect(loaded.menu == cached)
+        #expect(!loaded.isBundled)
+        for cachedData in [nil, Data("broken cache".utf8)] as [Data?] {
+            let unavailable = LunchMenuLoader.loadWithSource(cachedData: cachedData, bundledData: bundledData)
+            #expect(unavailable.menu == nil)
+            #expect(!unavailable.isBundled)
+        }
+    }
+
+    @Test(arguments: [nil, Data("broken".utf8)] as [Data?])
+    func fallbackSourceClearsWhenMatchingCacheIsAvailable(cachedData: Data?) throws {
+        let bundledData = try LunchMenuParser.bundledData()
+        let fallback = LunchMenuLoader.loadWithSource(cachedData: cachedData)
+        #expect(fallback.menu == (try LunchMenuParser.parse(bundledData)))
+        #expect(fallback.isBundled)
+
+        // Even identical dishes are cached data once a matching fetch is saved.
+        let refreshed = LunchMenuLoader.loadWithSource(cachedData: bundledData)
+        #expect(refreshed.menu == fallback.menu)
+        #expect(!refreshed.isBundled)
     }
 
     @Test func invalidCachesFallBackToBundledMenu() throws {
@@ -48,6 +66,7 @@ import Testing
         _ = try LunchMenuParser.parse(cached)
         let expected = changedSetting == "matching" ? matchingCache : bundled
         let loaded = try #require(LunchMenuLoader.load(cachedData: cached))
+        #expect(LunchMenuLoader.loadWithSource(cachedData: cached).isBundled == (changedSetting != "matching"))
         #expect(loaded == expected)
         #expect(loaded.menu(for: today) == expected.menu(for: today))
         #expect(loaded.menu(for: bundled.validTo.advanced(by: 1)) == nil)
