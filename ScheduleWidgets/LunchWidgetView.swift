@@ -85,7 +85,10 @@ struct LunchWidgetView: View {
 
     private func fullMenu(_ menu: LunchMenuDay) -> some View {
         ViewThatFits(in: .vertical) {
-            spaciousMenu(menu)
+            // Only a complete menu needs to spread across the widget's height.
+            if menu.sections.count == LunchMenuStation.allCases.count {
+                spaciousMenu(menu)
+            }
             menuGrid(menu, spacing: 20)
             menuGrid(menu, spacing: 13)
             menuGrid(menu, spacing: 7)
@@ -126,8 +129,8 @@ struct LunchWidgetView: View {
                         Spacer(minLength: 24)
                     }
                     HStack(alignment: .top, spacing: 22) {
-                        ForEach(row.sections.indices, id: \.self) { index in
-                            menuCell(row.sections[index], spacing: 9)
+                        ForEach(row.sections) { section in
+                            menuCell(section, spacing: 9)
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)
@@ -150,11 +153,11 @@ struct LunchWidgetView: View {
 
     private func menuGrid(_ menu: LunchMenuDay, spacing: CGFloat) -> some View {
         Grid(alignment: .topLeading, horizontalSpacing: 18, verticalSpacing: spacing) {
-            // Three paired rows preserve reading order and balance longer sides.
+            // Pack available stations in reading order, leaving no holes between them.
             ForEach(menuRows(menu), id: \.station) { row in
                 GridRow(alignment: .top) {
-                    ForEach(row.sections.indices, id: \.self) { index in
-                        menuCell(row.sections[index])
+                    ForEach(row.sections) { section in
+                        menuCell(section)
                     }
                 }
             }
@@ -162,34 +165,24 @@ struct LunchWidgetView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func menuRows(_ menu: LunchMenuDay) -> [(station: LunchMenuStation, sections: [LunchMenuSection?])] {
-        let pairs: [[LunchMenuStation]] = [[.comfort, .mindful], [.sides, .soup], [.international, .special]]
-        return pairs.compactMap { pair in
-            let sections = pair.map { station in
-                menu.sections.first { $0.station == station }
-            }
-            // Preserve both column positions, but skip wholly empty pairs.
-            return sections.allSatisfy { $0 == nil } ? nil : (station: pair[0], sections: sections)
+    private func menuRows(_ menu: LunchMenuDay) -> [(station: LunchMenuStation, sections: [LunchMenuSection])] {
+        stride(from: 0, to: menu.sections.count, by: 2).map { index in
+            let end = min(index + 2, menu.sections.count)
+            return (station: menu.sections[index].station, sections: Array(menu.sections[index..<end]))
         }
     }
 
-    @ViewBuilder
-    private func menuCell(_ section: LunchMenuSection?, spacing: CGFloat = 5) -> some View {
-        if let section {
-            VStack(alignment: .leading, spacing: spacing) {
-                Label(section.station.title, systemImage: section.station.icon)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(categoryAccent(section.station))
-                    .widgetAccentable()
-                menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items, spacing: spacing)
-                    .font(.subheadline.weight(.medium))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-        } else {
-            Color.clear.frame(height: 0)
-                .accessibilityHidden(true)
+    private func menuCell(_ section: LunchMenuSection, spacing: CGFloat = 5) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            Label(section.station.title, systemImage: section.station.icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(categoryAccent(section.station))
+                .widgetAccentable()
+            menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items, spacing: spacing)
+                .font(.subheadline.weight(.medium))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private func menuOptions(_ items: [String], spacing: CGFloat = 5) -> some View {
@@ -249,5 +242,5 @@ struct LunchWidgetBackground: View {
 #Preview("Lunch · missing stations", as: .systemLarge) {
     LunchMenuWidget()
 } timeline: {
-    LunchWidgetData.example(day: DayKey(year: 2026, month: 10, day: 12))
+    LunchWidgetData.example(day: DayKey(year: 2026, month: 11, day: 16))
 }

@@ -11,7 +11,9 @@ colors. Non-serving days use the schedule widget’s resting green gradient with
 primary text and icons. Headers omit the date. Each menu option starts on its own line, without
 inline bullets; the small widget shows a remaining-option count if the full list
 does not fit. The large menu reads in
-three paired rows. Menu options wrap at their natural size rather than shrinking.
+three paired rows when all stations are available. Partial menus pack the available
+stations into two columns at the top, keeping their original reading order and
+consistent row spacing. Menu options wrap at their natural size rather than shrinking.
 Unusually long future menus or larger accessibility text fall back to the
 category list with an explicit link to the full menu. Small widgets similarly
 signal when more text is available in the app. VoiceOver retains the entire
