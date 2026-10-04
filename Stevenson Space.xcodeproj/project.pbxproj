@@ -25,15 +25,15 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-        A19000000000000000000002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Stevenson Space Companion App/Assets.xcassets"; sourceTree = SOURCE_ROOT; };
-		905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Stevenson Space Companion App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+        A19000000000000000000002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Stevenson Space/Assets.xcassets"; sourceTree = SOURCE_ROOT; };
+		905622A8300F25D400F40B5E /* Stevenson Space.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Stevenson Space.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A18000000000000000000001 = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScheduleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		905622AA300F25D400F40B5E /* Stevenson Space Companion App */ = {
+		905622AA300F25D400F40B5E /* Stevenson Space */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Stevenson Space Companion App";
+			path = "Stevenson Space";
 			sourceTree = "<group>";
 		};
 		A18000000000000000000002 = {isa = PBXFileSystemSynchronizedRootGroup; path = ScheduleWidgets; sourceTree = "<group>"; };
@@ -58,7 +58,7 @@
 			children = (
                 A19000000000000000000002 /* Shared widget assets */,
 				A18000000000000000000002 /* ScheduleWidgets */,
-				905622AA300F25D400F40B5E /* Stevenson Space Companion App */,
+				905622AA300F25D400F40B5E /* Stevenson Space */,
 				905622A9300F25D400F40B5E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -66,7 +66,7 @@
 		905622A9300F25D400F40B5E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */,
+				905622A8300F25D400F40B5E /* Stevenson Space.app */,
                 A18000000000000000000001,
 			);
 			name = Products;
@@ -75,9 +75,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		905622A7300F25D400F40B5E /* Stevenson Space Companion App */ = {
+		905622A7300F25D400F40B5E /* Stevenson Space */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 905622B5300F25D600F40B5E /* Build configuration list for PBXNativeTarget "Stevenson Space Companion App" */;
+			buildConfigurationList = 905622B5300F25D600F40B5E /* Build configuration list for PBXNativeTarget "Stevenson Space" */;
 			buildPhases = (
 				905622A4300F25D400F40B5E /* Sources */,
 				905622A5300F25D400F40B5E /* Frameworks */,
@@ -90,15 +90,15 @@
                 A1800000000000000000000C,
 			);
 			fileSystemSynchronizedGroups = (
-				905622AA300F25D400F40B5E /* Stevenson Space Companion App */,
+				905622AA300F25D400F40B5E /* Stevenson Space */,
 			);
-			name = "Stevenson Space Companion App";
+			name = "Stevenson Space";
 			packageProductDependencies = (
 				905622C0300F25D400F40B5E /* ScheduleKit */,
 				90563A02300F25D400F40B5E /* StudentIDKit */,
 			);
-			productName = "Stevenson Space Companion App";
-			productReference = 905622A8300F25D400F40B5E /* Stevenson Space Companion App.app */;
+			productName = "Stevenson Space";
+			productReference = 905622A8300F25D400F40B5E /* Stevenson Space.app */;
 			productType = "com.apple.product-type.application";
 		};
 		A18000000000000000000003 /* ScheduleWidgets */ = {
@@ -131,7 +131,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 905622A3300F25D400F40B5E /* Build configuration list for PBXProject "Stevenson Space Companion App" */;
+			buildConfigurationList = 905622A3300F25D400F40B5E /* Build configuration list for PBXProject "Stevenson Space" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -150,7 +150,7 @@
 			projectRoot = "";
 			targets = (
                 A18000000000000000000003 /* ScheduleWidgets */,
-				905622A7300F25D400F40B5E /* Stevenson Space Companion App */,
+				905622A7300F25D400F40B5E /* Stevenson Space */,
 			);
 		};
 /* End PBXProject section */
@@ -311,6 +311,7 @@
 				DEVELOPMENT_TEAM = S3Y69M4V3C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -346,6 +347,7 @@
 				DEVELOPMENT_TEAM = S3Y69M4V3C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -379,7 +381,7 @@
                 DEVELOPMENT_TEAM = S3Y69M4V3C;
                 GENERATE_INFOPLIST_FILE = YES;
                 INFOPLIST_FILE = Config/WidgetInfo.plist;
-                INFOPLIST_KEY_CFBundleDisplayName = "School Schedule";
+                INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
                 IPHONEOS_DEPLOYMENT_TARGET = 18.0;
                 LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
                 MARKETING_VERSION = 1.0;
@@ -402,7 +404,7 @@
                 DEVELOPMENT_TEAM = S3Y69M4V3C;
                 GENERATE_INFOPLIST_FILE = YES;
                 INFOPLIST_FILE = Config/WidgetInfo.plist;
-                INFOPLIST_KEY_CFBundleDisplayName = "School Schedule";
+                INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
                 IPHONEOS_DEPLOYMENT_TARGET = 18.0;
                 LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
                 MARKETING_VERSION = 1.0;
@@ -418,7 +420,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		905622A3300F25D400F40B5E /* Build configuration list for PBXProject "Stevenson Space Companion App" */ = {
+		905622A3300F25D400F40B5E /* Build configuration list for PBXProject "Stevenson Space" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				905622B3300F25D600F40B5E /* Debug */,
@@ -427,7 +429,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		905622B5300F25D600F40B5E /* Build configuration list for PBXNativeTarget "Stevenson Space Companion App" */ = {
+		905622B5300F25D600F40B5E /* Build configuration list for PBXNativeTarget "Stevenson Space" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				905622B6300F25D600F40B5E /* Debug */,

@@ -17,7 +17,8 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A18000000000000000000003"
                BuildableName = "ScheduleWidgets.appex"
-               ReferencedContainer = "container:Stevenson Space Companion App.xcodeproj">
+               BlueprintName = "ScheduleWidgets"
+               ReferencedContainer = "container:Stevenson Space.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -29,8 +30,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "905622A7300F25D400F40B5E"
-               BuildableName = "Stevenson Space Companion App.app"
-               ReferencedContainer = "container:Stevenson Space Companion App.xcodeproj">
+               BuildableName = "Stevenson Space.app"
+               BlueprintName = "Stevenson Space"
+               ReferencedContainer = "container:Stevenson Space.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -60,8 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "905622A7300F25D400F40B5E"
-            BuildableName = "Stevenson Space Companion App.app"
-            ReferencedContainer = "container:Stevenson Space Companion App.xcodeproj">
+            BuildableName = "Stevenson Space.app"
+            BlueprintName = "Stevenson Space"
+            ReferencedContainer = "container:Stevenson Space.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <EnvironmentVariables>
@@ -95,8 +98,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "905622A7300F25D400F40B5E"
-            BuildableName = "Stevenson Space Companion App.app"
-            ReferencedContainer = "container:Stevenson Space Companion App.xcodeproj">
+            BuildableName = "Stevenson Space.app"
+            BlueprintName = "Stevenson Space"
+            ReferencedContainer = "container:Stevenson Space.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
