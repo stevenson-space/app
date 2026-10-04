@@ -7,7 +7,7 @@ import Foundation
 /// Only the main app constructs this store. Extensions use `readScheduleData()`
 /// instead, which reads schedule keys without initializing secrets or migrating.
 public final class SharedStore: @unchecked Sendable {
-    public static let appGroupID = "group.shankar.Stevenson-Space-Companion-App"
+    public static let appGroupID = "group.space.stevenson.shared"
     public static let defaultMapURL = URL(
         string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json")!
     /// The website publishes the lunch rotation as one file per station under
