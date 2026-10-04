@@ -20,19 +20,10 @@ struct LunchCategoryIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Lunch Menu"
     static let description = IntentDescription("Category selection applies only to small widgets.")
 
+    // Large widgets also show this picker: when a family's parameter summary
+    // lists no parameters, iOS shows all of them instead of hiding them.
     @Parameter(title: "Food Category (Small Only)", default: .comfort)
     var category: LunchCategory
-
-    static var parameterSummary: some ParameterSummary {
-        Switch(.widgetFamily) {
-            Case(.systemSmall) {
-                Summary { \.$category }
-            }
-            DefaultCase {
-                Summary()
-            }
-        }
-    }
 }
 
 struct LunchTimelineEntry: TimelineEntry {
