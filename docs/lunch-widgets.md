@@ -2,9 +2,11 @@
 
 **Lunch Menu** is one widget gallery entry with small and large sizes. Small
 shows one category; long-press it, choose Edit Widget, and select Comfort Food,
-Mindful, Sides, Soup, International, or Special. The category setting appears only
-for small widgets. Large shows all categories: multi-item sides and soups need
-more vertical space than medium provides at readable text sizes.
+Mindful, Sides, Soup, International, or Special. The setting is labeled Small Only
+because iOS also shows it when editing a large widget; a family-specific parameter
+summary cannot hide a widget's only parameter. Large ignores it and shows all
+categories: multi-item sides and soups need more vertical space than medium
+provides at readable text sizes.
 
 Menu days use the system background, an indigo header, and the app’s category
 colors. Non-serving days use the schedule widget’s resting green gradient with

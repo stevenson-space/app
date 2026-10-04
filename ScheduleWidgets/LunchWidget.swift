@@ -18,21 +18,12 @@ enum LunchCategory: String, AppEnum {
 
 struct LunchCategoryIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Lunch Menu"
-    static let description = IntentDescription("Choose a food category for the small widget. The large widget shows the full menu.")
+    static let description = IntentDescription("See what's for lunch at a glance.")
 
-    @Parameter(title: "Food Category", default: .comfort)
+    // Large widgets also show this picker: when a family's parameter summary
+    // lists no parameters, iOS shows all of them instead of hiding them.
+    @Parameter(title: "Food Category (Small Only)", default: .comfort)
     var category: LunchCategory
-
-    static var parameterSummary: some ParameterSummary {
-        Switch(.widgetFamily) {
-            Case(.systemSmall) {
-                Summary { \.$category }
-            }
-            DefaultCase {
-                Summary()
-            }
-        }
-    }
 }
 
 struct LunchTimelineEntry: TimelineEntry {
