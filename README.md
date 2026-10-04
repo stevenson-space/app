@@ -12,7 +12,11 @@ Screen icon uses **SHS Space**. Set the **Name** field in App Store Connect to
 
 The bundle identifiers, App Group, Keychain service, and `stevenson-space` URL
 scheme retain their existing values so the name change preserves app identity
-and access to saved data.
+and access to saved data. The target rename did change the Swift module name
+(`Stevenson_Space_Companion_App` → `Stevenson_Space`) and the executable name.
+Nothing persisted depends on either today; keep it that way, or pin
+`PRODUCT_MODULE_NAME`, before storing module-qualified type names such as
+`NSKeyedArchiver` class names.
 
 ## Architecture
 

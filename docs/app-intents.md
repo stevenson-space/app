@@ -98,11 +98,15 @@ actual matching capability. No Foundation Models integration or legacy SiriKit
 intent-definition file is needed for this action surface.
 
 The full app name is **Stevenson Space**. The installed display name is
-**SHS Space**, which the system uses for the `\(.applicationName)` phrase token
-and the Home Screen icon.
-[Bundle display name](https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundledisplayname).
+**SHS Space**, which appears under the Home Screen icon. The
+`\(.applicationName)` phrase token matches the display name and any app name
+synonyms, so `Config/AppInfo.plist` lists **Stevenson Space** under
+`INAlternativeAppNames` and either name works in a phrase.
+[Bundle display name](https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundledisplayname),
+[App name synonyms](https://developer.apple.com/documentation/sirikit/specifying-synonyms-for-your-app-name).
 
-Example phrases using the installed app's display name:
+Example phrases using the installed app's display name (each also works with
+“Stevenson Space”):
 
 - “Show my student ID in SHS Space.”
 - “What's my current class in SHS Space?”
@@ -115,7 +119,7 @@ Example phrases using the installed app's display name:
 
 Actual Siri phrase recognition depends on device, OS, language, and system
 configuration. The maintainer previously confirmed these actions work on a real
-device; repeat the checks below with the new **SHS Space** display name.
+device; repeat the checks below with both **SHS Space** and **Stevenson Space**.
 
 ## Validation
 
@@ -149,5 +153,6 @@ Use these system-level flows for future regression checks on supported iOS versi
    Repeat with two iPad windows: only the target window should present or dismiss
    its scanner, and a sheet in the other window should not block it.
 5. Run Open Tab for all four choices, including while the scanner is open.
-6. Ask Siri the example phrases and natural variations; check spoken answers
+6. Ask Siri the example phrases and natural variations, once with “SHS Space”
+   and once with “Stevenson Space”; check spoken answers
    using AirPods and compare standard Siri with Siri AI on supported devices.
