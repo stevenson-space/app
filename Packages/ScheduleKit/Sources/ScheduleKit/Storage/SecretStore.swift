@@ -37,8 +37,9 @@ public struct SecretStoreError: Error, CustomStringConvertible, Equatable {
 /// The Keychain, holding items that are device-only and unavailable while locked.
 ///
 /// `WhenUnlockedThisDeviceOnly` is the point of moving off `UserDefaults`: the
-/// item never leaves this device in a backup and is unreadable while the screen
-/// is locked, neither of which a preferences plist can claim.
+/// item is unreadable while the screen is locked and does not migrate to another
+/// device when restoring a backup. It can still be restored to the same device;
+/// this accessibility class does not exclude the item from backups.
 public struct KeychainSecretStore: SecretStore {
     private let service: String
 
