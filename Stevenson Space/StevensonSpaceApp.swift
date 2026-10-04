@@ -1,6 +1,6 @@
 //
-//  Stevenson_Space_Companion_AppApp.swift
-//  Stevenson Space Companion App
+//  StevensonSpaceApp.swift
+//  Stevenson Space
 //
 
 import SwiftUI
@@ -8,7 +8,7 @@ import ScheduleKit
 import AppIntents
 
 @main
-struct Stevenson_Space_Companion_AppApp: App {
+struct StevensonSpaceApp: App {
     @State private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
 
