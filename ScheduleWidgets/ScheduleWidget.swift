@@ -23,7 +23,7 @@ struct ScheduleWidgetEntry: TimelineEntry {
 }
 
 struct ScheduleProvider: TimelineProvider {
-    private static let logger = Logger(subsystem: "shankar.Stevenson-Space-Companion-App.ScheduleWidgets",
+    private static let logger = Logger(subsystem: "space.stevenson.ios.ScheduleWidgets",
                                        category: "Timeline")
 
     func placeholder(in context: Context) -> ScheduleWidgetEntry { Self.example }
