@@ -113,11 +113,16 @@ reports through its platform services, depending on your settings. These
 services are governed by Apple’s privacy policy and controls. The app does not
 include a separate analytics or crash-reporting service.
 
-If you install a beta through TestFlight, Apple automatically shares crash
-reports with the developer, even if device diagnostic sharing is off. Feedback
-you submit through TestFlight is also shared through Apple’s beta-testing
-service. We use diagnostic reports and feedback to troubleshoot and improve the
-app. Apple controls how long reports remain available in its services.
+If you install a beta through TestFlight, Apple automatically collects crash
+logs and usage information, such as session and crash counts, install date, and
+installed version, and shares them with us. You cannot opt out of this
+collection. If you were invited by email, we can also see your name and email
+address; if you joined through a public link, we cannot. Feedback and
+screenshots you submit through TestFlight are also shared with us. We use this
+information only to troubleshoot and improve the app and do not share it with
+third parties. Apple retains feedback for one year and may retain crash and
+usage data until the related bugs are resolved. See
+[Apple’s TestFlight privacy information](https://www.apple.com/legal/privacy/data/en/test-flight/).
 
 ## Retention, deletion, and your choices
 
