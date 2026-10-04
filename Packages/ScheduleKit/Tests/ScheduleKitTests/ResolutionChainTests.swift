@@ -77,7 +77,7 @@ import Foundation
         let instituteDay = resolveDay(day(2027, 1, 5), inputs: inputs)
         #expect(instituteDay.kind == .noSchool)
         #expect(instituteDay.scheduleLabel == "No School")
-        #expect(instituteDay.dayNote == "Institute Day")
+        #expect(instituteDay.dayNote == "Non-Attendance Day")
         #expect(instituteDay.provenance == .bundledNoSchool)
         #expect(!instituteDay.isSchoolDay)
         #expect(instituteDay.blocks.isEmpty)
