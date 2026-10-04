@@ -68,6 +68,44 @@ import Foundation
         #expect(spring.kind == .breakDay(label: "Spring Break"))
     }
 
+    @Test func classesResumeAfterWinterBreak() {
+        let inputs = TestSupport.inputs()
+        let lastBreakDay = resolveDay(day(2027, 1, 4), inputs: inputs)
+        #expect(lastBreakDay.kind == .breakDay(label: "Winter Break"))
+        #expect(lastBreakDay.blocks.isEmpty)
+
+        let nonAttendanceDay = resolveDay(day(2027, 1, 5), inputs: inputs)
+        #expect(nonAttendanceDay.kind == .noSchool)
+        #expect(nonAttendanceDay.scheduleLabel == "No School")
+        #expect(nonAttendanceDay.dayNote == "Non-Attendance Day")
+        #expect(nonAttendanceDay.provenance == .bundledNoSchool)
+        #expect(!nonAttendanceDay.isSchoolDay)
+        #expect(nonAttendanceDay.blocks.isEmpty)
+        #expect(nonAttendanceDay.moments.isEmpty)
+
+        let firstSchoolDay = resolveDay(day(2027, 1, 6), inputs: inputs)
+        #expect(firstSchoolDay.kind == .school)
+        #expect(firstSchoolDay.family == .standard)
+        #expect(firstSchoolDay.provenance == .defaultStandard)
+        #expect(firstSchoolDay.blocks.count == 8)
+    }
+
+    @Test func mapAndOverrideBeatBundledNonAttendanceDay() throws {
+        let target = day(2027, 1, 5)
+        let map = try TestSupport.map(#"{"Late Arrival": ["1/5/2027"]}"#)
+        let mapped = resolveDay(target, inputs: TestSupport.inputs(map: map))
+        #expect(mapped.kind == .school)
+        #expect(mapped.family == .lateArrival)
+        #expect(mapped.provenance == .remoteMap)
+
+        let overridden = resolveDay(target, inputs: TestSupport.inputs(map: map, overrides: [
+            target: DayOverride(day: target, type: .bell(family: .standard, rotation: nil))
+        ]))
+        #expect(overridden.kind == .school)
+        #expect(overridden.family == .standard)
+        #expect(overridden.provenance == .override)
+    }
+
     @Test func weekendsInSession() {
         let saturday = resolveDay(day(2026, 9, 19), inputs: TestSupport.inputs())
         #expect(saturday.kind == .weekend)

@@ -17,8 +17,9 @@ import Foundation
         let springDay = DayKey(year: 2027, month: 3, day: 24)
         #expect(year.breakContaining(winterDay)?.label == "Winter Break")
         #expect(year.breakContaining(springDay)?.label == "Spring Break")
-        #expect(year.breakContaining(DayKey(year: 2027, month: 1, day: 6))?.label == "Winter Break")
-        #expect(year.breakContaining(DayKey(year: 2027, month: 1, day: 7)) == nil)
+        #expect(year.breakContaining(DayKey(year: 2027, month: 1, day: 4))?.label == "Winter Break")
+        #expect(year.breakContaining(DayKey(year: 2027, month: 1, day: 5)) == nil)
+        #expect(year.breakContaining(DayKey(year: 2027, month: 1, day: 6)) == nil)
         #expect(year.breakContaining(DayKey(year: 2026, month: 10, day: 1)) == nil)
     }
 

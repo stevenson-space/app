@@ -33,7 +33,7 @@ public enum FreePeriodGrouping: Sendable {
 /// 1. Manual override for the date
 /// 2. Remote map entry (wins even outside school-year bounds — summer sessions)
 /// 3. Outside school year → no regular schedule (never defaults to Standard)
-/// 4. Bundled break range → break
+/// 4. Bundled non-attendance date or break range → no school or break
 /// 5. Weekend
 /// 6. In-session weekday → Standard, by design (not a guess)
 public func resolveDay(_ day: DayKey,
@@ -92,7 +92,12 @@ public func resolveDay(_ day: DayKey,
                             note: nil, provenance: .outsideYear)
     }
 
-    // 4. Bundled breaks.
+    // 4. Bundled non-attendance dates and breaks.
+    if let reason = year.noSchoolDays[day] {
+        return bareTimeline(day: day, kind: .noSchool, label: "No School",
+                            note: reason, provenance: .bundledNoSchool)
+    }
+
     if let schoolBreak = year.breakContaining(day) {
         return bareTimeline(day: day, kind: .breakDay(label: schoolBreak.label),
                             label: schoolBreak.label, note: nil, provenance: .bundledBreak)
