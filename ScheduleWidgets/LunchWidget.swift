@@ -20,7 +20,7 @@ struct LunchCategoryIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Lunch Menu"
     static let description = IntentDescription("Category selection applies only to small widgets.")
 
-    @Parameter(title: "Food Category", default: .comfort)
+    @Parameter(title: "Food Category (Small Only)", default: .comfort)
     var category: LunchCategory
 
     static var parameterSummary: some ParameterSummary {
