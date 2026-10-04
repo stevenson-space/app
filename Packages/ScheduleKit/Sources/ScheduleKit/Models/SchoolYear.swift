@@ -50,7 +50,7 @@ public struct SchoolYear: Hashable, Sendable {
     public let firstDay: DayKey
     public let lastDay: DayKey
     public let breaks: [SchoolBreak]
-    /// Bundled non-attendance dates and their reasons (e.g. Institute Day).
+    /// Bundled non-attendance dates and their reasons (e.g. Non-Attendance Day).
     public let noSchoolDays: [DayKey: String]
     /// Special annotations for in-session days (e.g. Freshman Orientation).
     public let labeledDays: [DayKey: String]
