@@ -79,6 +79,11 @@ storage and iOS file protection do not exclude the photo from backups. These
 backups are separate from Stevenson Space; the app does not upload your ID to us,
 and we do not receive or have access to your device backups.
 
+The extracted ID details use device-only Keychain protection. These items can
+be restored from a backup to the same device, but do not migrate when a backup
+is restored to a different device. “Device-only” does not mean excluded from
+all backups.
+
 You control backups through Apple’s device and backup settings. See
 [Apple’s guide to managing iCloud storage](https://support.apple.com/en-us/108922)
 for instructions on choosing which apps to back up and managing existing backups.

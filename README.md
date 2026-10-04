@@ -110,7 +110,8 @@ covers a device where Vision declines a symbol.
 
 The source screenshot is never stored — only the extracted fields and the
 cropped photo. The fields live in the Keychain (`sk.studentID`,
-`WhenUnlockedThisDeviceOnly`: not in backups, unreadable while locked), and the
+`WhenUnlockedThisDeviceOnly`: unreadable while locked and not migrated to another
+device when restoring a backup, but restorable to the same device), and the
 photo is a file in Application Support with complete file protection. The photo
 is not excluded from Apple device backups and may be backed up depending on the
 user’s settings; file protection does not prevent backup. See the
