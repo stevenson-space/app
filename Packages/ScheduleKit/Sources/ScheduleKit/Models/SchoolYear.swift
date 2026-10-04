@@ -50,15 +50,19 @@ public struct SchoolYear: Hashable, Sendable {
     public let firstDay: DayKey
     public let lastDay: DayKey
     public let breaks: [SchoolBreak]
+    /// Bundled non-attendance dates and their reasons (e.g. Institute Day).
+    public let noSchoolDays: [DayKey: String]
     /// Special annotations for in-session days (e.g. Freshman Orientation).
     public let labeledDays: [DayKey: String]
 
     public init(name: String, firstDay: DayKey, lastDay: DayKey,
-                breaks: [SchoolBreak], labeledDays: [DayKey: String] = [:]) {
+                breaks: [SchoolBreak], labeledDays: [DayKey: String] = [:],
+                noSchoolDays: [DayKey: String] = [:]) {
         self.name = name
         self.firstDay = firstDay
         self.lastDay = lastDay
         self.breaks = breaks
+        self.noSchoolDays = noSchoolDays
         self.labeledDays = labeledDays
     }
 
@@ -82,7 +86,7 @@ public enum SchoolYearCatalog {
         breaks: [
             SchoolBreak(
                 span: DateSpan(start: DayKey(year: 2026, month: 12, day: 21),
-                               end: DayKey(year: 2027, month: 1, day: 5)),
+                               end: DayKey(year: 2027, month: 1, day: 4)),
                 label: "Winter Break"),
             SchoolBreak(
                 span: DateSpan(start: DayKey(year: 2027, month: 3, day: 22),
@@ -91,6 +95,9 @@ public enum SchoolYearCatalog {
         ],
         labeledDays: [
             DayKey(year: 2026, month: 8, day: 12): "Freshman Orientation"
+        ],
+        noSchoolDays: [
+            DayKey(year: 2027, month: 1, day: 5): "Institute Day"
         ]
     )
 

@@ -104,6 +104,8 @@ public enum Provenance: Hashable, Sendable {
     case override
     /// Bundled break range (winter/spring break).
     case bundledBreak
+    /// Bundled non-attendance date.
+    case bundledNoSchool
     case weekend
     case outsideYear
 }
