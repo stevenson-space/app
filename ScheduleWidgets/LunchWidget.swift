@@ -97,7 +97,7 @@ struct LunchMenuWidget: Widget {
                 .widgetURL(LunchWidgetTimelinePlanner.lunchURL)
         }
         .configurationDisplayName("Lunch Menu")
-        .description("Choose a category for small widgets. Large widgets show the full menu.")
+        .description("See what's for lunch at a glance.")
         .supportedFamilies([.systemSmall, .systemLarge])
     }
 }
