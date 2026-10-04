@@ -6,7 +6,7 @@ reset its date to today. Live Activities and Dynamic Island are deferred.
 
 ## Data and timing
 
-Both targets use `group.shankar.Stevenson-Space-Companion-App`. Only the app writes
+Both targets use `group.space.stevenson.shared`. Only the app writes
 shared preferences, migrates old data, and fetches the remote calendar. On upgrade,
 the app imports both the old private suite preferences file and standard defaults,
 without replacing newer shared values. A separate readiness key prevents an
