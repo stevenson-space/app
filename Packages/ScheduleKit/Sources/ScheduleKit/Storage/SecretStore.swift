@@ -42,7 +42,7 @@ public struct SecretStoreError: Error, CustomStringConvertible, Equatable {
 public struct KeychainSecretStore: SecretStore {
     private let service: String
 
-    public init(service: String = "shankar.Stevenson-Space-Companion-App.secrets") {
+    public init(service: String = "space.stevenson.ios.secrets") {
         self.service = service
     }
 
