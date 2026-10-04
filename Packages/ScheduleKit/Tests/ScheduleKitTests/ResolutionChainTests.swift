@@ -70,15 +70,40 @@ import Foundation
 
     @Test func classesResumeAfterWinterBreak() {
         let inputs = TestSupport.inputs()
-        let lastBreakDay = resolveDay(day(2027, 1, 5), inputs: inputs)
+        let lastBreakDay = resolveDay(day(2027, 1, 4), inputs: inputs)
         #expect(lastBreakDay.kind == .breakDay(label: "Winter Break"))
         #expect(lastBreakDay.blocks.isEmpty)
+
+        let instituteDay = resolveDay(day(2027, 1, 5), inputs: inputs)
+        #expect(instituteDay.kind == .noSchool)
+        #expect(instituteDay.scheduleLabel == "No School")
+        #expect(instituteDay.dayNote == "Institute Day")
+        #expect(instituteDay.provenance == .bundledNoSchool)
+        #expect(!instituteDay.isSchoolDay)
+        #expect(instituteDay.blocks.isEmpty)
+        #expect(instituteDay.moments.isEmpty)
 
         let firstSchoolDay = resolveDay(day(2027, 1, 6), inputs: inputs)
         #expect(firstSchoolDay.kind == .school)
         #expect(firstSchoolDay.family == .standard)
         #expect(firstSchoolDay.provenance == .defaultStandard)
         #expect(firstSchoolDay.blocks.count == 8)
+    }
+
+    @Test func mapAndOverrideBeatBundledNonAttendanceDay() throws {
+        let target = day(2027, 1, 5)
+        let map = try TestSupport.map(#"{"Late Arrival": ["1/5/2027"]}"#)
+        let mapped = resolveDay(target, inputs: TestSupport.inputs(map: map))
+        #expect(mapped.kind == .school)
+        #expect(mapped.family == .lateArrival)
+        #expect(mapped.provenance == .remoteMap)
+
+        let overridden = resolveDay(target, inputs: TestSupport.inputs(map: map, overrides: [
+            target: DayOverride(day: target, type: .bell(family: .standard, rotation: nil))
+        ]))
+        #expect(overridden.kind == .school)
+        #expect(overridden.family == .standard)
+        #expect(overridden.provenance == .override)
     }
 
     @Test func weekendsInSession() {
