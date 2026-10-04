@@ -148,7 +148,7 @@ struct StudentIDView: View {
             .buttonStyle(.borderedProminent)
             .tint(StevensonPalette.accent)
 
-            Text("Nothing leaves your phone. Your ID data is stored securely in the app.")
+            Text("Your ID is processed on this device and isn’t uploaded to us.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
