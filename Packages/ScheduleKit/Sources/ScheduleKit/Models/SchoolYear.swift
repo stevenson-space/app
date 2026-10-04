@@ -82,7 +82,7 @@ public enum SchoolYearCatalog {
         breaks: [
             SchoolBreak(
                 span: DateSpan(start: DayKey(year: 2026, month: 12, day: 21),
-                               end: DayKey(year: 2027, month: 1, day: 6)),
+                               end: DayKey(year: 2027, month: 1, day: 5)),
                 label: "Winter Break"),
             SchoolBreak(
                 span: DateSpan(start: DayKey(year: 2027, month: 3, day: 22),
