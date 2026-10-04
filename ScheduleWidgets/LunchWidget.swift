@@ -18,7 +18,7 @@ enum LunchCategory: String, AppEnum {
 
 struct LunchCategoryIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Lunch Menu"
-    static let description = IntentDescription("Category selection applies only to small widgets.")
+    static let description = IntentDescription("See what's for lunch at a glance.")
 
     // Large widgets also show this picker: when a family's parameter summary
     // lists no parameters, iOS shows all of them instead of hiding them.
