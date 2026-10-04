@@ -18,9 +18,9 @@ enum LunchCategory: String, AppEnum {
 
 struct LunchCategoryIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Lunch Menu"
-    static let description = IntentDescription("Choose a food category for the small widget. The large widget shows the full menu.")
+    static let description = IntentDescription("The category picker only affects small lunch widgets. Large lunch widgets show the full menu.")
 
-    @Parameter(title: "Food Category", default: .comfort)
+    @Parameter(title: "Food Category (Small Only)", default: .comfort)
     var category: LunchCategory
 
     static var parameterSummary: some ParameterSummary {
@@ -97,7 +97,7 @@ struct LunchMenuWidget: Widget {
                 .widgetURL(LunchWidgetTimelinePlanner.lunchURL)
         }
         .configurationDisplayName("Lunch Menu")
-        .description("See what's for lunch at a glance.")
+        .description("The category picker only affects small lunch widgets. Large lunch widgets show the full menu.")
         .supportedFamilies([.systemSmall, .systemLarge])
     }
 }
