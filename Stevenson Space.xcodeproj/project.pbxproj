@@ -308,7 +308,7 @@
                 CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
                 INFOPLIST_FILE = Config/AppInfo.plist;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = S3Y69M4V3C;
+				DEVELOPMENT_TEAM = V6F94M3SXU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
@@ -344,7 +344,7 @@
                 CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
                 INFOPLIST_FILE = Config/AppInfo.plist;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = S3Y69M4V3C;
+				DEVELOPMENT_TEAM = V6F94M3SXU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
@@ -378,7 +378,7 @@
                 CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
                 CODE_SIGN_STYLE = Automatic;
                 CURRENT_PROJECT_VERSION = 1;
-                DEVELOPMENT_TEAM = S3Y69M4V3C;
+                DEVELOPMENT_TEAM = V6F94M3SXU;
                 GENERATE_INFOPLIST_FILE = YES;
                 INFOPLIST_FILE = Config/WidgetInfo.plist;
                 INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
@@ -401,7 +401,7 @@
                 CODE_SIGN_ENTITLEMENTS = Config/AppGroup.entitlements;
                 CODE_SIGN_STYLE = Automatic;
                 CURRENT_PROJECT_VERSION = 1;
-                DEVELOPMENT_TEAM = S3Y69M4V3C;
+                DEVELOPMENT_TEAM = V6F94M3SXU;
                 GENERATE_INFOPLIST_FILE = YES;
                 INFOPLIST_FILE = Config/WidgetInfo.plist;
                 INFOPLIST_KEY_CFBundleDisplayName = "SHS Space";
