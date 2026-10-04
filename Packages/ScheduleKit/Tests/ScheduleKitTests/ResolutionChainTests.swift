@@ -68,6 +68,19 @@ import Foundation
         #expect(spring.kind == .breakDay(label: "Spring Break"))
     }
 
+    @Test func classesResumeAfterWinterBreak() {
+        let inputs = TestSupport.inputs()
+        let lastBreakDay = resolveDay(day(2027, 1, 5), inputs: inputs)
+        #expect(lastBreakDay.kind == .breakDay(label: "Winter Break"))
+        #expect(lastBreakDay.blocks.isEmpty)
+
+        let firstSchoolDay = resolveDay(day(2027, 1, 6), inputs: inputs)
+        #expect(firstSchoolDay.kind == .school)
+        #expect(firstSchoolDay.family == .standard)
+        #expect(firstSchoolDay.provenance == .defaultStandard)
+        #expect(firstSchoolDay.blocks.count == 8)
+    }
+
     @Test func weekendsInSession() {
         let saturday = resolveDay(day(2026, 9, 19), inputs: TestSupport.inputs())
         #expect(saturday.kind == .weekend)
