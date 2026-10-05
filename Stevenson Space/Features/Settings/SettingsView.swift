@@ -151,8 +151,16 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section("About") {
-            LabeledContent("Version",
-                           value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+            LabeledContent {
+                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+            } label: {
+                Label {
+                    Text("Version")
+                } icon: {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(.tint)
+                }
+            }
             aboutLink("Support", systemImage: "questionmark.circle",
                       destination: URL(string: "https://stevenson.space/app/support")!)
             aboutLink("Privacy Policy", systemImage: "hand.raised",
