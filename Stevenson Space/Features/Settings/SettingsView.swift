@@ -153,9 +153,32 @@ struct SettingsView: View {
         Section("About") {
             LabeledContent("Version",
                            value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
-            Link("Support", destination: URL(string: "https://stevenson.space/app/support")!)
-            Link("Privacy Policy", destination: URL(string: "https://stevenson.space/app/privacy")!)
+            aboutLink("Support", systemImage: "questionmark.circle",
+                      destination: URL(string: "https://stevenson.space/app/support")!)
+            aboutLink("Privacy Policy", systemImage: "hand.raised",
+                      destination: URL(string: "https://stevenson.space/app/privacy")!)
         }
+    }
+
+    private func aboutLink(_ title: LocalizedStringKey, systemImage: String, destination: URL) -> some View {
+        Link(destination: destination) {
+            HStack {
+                Label {
+                    Text(title)
+                        .foregroundStyle(.primary)
+                } icon: {
+                    Image(systemName: systemImage)
+                        .foregroundStyle(.tint)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .accessibilityHint("Opens in your browser")
     }
 }
 
