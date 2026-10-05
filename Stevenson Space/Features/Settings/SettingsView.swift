@@ -158,16 +158,13 @@ struct SettingsView: View {
         } header: {
             Text("About")
         } footer: {
-            VStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
                 if let appVersion {
                     Text("Version \(appVersion)")
                 }
                 Text("Stevenson Space is an independent app. It is not affiliated with or endorsed by Adlai E. Stevenson High School.")
                     .font(.caption2)
             }
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 8)
         }
     }
 
