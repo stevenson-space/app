@@ -4,6 +4,9 @@ iOS bell-schedule app for Adlai E. Stevenson High School (D125). One glance answ
 **what period is it, how long until it changes, and what's next** — especially on the
 days the normal times are wrong (Late Arrival, finals, assemblies, e-learning days).
 
+Developed by [Shankar Krishnamurthy](https://github.com/ShankarK2009)
+ and [Rishabh Sinha](https://github.com/RishabhSinha2009).
+
 The full app name and App Store listing name are **Stevenson Space**. The Home
 Screen icon uses **SHS Space**. Set the **Name** field in App Store Connect to
 `Stevenson Space`; it is separate from the installed app's display name.
