@@ -164,8 +164,13 @@ struct SettingsView: View {
         }
     }
 
+    /// "1.0.0 (3)": the marketing version plus the build number, so builds
+    /// uploaded under the same version can be told apart.
     private var appVersion: String? {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        let info = Bundle.main.infoDictionary
+        guard let version = info?["CFBundleShortVersionString"] as? String else { return nil }
+        guard let build = info?["CFBundleVersion"] as? String else { return version }
+        return "\(version) (\(build))"
     }
 
     private func aboutLink(_ title: LocalizedStringKey, systemImage: String, destination: URL) -> some View {
