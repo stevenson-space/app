@@ -158,12 +158,14 @@ struct SettingsView: View {
         } header: {
             Text("About")
         } footer: {
-            Text("Version \(appVersion)")
+            if let appVersion {
+                Text("Version \(appVersion)")
+            }
         }
     }
 
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    private var appVersion: String? {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
     }
 
     private func aboutLink(_ title: LocalizedStringKey, systemImage: String, destination: URL) -> some View {
