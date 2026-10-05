@@ -8,7 +8,7 @@ Developed by [Shankar Krishnamurthy](https://github.com/ShankarK2009)
  and [Rishabh Sinha](https://github.com/RishabhSinha2009).
 
 Stevenson Space is an independent app. It is not affiliated with or endorsed by
-Adlai E. Stevenson High School or District 125.
+Adlai E. Stevenson High School.
 
 The full app name and App Store listing name are **Stevenson Space**. The Home
 Screen icon uses **SHS Space**. Set the **Name** field in App Store Connect to

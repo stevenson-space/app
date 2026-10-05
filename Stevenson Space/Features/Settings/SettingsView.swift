@@ -159,7 +159,7 @@ struct SettingsView: View {
             Text("About")
         } footer: {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Stevenson Space is an independent app. It is not affiliated with or endorsed by Adlai E. Stevenson High School or District 125.")
+                Text("Stevenson Space is an independent app. It is not affiliated with or endorsed by Adlai E. Stevenson High School.")
                 if let appVersion {
                     Text("Version \(appVersion)")
                 }
