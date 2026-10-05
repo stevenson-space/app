@@ -150,22 +150,20 @@ struct SettingsView: View {
     // MARK: - About
 
     private var aboutSection: some View {
-        Section("About") {
-            LabeledContent {
-                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
-            } label: {
-                Label {
-                    Text("Version")
-                } icon: {
-                    Image(systemName: "info.circle")
-                        .foregroundStyle(.tint)
-                }
-            }
+        Section {
             aboutLink("Support", systemImage: "questionmark.circle",
                       destination: URL(string: "https://stevenson.space/app/support")!)
             aboutLink("Privacy Policy", systemImage: "hand.raised",
                       destination: URL(string: "https://stevenson.space/app/privacy")!)
+        } header: {
+            Text("About")
+        } footer: {
+            Text("Version \(appVersion)")
         }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
 
     private func aboutLink(_ title: LocalizedStringKey, systemImage: String, destination: URL) -> some View {
@@ -173,7 +171,6 @@ struct SettingsView: View {
             HStack {
                 Label {
                     Text(title)
-                        .foregroundStyle(.primary)
                 } icon: {
                     Image(systemName: systemImage)
                         .foregroundStyle(.tint)
@@ -184,6 +181,9 @@ struct SettingsView: View {
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)
             }
+            // A concrete color: inside a Link, hierarchical styles like
+            // `.primary` resolve against the tint and render the title blue.
+            .foregroundStyle(Color.primary)
             .contentShape(Rectangle())
         }
         .accessibilityHint("Opens in your browser")
