@@ -150,10 +150,50 @@ struct SettingsView: View {
     // MARK: - About
 
     private var aboutSection: some View {
-        Section("About") {
-            LabeledContent("Version",
-                           value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+        Section {
+            aboutLink("Support", systemImage: "questionmark.circle",
+                      destination: URL(string: "https://stevenson.space/app/support")!)
+            aboutLink("Privacy Policy", systemImage: "hand.raised",
+                      destination: URL(string: "https://stevenson.space/app/privacy")!)
+        } header: {
+            Text("About")
+        } footer: {
+            if let appVersion {
+                Text("Version \(appVersion)")
+            }
         }
+    }
+
+    /// "1.0.0 (3)": the marketing version plus the build number, so builds
+    /// uploaded under the same version can be told apart.
+    private var appVersion: String? {
+        let info = Bundle.main.infoDictionary
+        guard let version = info?["CFBundleShortVersionString"] as? String else { return nil }
+        guard let build = info?["CFBundleVersion"] as? String else { return version }
+        return "\(version) (\(build))"
+    }
+
+    private func aboutLink(_ title: LocalizedStringKey, systemImage: String, destination: URL) -> some View {
+        Link(destination: destination) {
+            HStack {
+                Label {
+                    Text(title)
+                } icon: {
+                    Image(systemName: systemImage)
+                        .foregroundStyle(.tint)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+            // A concrete color: inside a Link, hierarchical styles like
+            // `.primary` resolve against the tint and render the title blue.
+            .foregroundStyle(Color.primary)
+            .contentShape(Rectangle())
+        }
+        .accessibilityHint("Opens in your browser")
     }
 }
 
