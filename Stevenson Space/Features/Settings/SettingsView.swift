@@ -153,6 +153,8 @@ struct SettingsView: View {
         Section("About") {
             LabeledContent("Version",
                            value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+            Link("Support", destination: URL(string: "https://stevenson.space/app/support")!)
+            Link("Privacy Policy", destination: URL(string: "https://stevenson.space/app/privacy")!)
         }
     }
 }
