@@ -232,8 +232,10 @@ private struct WeekdayButton: View {
     let accessibilityLabel: String
     let select: () -> Void
 
-    /// Grows with the day number, up to the width of its fifth of the strip.
-    @ScaledMetric(relativeTo: .title3) private var circleSize = 42.0
+    /// Grows with the day number, up to the width of its fifth of the strip,
+    /// but never below its 42-point default at small text sizes.
+    @ScaledMetric(relativeTo: .title3) private var scaledCircleSize = 42.0
+    private var circleSize: CGFloat { max(scaledCircleSize, 42) }
 
     var body: some View {
         Button {
