@@ -72,12 +72,18 @@ struct HomeHeaderView: View {
         }
     }
 
+    /// Only the icon takes the tint: tinted caption text on its own tinted
+    /// fill stays under 4.5:1 in light mode, even with Increase Contrast.
     private func badge(_ text: String, icon: String, tint: Color) -> some View {
-        Label(text, systemImage: icon)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(tint.opacity(0.15)))
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+        }
+        .font(.caption.weight(.medium))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(tint.opacity(0.15)))
     }
 }
