@@ -6,6 +6,7 @@ import SwiftUI
 struct ScheduleCardRow<Trailing: View>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .subheadline) private var periodColumnWidth = 44.0
+    @ScaledMetric(relativeTo: .title2) private var emojiColumnWidth = 36.0
 
     let emoji: String
     let title: String
@@ -67,7 +68,7 @@ struct ScheduleCardRow<Trailing: View>: View {
 
                 Text(emoji)
                     .font(.title2)
-                    .frame(width: 36)
+                    .frame(width: emojiColumnWidth)
             }
 
             VStack(alignment: .leading, spacing: 3) {
