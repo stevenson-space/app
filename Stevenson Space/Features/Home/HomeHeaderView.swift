@@ -23,7 +23,7 @@ struct HomeHeaderView: View {
                 let accent = ScheduleStyle.accent(for: timeline.family)
                 Label(timeline.scheduleLabel, systemImage: ScheduleStyle.icon(for: timeline.family))
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.contrasting(on: accent))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(Capsule().fill(accent))
