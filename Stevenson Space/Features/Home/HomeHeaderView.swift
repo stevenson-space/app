@@ -5,6 +5,7 @@ import ScheduleKit
 /// anything else, with honesty badges for overrides and uncertain rotations.
 struct HomeHeaderView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorSchemeContrast) private var contrast
     let timeline: DayTimeline
     @State private var showsOverrideEditor = false
 
@@ -20,7 +21,7 @@ struct HomeHeaderView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             } else {
-                let accent = ScheduleStyle.accent(for: timeline.family)
+                let accent = scheduleBadgeFill
                 Label(timeline.scheduleLabel, systemImage: ScheduleStyle.icon(for: timeline.family))
                     .font(.headline)
                     .foregroundStyle(.contrasting(on: accent))
@@ -53,6 +54,26 @@ struct HomeHeaderView: View {
                         }
                     }
             }
+        }
+    }
+
+    /// Opaque badge fills, separate from the adaptive accents used for text
+    /// elsewhere. Each custom fill gives white text at least 4.5:1 contrast.
+    private var scheduleBadgeFill: Color {
+        switch timeline.family {
+        case .lateArrival:
+            // Match the increased-contrast purple in both appearances/settings.
+            return Color(.sRGB, red: 176 / 255, green: 47 / 255, blue: 194 / 255)
+        case .odyssey:
+            return contrast == .increased
+                ? Color(.sRGB, red: 144 / 255, green: 37 / 255, blue: 72 / 255)
+                : Color(.sRGB, red: 174 / 255, green: 52 / 255, blue: 91 / 255)
+        case .activityPeriod where contrast == .increased:
+            return Color(.sRGB, red: 0, green: 101 / 255, blue: 113 / 255)
+        case .pmAssembly where contrast == .increased:
+            return Color(.sRGB, red: 157 / 255, green: 66 / 255, blue: 14 / 255)
+        default:
+            return ScheduleStyle.accent(for: timeline.family)
         }
     }
 
