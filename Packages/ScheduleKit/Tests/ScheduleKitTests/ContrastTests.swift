@@ -33,7 +33,7 @@ import Testing
             environment.colorScheme = scheme
             for setting: ColorSchemeContrast in [.standard, .increased] {
                 let families: [BellFamily] = setting == .increased
-                    ? [.lateArrival, .odyssey, .activityPeriod, .pmAssembly]
+                    ? [.lateArrival, .odyssey, .activityPeriod, .pmAssembly, .summer]
                     : [.lateArrival, .odyssey]
                 for family in families {
                     let fill = ScheduleStyle.badgeFill(for: family, contrast: setting)

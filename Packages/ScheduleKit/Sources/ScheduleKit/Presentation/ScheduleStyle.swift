@@ -30,7 +30,8 @@ public enum ScheduleStyle {
                 : Color(.sRGB, red: 174 / 255, green: 52 / 255, blue: 91 / 255)
         case .activityPeriod where contrast == .increased:
             return Color(.sRGB, red: 0, green: 101 / 255, blue: 113 / 255)
-        case .pmAssembly where contrast == .increased:
+        // Both families share the orange accent, so they share its badge too.
+        case .pmAssembly where contrast == .increased, .summer where contrast == .increased:
             return Color(.sRGB, red: 157 / 255, green: 66 / 255, blue: 14 / 255)
         default:
             return accent(for: family)
