@@ -33,7 +33,7 @@ struct HomeHeaderView: View {
             if let note = timeline.dayNote {
                 Text(note)
                     .font(.footnote.weight(.medium))
-                    .foregroundStyle(ScheduleStyle.accent(for: timeline.family))
+                    .foregroundStyle(.primary)
             }
 
             badges
