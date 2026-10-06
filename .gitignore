@@ -67,6 +67,7 @@ fastlane/test_output
 
 # Local tooling and package state
 .claude/
+/.agents/skills/asc-*/
 .swiftpm/
 
 # Local security review output. The repository is public, and these reports
@@ -77,8 +78,10 @@ security_best_practices_report.md
 build/
 
 # Local secrets and signing credentials
+/.asc/config.json
 .env
 .env.*
+*.p8
 *.p12
 *.mobileprovision
 *.provisionprofile
