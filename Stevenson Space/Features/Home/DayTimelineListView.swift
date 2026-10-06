@@ -39,6 +39,7 @@ struct DayTimelineListView: View {
         return VStack(spacing: 8) {
             ForEach(blocks) { block in
                 let isCurrent = now.map { $0 >= block.start && $0 < block.end } ?? false
+                let tint = ScheduleStyle.tint(for: block.role)
                 ScheduleCardRow(
                     emoji: ScheduleStyle.emoji(for: block, config: config),
                     title: block.displayName,
@@ -48,15 +49,15 @@ struct DayTimelineListView: View {
                     minimumHeight: max(0, (minimumHeight - CGFloat(max(blocks.count - 1, 0)) * 8)
                                        / CGFloat(max(blocks.count, 1))),
                     dimmed: now.map { $0 >= block.end } ?? false,
-                    highlightTint: isCurrent ? ScheduleStyle.tint(for: block.role) : nil
+                    highlightTint: isCurrent ? tint : nil
                 ) {
                     if isCurrent {
                         Text("NOW")
                             .font(.caption.weight(.heavy))
-                            .foregroundStyle(.contrasting(on: ScheduleStyle.tint(for: block.role)))
+                            .foregroundStyle(.contrasting(on: tint))
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4)
-                            .background(Capsule().fill(ScheduleStyle.tint(for: block.role)))
+                            .background(Capsule().fill(tint))
                     } else if let now, block.id == nextUpcomingID {
                         Text(TimeDisplay.untilChip(block.start.timeIntervalSince(now)))
                             .font(.subheadline.weight(.semibold))
