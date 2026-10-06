@@ -224,8 +224,10 @@ struct BlockEditSheet: View {
                     .submitLabel(.done)
                     .onChange(of: name) { oldName, newName in
                         guard newName.contains(where: \.isNewline) else { return }
-                        if newName.filter({ !$0.isNewline }) == oldName {
-                            // Return, wherever the cursor is: drop the break.
+                        let typed = Self.insertedText(from: oldName, to: newName)
+                        if !typed.isEmpty && typed.allSatisfy(\.isNewline) {
+                            // Return, wherever the cursor is and even over a
+                            // selection: keep the name as it was.
                             name = oldName
                             nameFocused = false
                         } else {
@@ -488,6 +490,17 @@ struct BlockEditSheet: View {
                 config.customizations[key] = customization
             }
         }
+    }
+
+    /// The text an edit put in place of whatever it replaced, found by
+    /// trimming what the old and new strings share at each end.
+    private static func insertedText(from old: String, to new: String) -> Substring {
+        let prefix = zip(old, new).prefix { $0 == $1 }.count
+        let suffix = zip(old.reversed(), new.reversed())
+            .prefix(min(old.count, new.count) - prefix)
+            .prefix { $0 == $1 }
+            .count
+        return new.dropFirst(prefix).dropLast(suffix)
     }
 }
 
