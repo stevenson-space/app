@@ -99,6 +99,7 @@ struct BlockEditSheet: View {
     @State private var emoji = ""
     @State private var showingEmojiPicker = false
     @State private var loaded = false
+    @FocusState private var nameFocused: Bool
 
     private var number: Int { target.period }
 
@@ -215,7 +216,17 @@ struct BlockEditSheet: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Choose class emoji")
                 .accessibilityValue(emoji.isEmpty ? "Automatic" : emoji)
-                TextField("Class name (e.g. AP Biology)", text: $name)
+                // Vertical so long names wrap at large text sizes instead of
+                // shrinking to fit. That makes Return insert a line break, so
+                // treat it as Done and keep pasted names on one line.
+                TextField("Class name (e.g. AP Biology)", text: $name, axis: .vertical)
+                    .focused($nameFocused)
+                    .submitLabel(.done)
+                    .onChange(of: name) { _, newName in
+                        guard newName.contains(where: \.isNewline) else { return }
+                        name = newName.split(whereSeparator: \.isNewline).joined(separator: " ")
+                        nameFocused = false
+                    }
             }
             TextField("Room", text: $room)
         }
