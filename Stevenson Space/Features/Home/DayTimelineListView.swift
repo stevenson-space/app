@@ -53,7 +53,7 @@ struct DayTimelineListView: View {
                     if isCurrent {
                         Text("NOW")
                             .font(.caption.weight(.heavy))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.contrasting(on: ScheduleStyle.tint(for: block.role)))
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4)
                             .background(Capsule().fill(ScheduleStyle.tint(for: block.role)))
