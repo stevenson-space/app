@@ -222,10 +222,15 @@ struct BlockEditSheet: View {
                 TextField("Class name (e.g. AP Biology)", text: $name, axis: .vertical)
                     .focused($nameFocused)
                     .submitLabel(.done)
-                    .onChange(of: name) { _, newName in
+                    .onChange(of: name) { oldName, newName in
                         guard newName.contains(where: \.isNewline) else { return }
-                        name = newName.split(whereSeparator: \.isNewline).joined(separator: " ")
-                        nameFocused = false
+                        if newName.filter({ !$0.isNewline }) == oldName {
+                            // Return, wherever the cursor is: drop the break.
+                            name = oldName
+                            nameFocused = false
+                        } else {
+                            name = newName.split(whereSeparator: \.isNewline).joined(separator: " ")
+                        }
                     }
             }
             TextField("Room", text: $room)
