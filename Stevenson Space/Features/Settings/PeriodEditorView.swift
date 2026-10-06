@@ -39,6 +39,7 @@ struct PeriodEditorListView: View {
         .navigationTitle("My Schedule")
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
+                .id(target.id)
                 .presentationDetents([.medium, .large])
         }
     }
