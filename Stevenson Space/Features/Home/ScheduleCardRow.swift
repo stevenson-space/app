@@ -22,6 +22,10 @@ struct ScheduleCardRow<Trailing: View>: View {
 
     private var hasPeriodColumn: Bool { periodLabel != nil || showsPeriodBadge }
 
+    /// Rows without a period column stay on one line at standard sizes; at
+    /// accessibility sizes one line leaves only a few characters, so they wrap.
+    private var wrapsText: Bool { hasPeriodColumn || dynamicTypeSize.isAccessibilitySize }
+
     private var badgeTint: Color {
         highlightTint ?? .primary
     }
@@ -70,12 +74,12 @@ struct ScheduleCardRow<Trailing: View>: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(.primary)
-                    .lineLimit(hasPeriodColumn ? nil : 1)
+                    .lineLimit(wrapsText ? nil : 1)
                 Text(subtitle)
                     .font(.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                    .lineLimit(hasPeriodColumn ? nil : 1)
+                    .lineLimit(wrapsText ? nil : 1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
