@@ -16,6 +16,28 @@ public enum ScheduleStyle {
         }
     }
 
+    /// Opaque fills for schedule badges, distinct from standalone text accents.
+    /// Custom variants are tuned for white labels (at least 4.5:1); use
+    /// `ContrastingForeground` to select the label color for the resolved fill.
+    public static func badgeFill(for family: BellFamily?, contrast: ColorSchemeContrast) -> Color {
+        switch family {
+        case .lateArrival:
+            // Match the increased-contrast purple in both appearances/settings.
+            return Color(.sRGB, red: 176 / 255, green: 47 / 255, blue: 194 / 255)
+        case .odyssey:
+            return contrast == .increased
+                ? Color(.sRGB, red: 144 / 255, green: 37 / 255, blue: 72 / 255)
+                : Color(.sRGB, red: 174 / 255, green: 52 / 255, blue: 91 / 255)
+        case .activityPeriod where contrast == .increased:
+            return Color(.sRGB, red: 0, green: 101 / 255, blue: 113 / 255)
+        // Both families share the orange accent, so they share its badge too.
+        case .pmAssembly where contrast == .increased, .summer where contrast == .increased:
+            return Color(.sRGB, red: 157 / 255, green: 66 / 255, blue: 14 / 255)
+        default:
+            return accent(for: family)
+        }
+    }
+
     public static func icon(for family: BellFamily?) -> String {
         switch family {
         case .standard, nil: return "clock"

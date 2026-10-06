@@ -5,6 +5,7 @@ import ScheduleKit
 /// anything else, with honesty badges for overrides and uncertain rotations.
 struct HomeHeaderView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorSchemeContrast) private var contrast
     let timeline: DayTimeline
     @State private var showsOverrideEditor = false
 
@@ -20,10 +21,10 @@ struct HomeHeaderView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             } else {
-                let accent = ScheduleStyle.accent(for: timeline.family)
+                let accent = ScheduleStyle.badgeFill(for: timeline.family, contrast: contrast)
                 Label(timeline.scheduleLabel, systemImage: ScheduleStyle.icon(for: timeline.family))
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.contrasting(on: accent))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(Capsule().fill(accent))
@@ -32,7 +33,7 @@ struct HomeHeaderView: View {
             if let note = timeline.dayNote {
                 Text(note)
                     .font(.footnote.weight(.medium))
-                    .foregroundStyle(ScheduleStyle.accent(for: timeline.family))
+                    .foregroundStyle(.primary)
             }
 
             badges
@@ -72,12 +73,18 @@ struct HomeHeaderView: View {
         }
     }
 
+    /// Only the icon takes the tint: tinted caption text on its own tinted
+    /// fill stays under 4.5:1 in light mode, even with Increase Contrast.
     private func badge(_ text: String, icon: String, tint: Color) -> some View {
-        Label(text, systemImage: icon)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(tint.opacity(0.15)))
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+        }
+        .font(.caption.weight(.medium))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(tint.opacity(0.15)))
     }
 }
