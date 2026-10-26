@@ -4,14 +4,15 @@ import FoundationModels
 /// Which Siri this iPhone shows, so the tour can draw a matching glyph.
 ///
 /// No API reports Siri's look directly. Apple Intelligence availability is the
-/// public signal: Siri without it is the orb, Siri with it lights the screen
-/// edge, and on iOS 27 it becomes Siri AI in the Dynamic Island.
+/// public signal: Siri without it is the orb, and Siri with it lights the
+/// screen edge. Siri AI, in the Dynamic Island, is a separate opt-in beta on
+/// iOS 27 that no API reveals, so the tour asks when it's possible.
 enum SiriGeneration: String {
     /// The orb at the bottom of the screen.
     case classic
-    /// iOS 18.1 to 26 with Apple Intelligence: the glowing screen edge.
+    /// Apple Intelligence without Siri AI: the glowing screen edge.
     case appleIntelligence
-    /// iOS 27 with Apple Intelligence: a glass bubble in the Dynamic Island.
+    /// iOS 27's opt-in Siri AI: a glass bubble in the Dynamic Island.
     case siriAI
 
     static var current: SiriGeneration {
@@ -22,9 +23,14 @@ enum SiriGeneration: String {
             return forced
         }
         #endif
-        guard appleIntelligenceIsOn else { return .classic }
-        if #available(iOS 27, *) { return .siriAI }
-        return .appleIntelligence
+        return appleIntelligenceIsOn ? .appleIntelligence : .classic
+    }
+
+    /// Whether this iPhone could be using Siri AI. It needs iOS 27 and Apple
+    /// Intelligence, then a waitlisted opt-in in Settings › Siri.
+    static var mightBeSiriAI: Bool {
+        guard #available(iOS 27, *) else { return false }
+        return appleIntelligenceIsOn
     }
 
     private static var appleIntelligenceIsOn: Bool {

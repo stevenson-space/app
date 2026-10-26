@@ -14,6 +14,21 @@ struct OnboardingSiriPage: View {
                 eyebrow: "Siri",
                 title: "Just ask Siri",
                 message: "Ask about your classes, lunch, or your student ID, and Siri answers without opening the app. Say Stevenson Space or SHS Space.")
+            if SiriGeneration.mightBeSiriAI {
+                // Siri AI is an opt-in no API reveals, so the student says.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Which Siri do you use?")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Picker("Which Siri do you use?", selection: $generation) {
+                        Text("Siri").tag(SiriGeneration.appleIntelligence)
+                        Text("Siri AI").tag(SiriGeneration.siriAI)
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .padding(.top, 4)
+            }
             ShortcutsLink()
                 .shortcutsLinkStyle(.automaticOutline)
                 .padding(.top, 4)

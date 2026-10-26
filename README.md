@@ -184,12 +184,13 @@ classes go through `resolveDay`, so every time shown is a real bell.
 The Siri page plays the App Shortcut phrases and their answers, with Siri drawn
 the way the device shows it. `SiriGeneration` uses Foundation Models'
 availability as the Apple Intelligence signal on iOS 26 and later: no Apple
-Intelligence means the classic orb, Apple Intelligence before iOS 27 means the
-screen-edge glow, and iOS 27 means Siri AI in the Dynamic Island. iOS 18 has
-no such API, so it falls back to the device model (iPhone 15 Pro or later on
-18.1+). Foundation Models is weak-linked, so iOS 18 launches without it. The
-glyphs are original drawings rather than Apple artwork, and the answers are
-attributed to the app.
+Intelligence means the classic orb, and Apple Intelligence means the
+screen-edge glow. Siri AI in the Dynamic Island is a separate, waitlisted
+opt-in on iOS 27 that no API reveals, so on iOS 27 with Apple Intelligence the
+page asks which Siri the student uses. iOS 18 has no availability API, so it
+falls back to the device model (iPhone 15 Pro or later on 18.1+). Foundation
+Models is weak-linked, so iOS 18 launches without it. The glyphs are original
+drawings rather than Apple artwork, and the answers are attributed to the app.
 
 Completion is stored in standard defaults (`onboardingCompleted`), not the App
 Group. Opening a tab, widget link, or the scanner from Siri closes the tour
