@@ -5,7 +5,7 @@ import ScheduleKit
 @Observable
 final class OnboardingFlow {
     enum Step: Int, CaseIterable, Identifiable {
-        case welcome, countdown, specialDays, lunch, studentID, widgets,
+        case welcome, countdown, specialDays, lunch, studentID, widgets, siri,
              classes, notifications, finish
 
         var id: Self { self }
@@ -22,7 +22,7 @@ final class OnboardingFlow {
         self.finish = finish
     }
 
-    var isTour: Bool { (Step.countdown...Step.widgets).contains(step) }
+    var isTour: Bool { (Step.countdown...Step.siri).contains(step) }
 
     func advance() { step = Step(rawValue: step.rawValue + 1) ?? .finish }
     func back() { step = Step(rawValue: step.rawValue - 1) ?? .welcome }
@@ -95,6 +95,7 @@ struct OnboardingView: View {
         case .lunch: OnboardingLunchPage()
         case .studentID: OnboardingStudentIDPage()
         case .widgets: OnboardingWidgetsPage()
+        case .siri: OnboardingSiriPage()
         case .classes: OnboardingClassesPage()
         case .notifications: OnboardingNotificationsPage()
         case .finish: OnboardingFinishPage()
