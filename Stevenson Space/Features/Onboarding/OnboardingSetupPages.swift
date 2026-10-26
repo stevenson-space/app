@@ -114,6 +114,14 @@ struct OnboardingNotificationsPage: View {
                     .onboardingSecondary()
             }
         }
+        .onChange(of: isOn) { _, isOn in
+            // Both live switches just went off. Keep them off rather than
+            // showing the pre-permission picks again.
+            if !isOn {
+                beforeBell = false
+                specialMornings = false
+            }
+        }
     }
 
     /// Before permission, the switches only pick what to turn on. Afterward
@@ -121,8 +129,7 @@ struct OnboardingNotificationsPage: View {
     private var choices: some View {
         VStack(spacing: 0) {
             Toggle(isOn: isOn ? liveBinding(\.blockEndEnabled) : $beforeBell) {
-                choiceLabel("Before each period ends",
-                            detail: "\(model.prefs.blockEndLeadMinutes) minutes before the bell, with where you're headed next")
+                choiceLabel("Before each period ends", detail: leadTime)
             }
             .padding(.horizontal, 16)
             Divider().padding(.leading, 16)
@@ -148,6 +155,15 @@ struct OnboardingNotificationsPage: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 10)
+    }
+
+    /// Settings allows 0 to 15 minutes, and calls 0 "at the bell".
+    private var leadTime: String {
+        switch model.prefs.blockEndLeadMinutes {
+        case 0: "At the bell, with where you're headed next"
+        case 1: "1 minute before the bell, with where you're headed next"
+        case let minutes: "\(minutes) minutes before the bell, with where you're headed next"
+        }
     }
 
     private var morningTime: String {
