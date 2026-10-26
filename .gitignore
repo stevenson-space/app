@@ -67,8 +67,13 @@ fastlane/test_output
 
 # Local tooling and package state
 .claude/
-/.agents/skills/asc-*/
+/.agents/
 .swiftpm/
+
+# Local App Store launch workspace. It holds App Store Connect snapshots,
+# competitor screenshots and unpublished launch drafts; keep it out of the
+# public repository.
+/launch/
 
 # Local security review output. The repository is public, and these reports
 # name weaknesses by file and line; keep them out of it.
