@@ -28,10 +28,23 @@ private struct SiriRequest {
     enum Answer {
         case text(String)
         case studentID
+
+        /// The answer as words: the card's text, and what VoiceOver reads.
+        var spoken: String {
+            switch self {
+            case .text(let text): text
+            case .studentID: "Your student ID is opening."
+            }
+        }
     }
 
     let phrase: String
     let answer: Answer
+
+    /// The request and its answer, as VoiceOver reads the demo.
+    var spokenExchange: String {
+        "\(phrase.hasSuffix("?") ? phrase : phrase + ".") \(answer.spoken)"
+    }
 
     /// When the requests happen: mid-Chemistry on the sample Monday.
     static let moment = HourMinute(hour: 10, minute: 52)
@@ -59,18 +72,20 @@ private struct SiriRequest {
             }
         }
 
-        // The sample Monday's menu matches the clock behind Siri; once the
-        // bundled menu moves past it, the next real lunch stands in.
-        let lunchDay = model.lunchMenu(for: OnboardingSample.day) != nil
-            ? OnboardingSample.day
-            : model.preferredLunchDay(startingAt: model.today)
-        if let menu = model.lunchMenu(for: lunchDay) {
-            let stations = menu.sections.prefix(2)
+        // The sample Monday's menu matches the clock behind Siri. Once the
+        // bundled menu moves past it, the next real lunch stands in; with no
+        // menu at all, the answer is the one the shortcut gives then.
+        let menuDay = [OnboardingSample.day, model.preferredLunchDay(startingAt: model.today)]
+            .first { model.lunchMenu(for: $0) != nil }
+        let lunch = menuDay.flatMap { model.lunchMenu(for: $0) }.map { menu in
+            menu.sections.prefix(2)
                 .map { "\($0.station.title): \($0.items.joined(separator: ", "))" }
                 .joined(separator: "\n")
-            requests.append(SiriRequest(phrase: "What's for lunch in SHS Space?",
-                                        answer: .text("Lunch for \(TimeDisplay.shortDayLabel(lunchDay)).\n\(stations)")))
         }
+        let lunchDay = TimeDisplay.shortDayLabel(menuDay ?? OnboardingSample.day)
+        requests.append(SiriRequest(
+            phrase: "What's for lunch in SHS Space?",
+            answer: .text("Lunch for \(lunchDay).\n\(lunch ?? "The lunch menu is unavailable for this date.")")))
 
         requests.append(SiriRequest(phrase: "Show my student ID in Stevenson Space",
                                     answer: .studentID))
@@ -134,12 +149,12 @@ private struct SiriDemo: View {
         .padding(.horizontal, 24)
         .environment(\.colorScheme, .dark)
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
-        .animation(.spring(duration: 0.55, bounce: 0.15), value: beat)
+        .animation(reduceMotion ? nil : .spring(duration: 0.55, bounce: 0.15), value: beat)
         .animation(.smooth(duration: 0.2), value: words)
         .task(id: isActive) { await play(count: requests.count) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Things to ask Siri")
-        .accessibilityValue(requests.map(\.phrase).joined(separator: ". "))
+        .accessibilityValue(requests.map(\.spokenExchange).joined(separator: " "))
     }
 
     /// What the student said, word by word, then the app's answer.
@@ -256,7 +271,7 @@ private struct SiriAnswerCard: View {
                 HStack(spacing: 12) {
                     StudentIDCardView(content: .placeholder)
                         .frame(width: 96)
-                    Text("Your student ID is opening.")
+                    Text(answer.spoken)
                         .font(.subheadline)
                         .foregroundStyle(.white)
                 }
