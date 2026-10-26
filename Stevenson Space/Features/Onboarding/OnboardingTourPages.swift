@@ -22,7 +22,7 @@ struct OnboardingWelcomePage: View {
             Button("Take the Tour", action: flow.advance)
             Button("Skip Tour", action: flow.skipTour)
                 .onboardingSecondary()
-                .accessibilityHint("Skips to the end of the tour")
+                .accessibilityHint("Skips to setting up your classes")
         }
     }
 }

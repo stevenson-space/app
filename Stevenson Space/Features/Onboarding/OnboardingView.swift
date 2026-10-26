@@ -5,7 +5,8 @@ import ScheduleKit
 @Observable
 final class OnboardingFlow {
     enum Step: Int, CaseIterable, Identifiable {
-        case welcome, countdown, specialDays, lunch, studentID, widgets, finish
+        case welcome, countdown, specialDays, lunch, studentID, widgets,
+             classes, notifications, finish
 
         var id: Self { self }
     }
@@ -14,6 +15,7 @@ final class OnboardingFlow {
     static let progressSteps = Step.allCases.filter { $0 != .welcome && $0 != .finish }
 
     var step: Step = .welcome
+    var isEditingClasses = false
     let finish: () -> Void
 
     init(finish: @escaping () -> Void) {
@@ -24,15 +26,16 @@ final class OnboardingFlow {
 
     func advance() { step = Step(rawValue: step.rawValue + 1) ?? .finish }
     func back() { step = Step(rawValue: step.rawValue - 1) ?? .welcome }
-    func skipTour() { step = .finish }
+    /// Skipping the tour still offers the two setup steps.
+    func skipTour() { step = .classes }
 }
 
 extension OnboardingFlow.Step: Comparable {
     static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 }
 
-/// The first-launch tour: what the app does, shown with working demos.
-/// Settings › Welcome Tour replays it.
+/// The first-launch tour: what the app does, shown with working demos, then
+/// two optional setup steps. Settings › Welcome Tour replays it.
 struct OnboardingView: View {
     @State private var flow: OnboardingFlow
     /// The page scrolled to. Kept apart from `flow.step` because the scroll
@@ -45,6 +48,7 @@ struct OnboardingView: View {
     }
 
     var body: some View {
+        @Bindable var flow = flow
         NavigationStack {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
@@ -72,6 +76,9 @@ struct OnboardingView: View {
             }
             .navigationTitle("Tour")
             .toolbarVisibility(.hidden, for: .navigationBar)
+            .navigationDestination(isPresented: $flow.isEditingClasses) {
+                PeriodEditorListView()
+            }
         }
         .environment(flow)
         .sensoryFeedback(trigger: flow.step) { _, step in
@@ -88,6 +95,8 @@ struct OnboardingView: View {
         case .lunch: OnboardingLunchPage()
         case .studentID: OnboardingStudentIDPage()
         case .widgets: OnboardingWidgetsPage()
+        case .classes: OnboardingClassesPage()
+        case .notifications: OnboardingNotificationsPage()
         case .finish: OnboardingFinishPage()
         }
     }
@@ -118,7 +127,7 @@ private struct OnboardingTopBar: View {
                 .opacity(flow.isTour ? 1 : 0)
                 .disabled(!flow.isTour)
                 .accessibilityHidden(!flow.isTour)
-                .accessibilityHint("Skips to the end of the tour")
+                .accessibilityHint("Skips to setting up your classes")
         }
         .tint(StevensonPalette.accent)
         .padding(.horizontal, 8)
