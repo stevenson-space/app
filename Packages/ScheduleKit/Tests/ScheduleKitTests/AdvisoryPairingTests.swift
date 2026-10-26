@@ -129,6 +129,31 @@ import Foundation
         ])
     }
 
+    @Test func advisoryIsSuppressedOnActivityPeriodDays() throws {
+        var config = UserConfig()
+        config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .a)
+
+        // Activity Period has A/B tables, but advisory doesn't meet: period 4
+        // is one full-period lunch, with no advisory half left behind.
+        let map = try TestSupport.map(#"{"Activity Period": ["9/14/2026"]}"#)
+        let timeline = resolveDay(day(2026, 9, 14),
+                                  inputs: TestSupport.inputs(map: map, config: config))
+        #expect(periodFourLines(timeline) == ["11:40-12:21 4 lunch Lunch"])
+    }
+
+    @Test func unpairedAdvisoryIsSuppressedOnLateArrivalDays() throws {
+        // A legacy advisory outside the lunch period has no lunch to lose to
+        // on Late Arrival's full-period table; it still doesn't meet.
+        let config = UserConfig(
+            lunch: SplitAssignment(basePeriod: 5, choice: .a),
+            advisory: SplitAssignment(basePeriod: 2, choice: .b))
+
+        let map = try TestSupport.map(#"{"Late Arrival": ["9/14/2026"]}"#)
+        let timeline = resolveDay(day(2026, 9, 14),
+                                  inputs: TestSupport.inputs(map: map, config: config))
+        #expect(!timeline.blocks.contains { $0.role == .advisory })
+    }
+
     @Test func pairedConfigFallsBackToFullPeriodLunchWithoutABTables() throws {
         // Late Arrival has no A/B subdivisions: the shared period renders as a
         // full-period lunch (lunch-wins backstop), matching the lunch spec.
