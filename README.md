@@ -48,7 +48,7 @@ Packages/StudentIDKit/         Student ID logic — no UI.
     StudentIDCard.swift        The model; its initializer is internal by design
     StudentIDPhotoStore.swift  The cropped headshot, on disk with complete file protection
   Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
-Stevenson Space/               SwiftUI app target: Home, Lunch, ID, Settings
+Stevenson Space/               SwiftUI app target: Home, Lunch, ID, Settings, the welcome tour
 ScheduleWidgets/              Schedule widgets and small/large lunch widgets
 ```
 
@@ -171,6 +171,30 @@ checks keep the reminder hidden while they run. Reminders use the real clock,
 independent of the selected date or DEBUG time travel, and update at the five-day
 deadline. Future timestamps cannot suppress a reminder after a clock correction.
 
+## The welcome tour
+
+First launch opens a tour over the tabs: a welcome, six feature pages, two
+optional setup steps (classes and notifications), and a summary that says
+where to change anything skipped. Settings → About → Welcome Tour replays it.
+Each feature page runs a working demo built from the app's own views and data:
+Home's dial and passing card, the real bell tables morphing between schedule
+types, this week's lunch menu, and the empty ID card. The sample student's
+classes go through `resolveDay`, so every time shown is a real bell.
+
+The Siri page plays the App Shortcut phrases and their answers, with Siri drawn
+the way the device shows it. `SiriGeneration` uses Foundation Models'
+availability as the Apple Intelligence signal on iOS 26 and later: no Apple
+Intelligence means the classic orb, Apple Intelligence before iOS 27 means the
+screen-edge glow, and iOS 27 means Siri AI in the Dynamic Island. iOS 18 has
+no such API, so it falls back to the device model (iPhone 15 Pro or later on
+18.1+). Foundation Models is weak-linked, so iOS 18 launches without it. The
+glyphs are original drawings rather than Apple artwork, and the answers are
+attributed to the app.
+
+Completion is stored in standard defaults (`onboardingCompleted`), not the App
+Group. Opening a tab, widget link, or the scanner from Siri closes the tour
+without completing it, so it returns on the next launch.
+
 ## Development
 
 - Logic tests (fast, no simulator): `swift test --package-path Packages/ScheduleKit`
@@ -180,6 +204,9 @@ deadline. Future timestamps cannot suppress a reminder after a clock correction.
   app clock to any instant or use one-tap scenarios (finals rotations, async
   days, breaks…). A purple banner shows whenever the clock is shifted.
 - Pending-notification inspector: Settings → Developer — Notifications.
+- **Tour**: launch with `-onboardingCompleted NO` to see it again. DEBUG builds
+  accept `-SiriGeneration classic`, `appleIntelligence`, or `siriAI` to preview
+  each Siri look.
 
 ## Shortcuts and Siri
 
