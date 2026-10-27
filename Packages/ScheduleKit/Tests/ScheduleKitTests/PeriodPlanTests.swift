@@ -398,6 +398,31 @@ import Foundation
         #expect(backward.plan(for: 5) == .standardClass(5))
     }
 
+    // MARK: - Reset
+
+    @Test func resetScheduleRestoresTheDefaultDayAndKeepsDisplayPrefs() {
+        var config = UserConfig(timeFormat: .twentyFourHour, appearance: .dark)
+        config.customizations["2"] = PeriodCustomization(name: "AP Chemistry", room: "118", emoji: "🧪")
+        config.setClassLength(anchor: 2, .extendsForward)
+        config.setPairedAdvisory(basePeriod: 5, advisoryHalf: .a)
+        config.freePeriods = [8]
+        #expect(!config.isDefaultSchedule)
+
+        config.resetSchedule()
+        #expect(config.isDefaultSchedule)
+        #expect(config == UserConfig(timeFormat: .twentyFourHour, appearance: .dark))
+        for period in UserConfig.periodRange {
+            #expect(config.plan(for: period) == .standardClass(period))
+        }
+    }
+
+    @Test func aDefaultConfigIsDefaultSchedule() {
+        #expect(UserConfig().isDefaultSchedule)
+        var namedOnly = UserConfig()
+        namedOnly.customizations["1"] = PeriodCustomization(room: "3012")
+        #expect(!namedOnly.isDefaultSchedule)
+    }
+
     // MARK: - Emoji customization survives coding
 
     @Test func customizationEmojiRoundTripsAndOldBlobsDecode() throws {

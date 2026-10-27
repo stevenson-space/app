@@ -259,6 +259,22 @@ public struct UserConfig: Equatable, Sendable {
         }
     }
 
+    // MARK: - Reset
+
+    /// True when nothing has been customized: every period is its own plain
+    /// class with no name, room, or emoji.
+    public var isDefaultSchedule: Bool {
+        periodPlans.isEmpty && customizations.isEmpty
+    }
+
+    /// Returns the student's day to the out-of-the-box one: every period a
+    /// plain class, with no lunch, advisory, free periods, 1½-period spans,
+    /// or class details. Display preferences aren't schedule, so they stay.
+    public mutating func resetSchedule() {
+        periodPlans = [:]
+        customizations = [:]
+    }
+
     // MARK: - Derived legacy views (read and write the grid)
 
     public var lunch: SplitAssignment? {
