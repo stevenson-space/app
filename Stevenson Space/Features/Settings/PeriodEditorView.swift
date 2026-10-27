@@ -417,7 +417,7 @@ struct BlockEditSheet: View {
             .labelsHidden()
         } footer: {
             if current == .advisory {
-                Text("Advisory pairs with lunch in the other half and doesn't meet on Fridays, Late Arrival days, or Activity Period days.")
+                Text("Advisory doesn't meet on Fridays, Late Arrival days, or Activity Period days.")
             }
         }
 
@@ -452,12 +452,6 @@ struct BlockEditSheet: View {
                     Text("B (second half)").tag(Half.b)
                 }
                 .pickerStyle(.menu)
-            } footer: {
-                if current == .advisory {
-                    Text("Lunch takes the other half.")
-                } else if otherSlot == .advisory {
-                    Text("Advisory takes the other half.")
-                }
             }
         }
 
@@ -481,11 +475,9 @@ struct BlockEditSheet: View {
                     }))
                 .disabled(!canToggle)
             } footer: {
-                if otherSlot == .advisory {
-                    Text("Advisory holds \(period)\(otherHalf.rawValue) and doesn't meet on Fridays, Late Arrival days, or Activity Period days — lunch fills the whole period then.")
-                } else if canToggle {
+                if otherSlot == .free {
                     Text("Freshmen: advisory takes \(period)\(otherHalf.rawValue), the other half of this period.")
-                } else {
+                } else if !canToggle {
                     let owner = otherSlot.classAnchor.map { className($0) } ?? "another block"
                     Text("Advisory would take \(period)\(otherHalf.rawValue), which belongs to \(owner). Free that half first.")
                 }
