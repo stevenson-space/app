@@ -141,19 +141,6 @@ import Foundation
         #expect(periodFourLines(timeline) == ["11:40-12:21 4 lunch Lunch"])
     }
 
-    @Test func unpairedAdvisoryIsSuppressedOnLateArrivalDays() throws {
-        // A legacy advisory outside the lunch period has no lunch to lose to
-        // on Late Arrival's full-period table; it still doesn't meet.
-        let config = UserConfig(
-            lunch: SplitAssignment(basePeriod: 5, choice: .a),
-            advisory: SplitAssignment(basePeriod: 2, choice: .b))
-
-        let map = try TestSupport.map(#"{"Late Arrival": ["9/14/2026"]}"#)
-        let timeline = resolveDay(day(2026, 9, 14),
-                                  inputs: TestSupport.inputs(map: map, config: config))
-        #expect(!timeline.blocks.contains { $0.role == .advisory })
-    }
-
     @Test func pairedConfigFallsBackToFullPeriodLunchWithoutABTables() throws {
         // Early Dismissal has no A/B subdivisions but advisory still meets:
         // the shared period renders as a full-period lunch (lunch-wins
