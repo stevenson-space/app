@@ -417,7 +417,7 @@ struct BlockEditSheet: View {
             .labelsHidden()
         } footer: {
             if current == .advisory {
-                Text("Advisory pairs with lunch in the other half and doesn't meet on Fridays, Late Arrival days, or Activity Period days.")
+                Text("Advisory doesn't meet on Fridays, Late Arrival days, or Activity Period days.")
             }
         }
 
@@ -453,9 +453,7 @@ struct BlockEditSheet: View {
                 }
                 .pickerStyle(.menu)
             } footer: {
-                if current == .advisory {
-                    Text("Lunch takes the other half.")
-                } else if otherSlot == .advisory {
+                if otherSlot == .advisory {
                     Text("Advisory takes the other half.")
                 }
             }
