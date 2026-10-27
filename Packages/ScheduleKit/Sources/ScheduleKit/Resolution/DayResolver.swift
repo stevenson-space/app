@@ -197,10 +197,12 @@ public func standardTemplate(config: UserConfig,
 /// 1½-period class's final.
 func personalizedBlocks(schedule: BellSchedule, config rawConfig: UserConfig,
                         day: DayKey, calendar: Calendar) -> [ResolvedBlock] {
-    // Advisory (freshman) doesn't meet on Fridays; its slots become lunch, so
-    // a paired period collapses to one full-period lunch. Resolve it here so
-    // Home and the notification planner see the same shape.
-    let config = fridayAdvisoryAdjusted(rawConfig, day: day, calendar: calendar)
+    // Advisory (freshman) doesn't meet on Fridays, Late Arrival days, or
+    // Activity Period days; its slots become lunch, so a paired period
+    // collapses to one full-period lunch. Resolve it here so Home and the
+    // notification planner see the same shape.
+    let config = advisoryAdjusted(rawConfig, family: schedule.family,
+                                  day: day, calendar: calendar)
     var resolved: [ResolvedBlock] = []
     // Run of contiguous class slots sharing one anchor, awaiting merge.
     var pendingRun: [(block: Block, anchor: Int)] = []
@@ -278,13 +280,16 @@ func personalizedBlocks(schedule: BellSchedule, config rawConfig: UserConfig,
     return resolved
 }
 
-/// Advisory doesn't meet on Fridays: every advisory slot becomes lunch, so the
-/// paired half-lunch expands to the whole shared period. Other weekdays and
-/// non-advisory configs pass through untouched. Only the resolved timeline
-/// changes — the stored config is intact.
-func fridayAdvisoryAdjusted(_ config: UserConfig, day: DayKey, calendar: Calendar) -> UserConfig {
+/// Advisory doesn't meet on Fridays, Late Arrival days, or Activity Period
+/// days: every advisory slot becomes lunch, so the paired half-lunch expands
+/// to the whole shared period. Other days and non-advisory configs pass
+/// through untouched. Only the resolved timeline changes — the stored config
+/// is intact.
+func advisoryAdjusted(_ config: UserConfig, family: BellFamily,
+                      day: DayKey, calendar: Calendar) -> UserConfig {
     // Gregorian weekday: Sunday = 1 … Friday = 6 … Saturday = 7.
-    guard day.weekday(calendar: calendar) == 6 else { return config }
+    let isFriday = day.weekday(calendar: calendar) == 6
+    guard isFriday || family == .lateArrival || family == .activityPeriod else { return config }
     var adjusted = config
     for period in UserConfig.periodRange {
         var plan = adjusted.plan(for: period)

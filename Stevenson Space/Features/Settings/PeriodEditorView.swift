@@ -383,7 +383,7 @@ struct BlockEditSheet: View {
             .labelsHidden()
         } footer: {
             if current == .advisory {
-                Text("Advisory pairs with lunch in the other half and doesn't meet on Fridays.")
+                Text("Advisory pairs with lunch in the other half and doesn't meet on Fridays, Late Arrival days, or Activity Period days.")
             }
         }
 
@@ -448,7 +448,7 @@ struct BlockEditSheet: View {
                 .disabled(!canToggle)
             } footer: {
                 if otherSlot == .advisory {
-                    Text("Advisory holds \(period)\(otherHalf.rawValue) and doesn't meet on Fridays — lunch fills the whole period then.")
+                    Text("Advisory holds \(period)\(otherHalf.rawValue) and doesn't meet on Fridays, Late Arrival days, or Activity Period days — lunch fills the whole period then.")
                 } else if canToggle {
                     Text("Freshmen: advisory takes \(period)\(otherHalf.rawValue), the other half of this period.")
                 } else {
