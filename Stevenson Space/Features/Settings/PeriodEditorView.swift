@@ -52,7 +52,7 @@ struct PeriodEditorListView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Every period goes back to a plain class, and your class names, rooms, emoji, lunch, advisory, and free periods are erased. This can't be undone.")
+            Text("This clears your classes, lunch, advisory, and free periods. It can't be undone.")
         }
     }
 
