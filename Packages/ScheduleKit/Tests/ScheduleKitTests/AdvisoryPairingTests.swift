@@ -155,16 +155,18 @@ import Foundation
     }
 
     @Test func pairedConfigFallsBackToFullPeriodLunchWithoutABTables() throws {
-        // Late Arrival has no A/B subdivisions: the shared period renders as a
-        // full-period lunch (lunch-wins backstop), matching the lunch spec.
+        // Early Dismissal has no A/B subdivisions but advisory still meets:
+        // the shared period renders as a full-period lunch (lunch-wins
+        // backstop), matching the lunch spec.
         var config = UserConfig()
         config.setPairedAdvisory(basePeriod: 4, advisoryHalf: .b)
 
-        let map = try TestSupport.map(#"{"Late Arrival": ["9/14/2026"]}"#)
-        let timeline = resolveDay(day(2026, 9, 14),
+        // Thursday, Dec 17 2026 — Finals Day 1, which includes period 4.
+        let map = try TestSupport.map(#"{"Early Dismissal": ["12/17/2026-12/18/2026"]}"#)
+        let timeline = resolveDay(day(2026, 12, 17),
                                   inputs: TestSupport.inputs(map: map, config: config))
         // Lunch wins the whole period; period 4 is exactly one full lunch block,
         // with no advisory half also claiming it.
-        #expect(periodFourLines(timeline) == ["12:20-12:55 4 lunch Lunch"])
+        #expect(periodFourLines(timeline) == ["11:00-11:40 4 lunch Lunch"])
     }
 }
