@@ -7,6 +7,7 @@ import ScheduleKit
 struct PeriodEditorListView: View {
     @Environment(AppModel.self) private var model
     @State private var editing: EditorTarget?
+    @State private var confirmingReset = false
 
     var body: some View {
         let config = model.config
@@ -31,6 +32,9 @@ struct PeriodEditorListView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                resetButton
+                    .padding(.top, 16)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -42,6 +46,36 @@ struct PeriodEditorListView: View {
                 .id(target.id)
                 .presentationDetents([.medium, .large])
         }
+        .alert("Reset your schedule?", isPresented: $confirmingReset) {
+            Button("Reset", role: .destructive) {
+                model.updateConfig { $0.resetSchedule() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This clears your classes, lunch, advisory, and free periods. It can't be undone.")
+        }
+    }
+
+    /// Card-shaped so it sits in the list's visual language; disabled while
+    /// there's nothing to reset.
+    private var resetButton: some View {
+        let disabled = model.config.isDefaultSchedule
+        return Button(role: .destructive) {
+            confirmingReset = true
+        } label: {
+            Text("Reset Schedule")
+                .font(.headline)
+                .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.red))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     /// "Period 2 · 9:26 – 10:38 · 118" (span label replaces the period name
