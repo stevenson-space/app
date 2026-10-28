@@ -3,6 +3,7 @@ import ScheduleKit
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(SceneNavigation.self) private var navigation
 
     var body: some View {
         NavigationStack {
@@ -151,6 +152,16 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
+            Button {
+                navigation.isOnboardingPresented = true
+            } label: {
+                Label {
+                    Text("Welcome Tour")
+                        .foregroundStyle(Color.primary)
+                } icon: {
+                    Image(systemName: "hand.wave")
+                }
+            }
             aboutLink("Support", systemImage: "questionmark.circle",
                       destination: URL(string: "https://stevenson.space/app/support")!)
             aboutLink("Privacy Policy", systemImage: "hand.raised",

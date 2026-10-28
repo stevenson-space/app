@@ -26,6 +26,16 @@ struct RootView: View {
                 SettingsView()
             }
         }
+        .accessibilityHidden(navigation.isOnboardingPresented)
+        .overlay {
+            // An overlay, not a full-screen cover: an open cover counts as a
+            // presentation and would block the ID scanner a Siri request opens.
+            if navigation.isOnboardingPresented {
+                OnboardingView(finish: navigation.finishOnboarding)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.smooth(duration: 0.35), value: navigation.isOnboardingPresented)
         .onOpenURL { navigation.openWidgetURL($0) }
         .background {
             Color.clear
