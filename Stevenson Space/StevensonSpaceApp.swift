@@ -19,6 +19,7 @@ struct StevensonSpaceApp: App {
         #endif
         _model = State(initialValue: model)
         AppDependencyManager.shared.add(dependency: model)
+        JacketAppearance.configure()
         StevensonShortcuts.updateAppShortcutParameters()
     }
 
