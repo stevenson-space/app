@@ -15,31 +15,46 @@ struct PeriodEditorListView: View {
         let blocks = standardTemplate(config: config, catalog: model.catalog)
 
         ScrollView {
-            VStack(spacing: 8) {
-                ForEach(blocks) { block in
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Your Standard day. Tap a block to change it.")
+                    .font(.subheadline)
+                    .foregroundStyle(Jacket.ink2)
+                    .padding(.bottom, 20)
+
+                ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
+                    if index > 0 {
+                        StitchRule(JacketGround.lining.stitch)
+                            .padding(.leading, 60)
+                    }
                     Button {
                         editing = EditorTarget(block: block)
                     } label: {
-                        ScheduleCardRow(
-                            emoji: ScheduleStyle.emoji(for: block, config: config),
+                        ScheduleRow(
+                            periodLabel: block.spanLabel ?? block.periodID.periodNumber.map(String.init),
+                            emoji: block.role == .classPeriod ? ScheduleStyle.emoji(for: block, config: config) : nil,
                             title: block.displayName,
                             subtitle: subtitle(for: block, pref: pref)
                         ) {
                             Image(systemName: "chevron.right")
                                 .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Jacket.ink3)
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(accessibilityLabel(for: block, pref: pref))
+                    .accessibilityHint("Edit this block")
                 }
 
                 resetButton
-                    .padding(.top, 16)
+                    .padding(.top, 28)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .padding(.bottom, 32)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Jacket.lining)
+        .environment(\.jacketGround, .lining)
         .navigationTitle("My Schedule")
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
@@ -56,35 +71,30 @@ struct PeriodEditorListView: View {
         }
     }
 
-    /// Card-shaped so it sits in the list's visual language; disabled while
-    /// there's nothing to reset.
+    /// A plain destructive action at the end of the list, away from the rows;
+    /// disabled while there's nothing to reset.
     private var resetButton: some View {
-        let disabled = model.config.isDefaultSchedule
-        return Button(role: .destructive) {
+        Button("Reset Schedule", role: .destructive) {
             confirmingReset = true
-        } label: {
-            Text("Reset Schedule")
-                .font(.headline)
-                .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.red))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
-                )
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .disabled(disabled)
+        .font(.headline)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .disabled(model.config.isDefaultSchedule)
     }
 
-    /// "Period 2 · 9:26 – 10:38 · 118" (span label replaces the period name
-    /// for halves and merged 1½-period classes).
+    /// "9:26 – 10:13 · 118": the period has its own column.
     private func subtitle(for block: ResolvedBlock, pref: TimeFormatPref) -> String {
-        var parts = [block.spanLabel ?? "Period \(block.periodID.storageKey)"]
-        parts.append(TimeDisplay.range(block.start, block.end, pref))
+        var parts = [TimeDisplay.range(block.start, block.end, pref)]
         if let room = block.room { parts.append(room) }
         return parts.joined(separator: " · ")
+    }
+
+    private func accessibilityLabel(for block: ResolvedBlock, pref: TimeFormatPref) -> String {
+        var parts = [block.spanLabel.map { "Period \($0)" } ?? "Period \(block.periodID.storageKey)",
+                     block.displayName,
+                     "\(TimeDisplay.time(block.start, pref)) to \(TimeDisplay.time(block.end, pref))"]
+        if let room = block.room { parts.append("room \(room)") }
+        return parts.joined(separator: ", ")
     }
 }
 
