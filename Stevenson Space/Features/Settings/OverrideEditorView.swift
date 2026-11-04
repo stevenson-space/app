@@ -88,7 +88,7 @@ struct OverrideEditorView: View {
                 if choice == nil, let family = model.timeline(for: selectedDay).family {
                     Text("This day uses \(family.displayName). Choose a schedule to replace it, or go back to keep it unchanged.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Jacket.ink2)
                 }
                 #if DEBUG
                 if choice == .earlyDismissal {
@@ -101,6 +101,7 @@ struct OverrideEditorView: View {
                 }
                 #endif
             }
+            .jacketRows()
 
             Section {
                 Button("Save Override") {
@@ -116,7 +117,9 @@ struct OverrideEditorView: View {
                     }
                 }
             }
+            .jacketRows()
         }
+        .jacketForm()
         .navigationTitle("Schedule Override")
         .onAppear {
             guard !initialized else { return }

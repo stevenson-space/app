@@ -23,8 +23,7 @@ struct PeriodEditorListView: View {
 
                 ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
                     if index > 0 {
-                        StitchRule(JacketGround.lining.stitch)
-                            .padding(.leading, 60)
+                        RowStitch()
                     }
                     Button {
                         editing = EditorTarget(block: block)
@@ -151,24 +150,28 @@ struct BlockEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                switch target {
-                case .half(let period, let half):
-                    halfContent(period: period, half: half)
-                default:
-                    kindSection
-                    switch currentKind {
-                    case .classwork:
-                        classFields
-                        lengthSection
-                    case .lunch:
-                        if UserConfig.advisoryPeriods.contains(number) {
-                            advisorySection
+                Group {
+                    switch target {
+                    case .half(let period, let half):
+                        halfContent(period: period, half: half)
+                    default:
+                        kindSection
+                        switch currentKind {
+                        case .classwork:
+                            classFields
+                            lengthSection
+                        case .lunch:
+                            if UserConfig.advisoryPeriods.contains(number) {
+                                advisorySection
+                            }
+                        case .free:
+                            EmptyView()
                         }
-                    case .free:
-                        EmptyView()
                     }
                 }
+                .jacketRows()
             }
+            .jacketForm()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -256,7 +259,7 @@ struct BlockEditSheet: View {
                     Text(emoji.nilIfBlank ?? ScheduleStyle.subjectEmoji(name))
                         .font(.title3)
                         .frame(width: 44, height: 44)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                        .background(Jacket.lining, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Choose class emoji")
@@ -368,7 +371,7 @@ struct BlockEditSheet: View {
             } else if let backwardBlocker {
                 Text("Can't start in \(number - 1)B — it holds your \(backwardBlocker == .lunch ? "lunch" : "advisory").")
             } else if currentLength != .standard {
-                Text("The leftover half period shows as its own card — tap it to make it lunch or free.")
+                Text("The leftover half period shows as its own row. Tap it to make it lunch or free.")
             }
         }
     }
@@ -584,7 +587,8 @@ private struct ClassEmojiPicker: View {
                     ForEach(Self.categories, id: \.title) { category in
                         VStack(alignment: .leading, spacing: 12) {
                             Text(category.title)
-                                .font(.headline)
+                                .jacketLabel()
+                                .foregroundStyle(Jacket.ink2)
 
                             LazyVGrid(columns: columns, spacing: 10) {
                                 ForEach(category.emoji, id: \.self) { emoji in
@@ -597,8 +601,8 @@ private struct ClassEmojiPicker: View {
                                             .frame(maxWidth: .infinity, minHeight: 44)
                                             .background {
                                                 if selection == emoji {
-                                                    RoundedRectangle(cornerRadius: 10)
-                                                        .fill(Color.accentColor.opacity(0.16))
+                                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                        .fill(Jacket.accent.opacity(0.16))
                                                 }
                                             }
                                             .contentShape(Rectangle())
@@ -613,6 +617,7 @@ private struct ClassEmojiPicker: View {
                 }
                 .padding(20)
             }
+            .background(Jacket.lining)
             .navigationTitle("Choose an Emoji")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -637,18 +642,18 @@ private struct ClassEmojiPicker: View {
                         .font(.headline)
                     Text("Matches your class name")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Jacket.ink2)
                 }
 
                 Spacer()
 
                 if selection.isEmpty {
                     Image(systemName: "checkmark")
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Jacket.accent)
                 }
             }
             .padding(14)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            .background(Jacket.raised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selection.isEmpty ? .isSelected : [])
