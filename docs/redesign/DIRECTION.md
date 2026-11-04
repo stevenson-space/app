@@ -294,7 +294,10 @@ rolls across a bell instead of being swapped); after school the list below is
 still today's (stepping to tomorrow is one tap). Not built: the proposed
 crest-free icon (decision 6).
 
-Not verified: haptics and the signature's feel on a real device, Home Screen
-widgets in place (the Simulator served a cached render, so widgets were checked
-with an offscreen renderer), iOS 18 (the deployment target) on a device or
-simulator.
+iOS 18 (the deployment target) was checked on the iPhone 16 Pro (18.6)
+Simulator for Home in class and passing: bars of the ground's colour stand in
+for Liquid Glass.
+
+Not verified: haptics and the signature's feel on a real device, and Home
+Screen widgets in place (the Simulator served a cached render, so widgets were
+checked with an offscreen renderer).
