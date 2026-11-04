@@ -40,15 +40,11 @@ struct HomeDayToolbar: ToolbarContent {
         }
     }
 
-    private func navigationButton(_ title: String, icon: String, offset: Int) -> some View {
+    private func navigationButton(_ title: LocalizedStringKey, icon: String, offset: Int) -> some View {
         let target = day.advanced(by: offset)
-        return Button {
-            select(target)
-        } label: {
-            Image(systemName: icon)
-        }
-        .disabled(!HomeDayPicker.dateRange(today: today).contains(target.date() ?? .distantPast))
-        .accessibilityLabel(title)
+        return Button(title, systemImage: icon) { select(target) }
+            .labelStyle(.iconOnly)
+            .disabled(!HomeDayPicker.dateRange(today: today).contains(target.date() ?? .distantPast))
     }
 }
 

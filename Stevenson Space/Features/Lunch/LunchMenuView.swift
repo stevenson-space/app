@@ -155,21 +155,21 @@ private struct WeekPicker: View {
         .sensoryFeedback(.selection, trigger: selectedDay)
     }
 
-    private func weekNavigationButton(systemImage: String, accessibilityLabel: String,
+    private func weekNavigationButton(systemImage: String, accessibilityLabel: LocalizedStringKey,
                                       offset: Int) -> some View {
         Button {
             withAnimation(.snappy(duration: 0.25)) {
                 moveWeek(offset)
             }
         } label: {
-            Image(systemName: systemImage)
+            Label(accessibilityLabel, systemImage: systemImage)
+                .labelStyle(.iconOnly)
                 .font(.subheadline.weight(.semibold))
                 .frame(width: 46, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(Jacket.accent)
-        .accessibilityLabel(accessibilityLabel)
     }
 
     private var weekLabel: String {
