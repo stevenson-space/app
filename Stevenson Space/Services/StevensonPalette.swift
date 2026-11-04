@@ -1,5 +1,4 @@
 import SwiftUI
-import ScheduleKit
 
 /// Stevenson's colours, sampled from the Patriot crest the app icon already
 /// ships, so the ID card matches the real crest rather than an approximation.
@@ -13,8 +12,4 @@ enum StevensonPalette {
     /// Card ink. Not `.primary`: the card keeps its printed colours in both
     /// appearances, so its text must not invert with the system.
     static let cardInk = Color(red: 0.086, green: 0.086, blue: 0.098)
-
-    /// The interactive green used for selection and controls; the redesign's
-    /// accent, which adapts to dark mode.
-    static var accent: Color { Jacket.accent }
 }
