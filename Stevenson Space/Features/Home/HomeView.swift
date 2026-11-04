@@ -107,7 +107,8 @@ struct HomeView: View {
                 HomeDayToolbar(day: day, today: today, select: selectDay, showsCalendar: $showsCalendar)
             }
             .navigationBarTitleDisplayMode(.inline)
-            .homeBars(ground: ground, isDark: ground.isDark(in: appColorScheme))
+            .homeBars(background: ground.background.resolved(for: appColorScheme),
+                      isDark: ground.isDark(in: appColorScheme))
             .sheet(isPresented: $showsCalendar) {
                 HomeDayPicker(day: day, today: today, select: selectDay)
                     .environment(\.colorScheme, appColorScheme)
@@ -164,16 +165,17 @@ private extension View {
     /// Bars over the ground: the status bar and tab bar take light content on
     /// the field (and in dark mode), dark content on the gold and the lining.
     /// iOS 26 lets content scroll under the toolbar with its edge effect;
-    /// earlier versions get a bar of the ground's own colour.
+    /// earlier versions get a bar of the ground's own colour, resolved in the
+    /// app's real appearance like the field behind it.
     @ViewBuilder
-    func homeBars(ground: JacketGround, isDark: Bool) -> some View {
+    func homeBars(background: Color, isDark: Bool) -> some View {
         let scheme: ColorScheme = isDark ? .dark : .light
         if #available(iOS 26, *) {
             toolbarColorScheme(scheme, for: .navigationBar, .tabBar)
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         } else {
             toolbarColorScheme(scheme, for: .navigationBar, .tabBar)
-                .toolbarBackground(ground.background, for: .navigationBar)
+                .toolbarBackground(background, for: .navigationBar)
                 .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         }
     }
