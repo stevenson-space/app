@@ -98,15 +98,14 @@ struct FieldBackground: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .bottom) {
-                (shown ?? ground).background.resolved(for: appColorScheme)
-                if let rising {
-                    rising.background.resolved(for: appColorScheme)
-                        .frame(height: max(proxy.size.height * progress, 0))
-                }
+        ZStack(alignment: .bottom) {
+            (shown ?? ground).background.resolved(for: appColorScheme)
+            if let rising {
+                // A flat colour scaled from the bottom edge looks the same as
+                // one growing upward, and animates as a transform.
+                rising.background.resolved(for: appColorScheme)
+                    .scaleEffect(x: 1, y: progress, anchor: .bottom)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
