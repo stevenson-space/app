@@ -17,7 +17,7 @@ struct ScheduleRow<Trailing: View>: View {
 
     @Environment(\.jacketGround) private var ground
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .headline) private var periodColumnWidth = 60.0
+    @ScaledMetric(relativeTo: .headline) private var periodColumnWidth = 64.0
 
     /// The physical period ("1", "3–4A"), independent of the class name.
     var periodLabel: String?
@@ -133,6 +133,18 @@ struct ScheduleRow<Trailing: View>: View {
 extension EnvironmentValues {
     /// The row's title ink, so trailing cues can match a patch.
     @Entry var rowInk: Color = .primary
+}
+
+/// The running stitch between two rows, starting where the names start.
+struct RowStitch: View {
+    @Environment(\.jacketGround) private var ground
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .headline) private var periodColumnWidth = 64.0
+
+    var body: some View {
+        StitchRule(ground.stitch)
+            .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : periodColumnWidth)
+    }
 }
 
 /// The small caps cue at the end of a row: Now, Next, or "in 45m".

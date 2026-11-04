@@ -58,8 +58,7 @@ struct DayTimelineListView: View {
                 let isPatch = block.id == patchID
                 let touchesPatch = isPatch || (index > 0 && blocks[index - 1].id == patchID)
                 if index > 0 && !touchesPatch {
-                    StitchRule(ground.stitch)
-                        .padding(.leading, 60)
+                    RowStitch()
                 }
                 ScheduleRow(
                     periodLabel: periodLabel(for: block),
