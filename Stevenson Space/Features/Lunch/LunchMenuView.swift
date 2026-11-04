@@ -22,12 +22,12 @@ struct LunchMenuView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
+                VStack(alignment: .leading, spacing: 32) {
                     UpdateCheckSection(
                         title: "Lunch menu updates",
                         metadata: model.lunchFetchMetadata,
                         isChecking: model.isLunchSyncing,
-                        spacing: 18,
+                        spacing: 24,
                         checkForUpdates: {
                             await model.syncLunch(force: true)
                             return model.lunchFetchMetadata.lastError == nil
@@ -44,11 +44,12 @@ struct LunchMenuView: View {
 
                     menuContent
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, 28)
+                .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Jacket.lining)
+            .environment(\.jacketGround, .lining)
             .navigationTitle("Lunch")
             .onChange(of: navigation.lunchTodayRequest, initial: true) {
                 guard navigation.lunchTodayRequest > 0 else { return }
@@ -69,36 +70,37 @@ struct LunchMenuView: View {
     @ViewBuilder
     private var menuContent: some View {
         if let menu = model.lunchMenu(for: day) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(LunchDateDisplay.header(day))
-                    .font(.title2.weight(.bold))
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(Jacket.ink)
                     .accessibilityAddTraits(.isHeader)
 
                 if model.isLunchMenuBundled {
                     Label("Showing the menu included with the app. Check for updates for the latest menu.",
                           systemImage: "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                        .foregroundStyle(Jacket.ink2)
+                        .padding(.top, 8)
                 }
 
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
-                    ForEach(menu.sections) { section in
-                        LunchStationCard(section: section)
-                    }
-                }
+                StationList(sections: menu.sections)
+                    .padding(.top, 16)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else if model.lunchMenu == nil {
             ContentUnavailableView(
                 "Menu unavailable",
-                systemImage: "fork.knife.circle",
+                systemImage: "fork.knife",
                 description: Text("The lunch menu could not be loaded."))
+            .foregroundStyle(Jacket.ink)
             .frame(minHeight: 320)
         } else {
             ContentUnavailableView(
                 "No lunch menu",
                 systemImage: "calendar.badge.minus",
                 description: Text("Lunch is not served on this date, or the published menu does not cover it."))
+            .foregroundStyle(Jacket.ink)
             .frame(minHeight: 320)
         }
     }
@@ -111,8 +113,6 @@ struct LunchMenuView: View {
 }
 
 private struct WeekPicker: View {
-    private let accent = StevensonPalette.accent
-
     let weekdays: [DayKey]
     let selectedDay: DayKey
     let today: DayKey
@@ -121,57 +121,42 @@ private struct WeekPicker: View {
     let moveWeek: (Int) -> Void
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
-                Label(weekLabel, systemImage: "calendar")
+                Text(weekLabel)
                     .font(.headline)
-                    .foregroundStyle(.primary)
-                    .labelStyle(WeekLabelStyle(accent: accent))
+                    .foregroundStyle(Jacket.ink)
                     .contentTransition(.numericText())
 
                 Spacer(minLength: 8)
 
-                HStack(spacing: 2) {
-                    weekNavigationButton(
-                        systemImage: "chevron.left",
-                        accessibilityLabel: "Previous week",
-                        offset: -1)
-                    weekNavigationButton(
-                        systemImage: "chevron.right",
-                        accessibilityLabel: "Next week",
-                        offset: 1)
+                HStack(spacing: 0) {
+                    weekNavigationButton(systemImage: "chevron.left",
+                                         accessibilityLabel: "Previous week", offset: -1)
+                    weekNavigationButton(systemImage: "chevron.right",
+                                         accessibilityLabel: "Next week", offset: 1)
                 }
+                .background(Capsule().fill(Jacket.ink.opacity(0.07)))
             }
 
-            HStack(spacing: 0) {
+            HStack(spacing: 8) {
                 ForEach(weekdays, id: \.self) { candidate in
                     WeekdayButton(
                         day: candidate,
-                        weekday: shortWeekday(candidate),
+                        weekday: LunchDateDisplay.narrowWeekday(candidate),
                         isSelected: candidate == selectedDay,
                         isToday: candidate == today,
                         hasMenu: hasMenu(candidate),
-                        accent: accent,
-                        accessibilityLabel: accessibilityLabel(candidate),
+                        accessibilityLabel: LunchDateDisplay.accessibilityLabel(candidate),
                         select: { select(candidate) })
                 }
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground)))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(.primary.opacity(0.06), lineWidth: 1)
-        }
+        .sensoryFeedback(.selection, trigger: selectedDay)
     }
 
-    private func weekNavigationButton(
-        systemImage: String,
-        accessibilityLabel: String,
-        offset: Int
-    ) -> some View {
+    private func weekNavigationButton(systemImage: String, accessibilityLabel: String,
+                                      offset: Int) -> some View {
         Button {
             withAnimation(.snappy(duration: 0.25)) {
                 moveWeek(offset)
@@ -179,12 +164,11 @@ private struct WeekPicker: View {
         } label: {
             Image(systemName: systemImage)
                 .font(.subheadline.weight(.semibold))
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(Color(.tertiarySystemGroupedBackground)))
-                .padding(5)
+                .frame(width: 46, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(accent)
+        .foregroundStyle(Jacket.accent)
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -200,42 +184,18 @@ private struct WeekPicker: View {
         let lastMonth = LunchDateDisplay.abbreviatedMonthAndYear(last)
         return "\(firstMonth)–\(lastMonth)"
     }
-
-    private func shortWeekday(_ day: DayKey) -> String {
-        LunchDateDisplay.narrowWeekday(day)
-    }
-
-    private func accessibilityLabel(_ day: DayKey) -> String {
-        LunchDateDisplay.accessibilityLabel(day)
-    }
 }
 
-private struct WeekLabelStyle: LabelStyle {
-    let accent: Color
-
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 8) {
-            configuration.icon
-                .foregroundStyle(accent)
-            configuration.title
-        }
-    }
-}
-
+/// One weekday in the strip. The chosen day is sewn on as a green patch;
+/// today carries a gold running stitch under its number.
 private struct WeekdayButton: View {
     let day: DayKey
     let weekday: String
     let isSelected: Bool
     let isToday: Bool
     let hasMenu: Bool
-    let accent: Color
     let accessibilityLabel: String
     let select: () -> Void
-
-    /// Grows with the day number, up to the width of its fifth of the strip,
-    /// but never below its 42-point default at small text sizes.
-    @ScaledMetric(relativeTo: .title3) private var scaledCircleSize = 42.0
-    private var circleSize: CGFloat { max(scaledCircleSize, 42) }
 
     var body: some View {
         Button {
@@ -245,43 +205,41 @@ private struct WeekdayButton: View {
         } label: {
             VStack(spacing: 6) {
                 Text(weekday)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(isSelected ? accent : .secondary)
-
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? accent : Color.clear)
-                    Circle()
-                        .stroke(isToday && !isSelected ? accent : Color.clear, lineWidth: 1.5)
-
-                    Text("\(day.day)")
-                        .font(.title3.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(isSelected ? .white : .primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                        .padding(4)
-                }
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: circleSize)
-
-                Circle()
-                    .fill(indicatorColor)
-                    .frame(width: 4, height: 4)
+                    .jacketLabel()
+                    .foregroundStyle(isSelected ? Jacket.onAccent.opacity(0.8) : Jacket.ink2)
+                Text("\(day.day)")
+                    .font(.varsity(.title2))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .foregroundStyle(isSelected ? Jacket.onAccent : (hasMenu ? Jacket.ink : Jacket.ink3))
             }
+            .padding(.top, 10)
+            .padding(.bottom, 14)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 2)
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Jacket.accent)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .inset(by: 4)
+                        .stroke(Jacket.onAccent.opacity(0.45),
+                                style: StrokeStyle(lineWidth: 1.2, dash: [3.5, 3]))
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if isToday {
+                    StitchRule(Jacket.twill)
+                        .frame(width: 18)
+                        .padding(.bottom, 6)
+                }
+            }
             .contentShape(Rectangle())
-            .opacity(hasMenu || isSelected ? 1 : 0.42)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(accessibilityValue)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private var indicatorColor: Color {
-        if isToday { return accent }
-        return .clear
     }
 
     private var accessibilityValue: String {
@@ -340,34 +298,59 @@ private enum LunchDateDisplay {
     }
 }
 
-private struct LunchStationCard: View {
-    let section: LunchMenuSection
+/// The day's menu, read like a menu board: the two mains large, the rest in
+/// two columns, stations separated by running stitches.
+private struct StationList: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let sections: [LunchMenuSection]
+
+    private static let mains: Set<LunchMenuStation> = [.comfort, .mindful]
 
     var body: some View {
-        HStack(alignment: .top, spacing: 13) {
-            Image(systemName: section.station.icon)
-                .font(.headline)
-                .foregroundStyle(section.station.color)
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(section.station.color.opacity(0.12)))
+        let mains = sections.filter { Self.mains.contains($0.station) }
+        let others = sections.filter { !Self.mains.contains($0.station) }
+        let columns = dynamicTypeSize.isAccessibilitySize ? 1 : 2
+        let rows = stride(from: 0, to: others.count, by: columns).map {
+            Array(others[$0..<min($0 + columns, others.count)])
+        }
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(section.station.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(mains) { section in
+                StitchRule(JacketGround.lining.stitch)
+                station(section, isMain: true)
+                    .padding(.vertical, 16)
+            }
+            ForEach(rows.indices, id: \.self) { index in
+                StitchRule(JacketGround.lining.stitch)
+                HStack(alignment: .top, spacing: 20) {
+                    ForEach(rows[index]) { section in
+                        station(section, isMain: false)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if rows[index].count < columns {
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.vertical, 16)
+            }
+        }
+    }
+
+    private func station(_ section: LunchMenuSection, isMain: Bool) -> some View {
+        VStack(alignment: .leading, spacing: isMain ? 8 : 6) {
+            Text(section.station.title)
+                .jacketLabel()
+                .foregroundStyle(Jacket.ink2)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 2) {
                 ForEach(section.items, id: \.self) { item in
                     Text(item)
-                        .font(.body.weight(.medium))
+                        .font(isMain ? .title2.weight(.semibold) : .body)
+                        .foregroundStyle(Jacket.ink)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(15)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground)))
         .accessibilityElement(children: .combine)
     }
 }
