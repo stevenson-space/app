@@ -6,18 +6,25 @@ struct LunchWidgetView: View {
     let entry: LunchTimelineEntry
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
-    @Environment(\.colorSchemeContrast) private var contrast
 
     private var large: Bool { family == .systemLarge }
+    private var fullColor: Bool { renderingMode == .fullColor }
+    /// The accent green on the lining; system inks in tinted and clear modes.
     private var accent: Color {
-        guard entry.lunch?.isServingDay != false else { return .primary }
-        guard renderingMode == .fullColor, contrast != .increased else { return .primary }
-        return ScheduleStyle.tint(for: .classPeriod)
+        guard entry.lunch?.isServingDay != false, fullColor else { return .primary }
+        return Jacket.accent
     }
+    private var ink: Color { fullColor ? Jacket.ink : .primary }
+    private var ink2: Color { fullColor ? Jacket.ink2 : .secondary }
 
-    private func categoryAccent(_ station: LunchMenuStation) -> Color {
-        guard renderingMode == .fullColor, contrast != .increased else { return .primary }
-        return station.color
+    /// Station names lead, as in the app: a label, no rainbow of icons.
+    private func stationLabel(_ station: LunchMenuStation) -> some View {
+        Text(station.title)
+            .font(.system(size: 11, weight: .bold).width(.expanded))
+            .textCase(.uppercase)
+            .tracking(0.8)
+            .foregroundStyle(ink2)
+            .lineLimit(1)
     }
 
     var body: some View {
@@ -39,6 +46,7 @@ struct LunchWidgetView: View {
                 empty(title: "Menu unavailable", detail: "Open the app for the latest menu.")
             }
         }
+        .foregroundStyle(ink)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // Fixed widget bounds cannot scroll. Keep full content available to VoiceOver.
         .dynamicTypeSize(...(large ? DynamicTypeSize.xxxLarge : .large))
@@ -46,9 +54,10 @@ struct LunchWidgetView: View {
     }
 
     private var header: some View {
-        Label(large ? "Today’s lunch" : "LUNCH", systemImage: "fork.knife")
-            .font(large ? .headline : .caption2.weight(.bold))
-            .tracking(large ? 0 : 1.2)
+        Label(large ? "Today’s lunch" : "Lunch", systemImage: "fork.knife")
+            .font(large ? .varsity(.headline) : .system(size: 11, weight: .bold).width(.expanded))
+            .textCase(large ? nil : .uppercase)
+            .tracking(large ? 0 : 0.8)
             .foregroundStyle(accent)
             .widgetAccentable()
             .lineLimit(1)
@@ -56,11 +65,8 @@ struct LunchWidgetView: View {
 
     private func category(_ section: LunchMenuSection) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(section.station.title, systemImage: section.station.icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(categoryAccent(section.station))
+            stationLabel(section.station)
                 .widgetAccentable()
-                .lineLimit(1)
             ViewThatFits(in: .vertical) {
                 if section.items.count == 1 {
                     menuOptions(section.items, spacing: 8)
@@ -74,7 +80,7 @@ struct LunchWidgetView: View {
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(section.items.count > 1 ? "+\(section.items.count - 1) more in app ↗" : "More in app ↗")
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.caption2).foregroundStyle(ink2)
                 }
             }
             Spacer(minLength: 0)
@@ -102,14 +108,13 @@ struct LunchWidgetView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Today’s categories").font(.headline)
                 ForEach(menu.sections) { section in
-                    Label(section.station.title, systemImage: section.station.icon)
+                    Text(section.station.title)
                         .font(.subheadline)
-                        .foregroundStyle(categoryAccent(section.station))
                         .widgetAccentable()
                         .accessibilityLabel("\(section.station.title): \(section.items.joined(separator: ", "))")
                 }
                 Text("Open the app for the full menu ↗")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(ink2)
             }
             .fixedSize(horizontal: false, vertical: true)
             Text("Open the app for today’s full menu ↗")
@@ -176,9 +181,7 @@ struct LunchWidgetView: View {
 
     private func menuCell(_ section: LunchMenuSection, spacing: CGFloat = 5) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
-            Label(section.station.title, systemImage: section.station.icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(categoryAccent(section.station))
+            stationLabel(section.station)
                 .widgetAccentable()
             menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items, spacing: spacing)
                 .font(.subheadline.weight(.medium))
@@ -207,22 +210,19 @@ struct LunchWidgetView: View {
                     .accessibilityHidden(true)
             }
             Text(title).font(.headline)
-            Text(detail).font(.caption).foregroundStyle(.secondary)
+            Text(detail).font(.caption).foregroundStyle(ink2)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
     }
 }
 
+/// Lunch lives on the lining, like the app's Lunch tab.
 struct LunchWidgetBackground: View {
     let entry: LunchTimelineEntry
 
     var body: some View {
-        if entry.lunch?.isServingDay == false {
-            RestingWidgetBackground()
-        } else {
-            Rectangle().fill(.background)
-        }
+        RestingWidgetBackground()
     }
 }
 
