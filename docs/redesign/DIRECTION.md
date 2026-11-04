@@ -97,6 +97,8 @@ Widgets
    advisory). The current block is shown by inverting its row.
 4. **Lunch stations lose their rainbow icon chips.** Station names lead.
 5. **Class emoji stay** as the student's own content, inline, with no chip.
+   The default emoji for lunch, free, advisory and other non-class blocks go:
+   those rows are named plainly.
 6. **The app icon is not changed.** The Patriot crest's rights are still
    unconfirmed; a crest-free icon is proposed in the mockups only.
 
@@ -268,3 +270,31 @@ Monday, September 14, 2026, Standard schedule.
   Smoky Poblano, Chicken Noodle. International: Asian Bowl. Special: Sushi.
 - **ID:** a fictional student, Priya Raman, Grade 11, 26–27, ID 512837.
 - **My Schedule:** the eight blocks above with chevrons, Reset Schedule.
+
+## Build
+
+Built in SwiftUI on `feature/app-redesign` and checked in the iPhone 17 Pro
+Simulator (iOS 27.2) in light, dark and the largest accessibility text size.
+After-screens are in `after/`, the comparison in `before-after.png`.
+
+- **Tokens** live in ScheduleKit (`Presentation/Jacket.swift`) so the app and
+  the widgets share them; `JacketContrastTests` checks every ink against its
+  ground in both appearances.
+- **Chrome over the field.** Light-mode Liquid Glass over the green washes out
+  to mint, so while Home is on the field its toolbar and tab bar take the dark
+  appearance; the field colour itself stays the light-mode green.
+- **Navigation titles** use the varsity face and twill edge through the
+  navigation bar appearance, so the native large titles keep their behaviour.
+- **Widgets** wear the same grounds in full colour; tinted and clear modes
+  drop the background and keep system inks.
+
+Differences from the mockups, on purpose: the passing screen puts the seam
+under the destination (one hero structure for every state, so the countdown
+rolls across a bell instead of being swapped); after school the list below is
+still today's (stepping to tomorrow is one tap). Not built: the proposed
+crest-free icon (decision 6).
+
+Not verified: haptics and the signature's feel on a real device, Home Screen
+widgets in place (the Simulator served a cached render, so widgets were checked
+with an offscreen renderer), iOS 18 (the deployment target) on a device or
+simulator.
