@@ -80,6 +80,15 @@ public actor ScheduleSyncService {
 
             switch http.statusCode {
             case 304:
+                // Only a conditional request can earn a 304. One answering an
+                // unconditional request (a captive portal or a misbehaving
+                // proxy) confirms nothing: with a cache it would hide an overdue
+                // check, and without one the refetch below would loop forever.
+                guard metadata.etag != nil else {
+                    metadata.lastError = "HTTP 304"
+                    store.fetchMetadata = metadata
+                    return .failed("HTTP 304")
+                }
                 // A 304 is only meaningful if we still hold the payload it refers
                 // to; if the cache is gone, drop the ETag and refetch in full.
                 guard store.cachedMapData != nil else {

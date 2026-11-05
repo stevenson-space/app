@@ -384,6 +384,25 @@ final class StubURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+/// The `If-None-Match` header of each request a stub served, in order. Stub
+/// handlers run on URLSession's queue, so access is locked.
+private final class ConditionalHeaderLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String?] = []
+
+    func record(_ request: URLRequest) {
+        lock.lock()
+        storage.append(request.value(forHTTPHeaderField: "If-None-Match"))
+        lock.unlock()
+    }
+
+    var headers: [String?] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+}
+
 @Suite(.serialized) struct SyncServiceTests {
     let validJSON = Data(#"{"Late Arrival": ["9/18/2026"]}"#.utf8)
     let updatedJSON = Data(#"{"Late Arrival": ["9/18/2026", "10/16/2026"]}"#.utf8)
@@ -431,6 +450,95 @@ final class StubURLProtocol: URLProtocol {
         #expect(store.fetchMetadata.lastSuccess == t1)
         #expect(store.fetchMetadata.lastChanged == t0)
         #expect(!store.fetchMetadata.isUpdateCheckOverdue(at: t1))
+    }
+
+    @Test func notModifiedWithoutACacheRefetchesOnceInFull() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        store.fetchMetadata = FetchMetadata(etag: "\"abc\"")
+        let json = validJSON
+        let log = ConditionalHeaderLog()
+        StubURLProtocol.handler = { request in
+            log.record(request)
+            if request.value(forHTTPHeaderField: "If-None-Match") == nil {
+                return (200, ["ETag": "\"def\""], json)
+            }
+            return (304, [:], Data())
+        }
+
+        let result = await makeService(store).refresh(force: true)
+
+        let expected: [String?] = ["\"abc\"", nil]
+        #expect(result == .updated)
+        #expect(log.headers == expected)
+        #expect(store.cachedMapData == validJSON)
+        #expect(store.fetchMetadata.etag == "\"def\"")
+    }
+
+    @Test func repeated304WithoutACacheFailsInsteadOfLooping() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        store.fetchMetadata = FetchMetadata(etag: "\"abc\"")
+        let log = ConditionalHeaderLog()
+        StubURLProtocol.handler = { request in
+            log.record(request)
+            return (304, [:], Data())
+        }
+
+        let result = await makeService(store).refresh(force: true)
+
+        // One conditional request, one unconditional refetch, then stop.
+        let expected: [String?] = ["\"abc\"", nil]
+        #expect(result == .failed("HTTP 304"))
+        #expect(log.headers == expected)
+        #expect(store.cachedMapData == nil)
+        #expect(store.fetchMetadata.etag == nil)
+        #expect(store.fetchMetadata.lastError == "HTTP 304")
+        #expect(store.fetchMetadata.lastSuccess == nil)
+    }
+
+    @Test func a304ToAFreshInstallFailsWithoutRetrying() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let log = ConditionalHeaderLog()
+        StubURLProtocol.handler = { request in
+            log.record(request)
+            return (304, [:], Data())
+        }
+
+        let result = await makeService(store).refresh(force: true)
+
+        let expected: [String?] = [nil]
+        #expect(result == .failed("HTTP 304"))
+        #expect(log.headers == expected)
+        #expect(store.cachedMapData == nil)
+    }
+
+    @Test func a304ToAnUnconditionalRequestFailsEvenWithACache() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        store.cachedMapData = validJSON
+        let t0 = TestSupport.at(day(2026, 9, 1), 12, 0)
+        let t1 = TestSupport.at(day(2026, 9, 10), 12, 0)
+        store.fetchMetadata = FetchMetadata(lastSuccess: t0, lastChanged: t0, etag: "\"abc\"")
+        let log = ConditionalHeaderLog()
+        StubURLProtocol.handler = { request in
+            log.record(request)
+            return (304, [:], Data())
+        }
+        let service = makeService(store)
+        // As after a data-source reset: the ETag is gone, the cache is not.
+        await service.invalidateETag()
+
+        let result = await service.refresh(force: true, now: t1)
+
+        let expected: [String?] = [nil]
+        #expect(result == .failed("HTTP 304"))
+        #expect(log.headers == expected)
+        #expect(store.cachedMapData == validJSON)
+        #expect(store.fetchMetadata.lastSuccess == t0)
+        #expect(store.fetchMetadata.lastError == "HTTP 304")
+        #expect(store.fetchMetadata.isUpdateCheckOverdue(at: t1))
     }
 
     @Test(arguments: [false, true])

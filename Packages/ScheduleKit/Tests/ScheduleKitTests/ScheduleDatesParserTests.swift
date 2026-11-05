@@ -33,6 +33,33 @@ import Foundation
         #expect(map.match(day(2026, 11, 28)) == nil)
     }
 
+    @Test func weekendsInsideRangesAreLeftToTheCalendar() throws {
+        let map = try TestSupport.map(
+            #"{"Late Arrival": ["10/9/2026-10/12/2026", "10/17/2026"], "No School": ["11/25/2026-11/30/2026"]}"#)
+        // The Friday and Monday ends of the range match…
+        #expect(map.match(day(2026, 10, 9))?.family == .bell(.lateArrival))
+        #expect(map.match(day(2026, 10, 12))?.family == .bell(.lateArrival))
+        // …the weekend between them does not…
+        #expect(map.match(day(2026, 10, 10)) == nil)
+        #expect(map.match(day(2026, 10, 11)) == nil)
+        // …a weekend listed as its own date still does…
+        #expect(map.match(day(2026, 10, 17))?.family == .bell(.lateArrival))
+        // …and a No School range keeps its weekend.
+        #expect(map.match(day(2026, 11, 28))?.family == .noSchool)
+    }
+
+    @Test func weekendListedOnItsOwnBeatsASurroundingNoSchoolRange() throws {
+        let map = try TestSupport.map(
+            #"{"Late Arrival": ["11/28/2026"], "No School": ["11/25/2026-11/30/2026"]}"#)
+        // Saturday 11/28 is listed on its own, so it wins over the range…
+        let saturday = try #require(map.match(day(2026, 11, 28)))
+        #expect(saturday.family == .bell(.lateArrival))
+        #expect(saturday.hadConflict)
+        // …while the rest of the range, weekend and weekday alike, is No School.
+        #expect(map.match(day(2026, 11, 29))?.family == .noSchool)
+        #expect(map.match(day(2026, 11, 30))?.family == .noSchool)
+    }
+
     @Test func keyRegistryAndAliases() {
         #expect(ScheduleDatesParser.family(forKey: "Late Arrival") == .bell(.lateArrival))
         #expect(ScheduleDatesParser.family(forKey: "Activity Period") == .bell(.activityPeriod))
