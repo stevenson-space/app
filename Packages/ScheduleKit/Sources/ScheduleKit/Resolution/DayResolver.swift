@@ -87,8 +87,13 @@ public func resolveDay(_ day: DayKey,
         }
     }
 
-    // 3. Outside the school year: never Standard.
+    // 3. Outside the school year: never Standard. A weekend inside a map range
+    //    (a summer session) that `match` passed over is still a weekend.
     guard let year else {
+        if day.isWeekend, inputs.map?.entries.contains(where: { $0.span.contains(day) }) == true {
+            return bareTimeline(day: day, kind: .weekend, label: "Weekend",
+                                note: nil, provenance: .weekend)
+        }
         return bareTimeline(day: day, kind: .outsideYear, label: "Summer Break",
                             note: nil, provenance: .outsideYear)
     }

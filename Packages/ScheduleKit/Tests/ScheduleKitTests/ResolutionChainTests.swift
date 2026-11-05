@@ -129,6 +129,17 @@ import Foundation
         #expect(timeline.blocks.map(\.id) == ["summer"])
     }
 
+    @Test func weekendInsideASummerSessionIsAWeekend() throws {
+        // Mon 6/14/2027 through Fri 7/23/2027, after the school year ends.
+        let map = try TestSupport.map(#"{"Summer School": ["6/14/2027-7/23/2027"]}"#)
+        let inputs = TestSupport.inputs(map: map)
+        #expect(resolveDay(day(2027, 6, 18), inputs: inputs).family == .summer)
+        #expect(resolveDay(day(2027, 6, 19), inputs: inputs).kind == .weekend)
+        #expect(resolveDay(day(2027, 6, 20), inputs: inputs).kind == .weekend)
+        // A summer weekend outside the session is still summer break.
+        #expect(resolveDay(day(2027, 7, 31), inputs: inputs).kind == .outsideYear)
+    }
+
     @Test func mapWinsOverWeekend() throws {
         let map = try TestSupport.map(#"{"PM Assembly": ["9/19/2026"]}"#)
         let timeline = resolveDay(day(2026, 9, 19), inputs: TestSupport.inputs(map: map))
