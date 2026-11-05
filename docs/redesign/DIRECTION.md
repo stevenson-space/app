@@ -127,6 +127,10 @@ So every direction has to draw its own richness.
 
 Rendered in `explore.html` → `shots/explore/sheet.png`.
 
+The mockups open from a checkout: the device kit is bundled in `assets/` (from
+the app-designer skill) and the crest loads from the asset catalog. They use
+Apple's system fonts, so they render as designed on a Mac.
+
 **Winner: the letter jacket.** It is the only one of the three that is
 Stevenson's and nobody else's: the school's own green and gold, a countdown
 set like a varsity number, and a ground whose colour *says* something (green:
