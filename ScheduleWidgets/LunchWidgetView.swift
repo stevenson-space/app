@@ -6,10 +6,13 @@ struct LunchWidgetView: View {
     let entry: LunchTimelineEntry
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.showsWidgetContainerBackground) private var showsBackground
 
     private var large: Bool { family == .systemLarge }
-    private var fullColor: Bool { renderingMode == .fullColor }
-    /// The accent green on the lining; system inks in tinted and clear modes.
+    /// Lining inks only over the lining: tinted and clear modes, and StandBy
+    /// without a background, keep the system inks.
+    private var fullColor: Bool { renderingMode == .fullColor && showsBackground }
+    /// The accent green on the lining; system inks otherwise.
     private var accent: Color {
         guard entry.lunch?.isServingDay != false, fullColor else { return .primary }
         return Jacket.accent

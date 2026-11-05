@@ -7,15 +7,18 @@ struct ScheduleWidgetView: View {
     let entry: ScheduleWidgetEntry
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.showsWidgetContainerBackground) private var showsBackground
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .largeTitle) private var timerSize = 42
 
     private var rectangular: Bool { family == .accessoryRectangular }
     private var medium: Bool { family == .systemMedium }
     private var format: TimeFormatPref { entry.config.timeFormat }
-    private var fullColor: Bool { renderingMode == .fullColor }
-    /// The jacket ground under a full-colour widget. Tinted and clear modes
-    /// drop the background and the colour, so they keep the system inks.
+    /// The jacket inks need the jacket ground behind them. Tinted and clear
+    /// modes drop the colour, and StandBy can drop the background while
+    /// staying full colour; all of them keep the system inks.
+    private var fullColor: Bool { renderingMode == .fullColor && showsBackground }
+    /// The jacket ground under a full-colour widget.
     private var ground: JacketGround { ScheduleWidgetBackground.ground(for: entry) }
     private var ink: Color { fullColor ? ground.ink : .primary }
     private var ink2: Color { fullColor ? ground.ink2 : .secondary }
