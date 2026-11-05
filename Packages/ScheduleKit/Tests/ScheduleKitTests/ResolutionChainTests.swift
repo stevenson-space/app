@@ -136,6 +136,15 @@ import Foundation
         #expect(timeline.family == .pmAssembly)
     }
 
+    @Test func weekendInsideAnELearningRangeStaysAWeekend() throws {
+        // Fri 1/15/2027 through Mon 1/18/2027: no Saturday morning alert.
+        let map = try TestSupport.map(#"{"Asynchronous": ["1/15/2027-1/18/2027"]}"#)
+        let inputs = TestSupport.inputs(map: map)
+        #expect(resolveDay(day(2027, 1, 15), inputs: inputs).kind == .asynchronous)
+        #expect(resolveDay(day(2027, 1, 16), inputs: inputs).kind == .weekend)
+        #expect(resolveDay(day(2027, 1, 18), inputs: inputs).kind == .asynchronous)
+    }
+
     @Test func asyncDayFromMap() throws {
         let map = try TestSupport.map(#"{"Asynchronous": ["11/13/2026"]}"#)
         let timeline = resolveDay(day(2026, 11, 13), inputs: TestSupport.inputs(map: map))
@@ -181,6 +190,18 @@ import Foundation
         let monday = resolveDay(day(2026, 12, 21), inputs: TestSupport.inputs(map: map))
         #expect(monday.rotation == .rotation2)
         #expect(!monday.rotationUncertain)
+    }
+
+    @Test func weekendInsideAFinalsRangeStaysAWeekend() throws {
+        // Fri 12/18/2026 and Mon 12/21/2026 are finals; the weekend between
+        // gets no bells, badge, notifications, or widget countdowns.
+        let map = try TestSupport.map(#"{"Early Dismissal": ["12/18/2026-12/21/2026"]}"#)
+        for target in [day(2026, 12, 19), day(2026, 12, 20)] {
+            let timeline = resolveDay(target, inputs: TestSupport.inputs(map: map))
+            #expect(timeline.kind == .weekend, "\(target)")
+            #expect(timeline.blocks.isEmpty, "\(target)")
+            #expect(!timeline.rotationUncertain, "\(target)")
+        }
     }
 
     @Test func standaloneDateIsUncertainRotation1() throws {

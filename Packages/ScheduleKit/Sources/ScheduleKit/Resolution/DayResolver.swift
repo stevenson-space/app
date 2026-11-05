@@ -31,7 +31,8 @@ public enum FreePeriodGrouping: Sendable {
 
 /// Resolution priority:
 /// 1. Manual override for the date
-/// 2. Remote map entry (wins even outside school-year bounds — summer sessions)
+/// 2. Remote map entry (wins even outside school-year bounds — summer sessions;
+///    a weekend inside a multi-day range is left to the steps below)
 /// 3. Outside school year → no regular schedule (never defaults to Standard)
 /// 4. Bundled non-attendance date or break range → no school or break
 /// 5. Weekend
@@ -124,7 +125,8 @@ func inferEDRotation(day: DayKey, span: DateSpan, calendar: Calendar) -> (EDRota
     guard !span.isSingleDay else { return (.rotation1, true) }
     let weekdays = span.days(calendar: calendar).filter { !$0.isWeekend }
     guard let ordinal = weekdays.firstIndex(of: day) else {
-        // A weekend date inside an ED span — data oddity; stay honest.
+        // A weekend date inside an ED span. `DayTypeMap.match` keeps these
+        // out of `resolveDay`; stay honest if one arrives anyway.
         return (.rotation1, true)
     }
     let rotation: EDRotation = ordinal.isMultiple(of: 2) ? .rotation1 : .rotation2
