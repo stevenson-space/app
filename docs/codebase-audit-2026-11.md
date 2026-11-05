@@ -9,6 +9,17 @@ This report is the plan for, and the record of, the
 `audit/reliability-and-test-hardening` branch. Each finding states whether it
 was fixed on that branch or only documented.
 
+| Commit | Change |
+|--------|--------|
+| `8422c6b` | This report |
+| `2c3b3c7` | Weekends inside multi-day ranges stay weekends (finding 1) |
+| `63cf089` | Schedule sync retries a 304 at most once (finding 2) |
+| `737e91e` | Shared day labels use the school calendar (finding 3) |
+| `6865e91` | Tests for subject-emoji matching (finding 5) |
+| `7941cde` | Subject-emoji rule table is built once (finding 5) |
+| `f7eb40b` | The Lunch tab rolls over at midnight (finding 4) |
+| `a596288` | Corrected photo-storage comment (finding 6) |
+
 ## How the app is built
 
 - **Languages and frameworks.** Swift and SwiftUI throughout, iOS 18+. The app
@@ -58,12 +69,12 @@ conditions; **Improvement** = optional quality work.
 
 | # | Severity | Kind | Area | Status |
 |---|----------|------|------|--------|
-| 1 | Medium | Bug | Weekends inside multi-day calendar ranges resolve as school days | Fix planned |
-| 2 | Medium | Potential | Schedule sync retries a 304 without end when no cached copy exists | Fix planned |
-| 3 | Low | Bug | Shared day labels use the device's calendar, not the school's | Fix planned |
-| 4 | Low | Bug | Lunch tab's "today" is not observable, so it can go stale after midnight | Fix planned |
-| 5 | Low | Improvement | Subject-emoji rule table is rebuilt on every call, and has no tests | Fix planned |
-| 6 | Low | Bug (docs) | Photo-store comment recommends moving the ID photo into the App Group | Fix planned |
+| 1 | Medium | Bug | Weekends inside multi-day calendar ranges resolve as school days | Fixed in `2c3b3c7` |
+| 2 | Medium | Potential | Schedule sync retries a 304 without end when no cached copy exists | Fixed in `63cf089` |
+| 3 | Low | Bug | Shared day labels use the device's calendar, not the school's | Fixed in `737e91e` |
+| 4 | Low | Bug | Lunch tab's "today" is not observable, so it can go stale after midnight | Fixed in `f7eb40b` |
+| 5 | Low | Improvement | Subject-emoji rule table is rebuilt on every call, and has no tests | Fixed in `6865e91`, `7941cde` |
+| 6 | Low | Bug (docs) | Photo-store comment recommends moving the ID photo into the App Group | Fixed in `a596288` |
 | 7 | Medium | Bug (UX) | "Rotation unverified — tap to fix" cannot be fixed in release builds | Documented |
 | 8 | Low | Improvement | Past overrides are never pruned | Documented |
 | 9 | Low | Improvement | The ID photo is rewritten on every launch | Documented |
@@ -313,6 +324,16 @@ usable Swift toolchain. **Nothing in this branch has been compiled or run
 here.** Every change was checked by reading the affected code paths and the
 existing tests, and the new tests are written to the suites' existing
 conventions, but none of them has been executed.
+
+These checks did run:
+
+- The weekday of every date the new tests rely on was confirmed with `date`.
+- Every new subject-emoji expectation was replayed through a Python copy of
+  the matching loop that reads the rule table straight from
+  `ScheduleStyle.swift`. All matched.
+- The rule table parses to the same 60 rules before and after the move to a
+  `static let`.
+- Brackets, braces, and parentheses balance in every changed Swift file.
 
 Before merging, on a Mac:
 
