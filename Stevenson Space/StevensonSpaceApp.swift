@@ -14,8 +14,12 @@ struct StevensonSpaceApp: App {
 
     init() {
         let model = AppModel()
+        #if DEBUG
+        Self.applyTimeTravelArgument(to: model)
+        #endif
         _model = State(initialValue: model)
         AppDependencyManager.shared.add(dependency: model)
+        JacketAppearance.configure()
         StevensonShortcuts.updateAppShortcutParameters()
     }
 
@@ -31,4 +35,19 @@ struct StevensonSpaceApp: App {
             model.handleScenePhase(phase)
         }
     }
+
+    #if DEBUG
+    /// `-SSTimeTravel 2026-09-14T10:52:19` starts the DEBUG clock at that
+    /// school-time instant, so a screenshot or a simulator check can open
+    /// straight into any Home state.
+    private static func applyTimeTravelArgument(to model: AppModel) {
+        guard let value = UserDefaults.standard.string(forKey: "SSTimeTravel") else { return }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = SchoolTime.timeZone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        guard let instant = formatter.date(from: value) else { return }
+        model.timeTravelOffset = instant.timeIntervalSinceNow
+    }
+    #endif
 }

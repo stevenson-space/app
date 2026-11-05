@@ -15,31 +15,45 @@ struct PeriodEditorListView: View {
         let blocks = standardTemplate(config: config, catalog: model.catalog)
 
         ScrollView {
-            VStack(spacing: 8) {
-                ForEach(blocks) { block in
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Your Standard day. Tap a block to change it.")
+                    .font(.subheadline)
+                    .foregroundStyle(Jacket.ink2)
+                    .padding(.bottom, 20)
+
+                ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
+                    if index > 0 {
+                        RowStitch()
+                    }
                     Button {
                         editing = EditorTarget(block: block)
                     } label: {
-                        ScheduleCardRow(
-                            emoji: ScheduleStyle.emoji(for: block, config: config),
+                        ScheduleRow(
+                            periodLabel: block.spanLabel ?? block.periodID.periodNumber.map(String.init),
+                            emoji: block.role == .classPeriod ? ScheduleStyle.emoji(for: block, config: config) : nil,
                             title: block.displayName,
                             subtitle: subtitle(for: block, pref: pref)
                         ) {
                             Image(systemName: "chevron.right")
                                 .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Jacket.ink3)
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(accessibilityLabel(for: block, pref: pref))
+                    .accessibilityHint("Edit this block")
                 }
 
                 resetButton
-                    .padding(.top, 16)
+                    .padding(.top, 28)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .padding(.bottom, 32)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Jacket.lining)
+        .environment(\.jacketGround, .lining)
         .navigationTitle("My Schedule")
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
@@ -56,35 +70,30 @@ struct PeriodEditorListView: View {
         }
     }
 
-    /// Card-shaped so it sits in the list's visual language; disabled while
-    /// there's nothing to reset.
+    /// A plain destructive action at the end of the list, away from the rows;
+    /// disabled while there's nothing to reset.
     private var resetButton: some View {
-        let disabled = model.config.isDefaultSchedule
-        return Button(role: .destructive) {
+        Button("Reset Schedule", role: .destructive) {
             confirmingReset = true
-        } label: {
-            Text("Reset Schedule")
-                .font(.headline)
-                .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.red))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
-                )
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .disabled(disabled)
+        .font(.headline)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .disabled(model.config.isDefaultSchedule)
     }
 
-    /// "Period 2 · 9:26 – 10:38 · 118" (span label replaces the period name
-    /// for halves and merged 1½-period classes).
+    /// "9:26 – 10:13 · 118": the period has its own column.
     private func subtitle(for block: ResolvedBlock, pref: TimeFormatPref) -> String {
-        var parts = [block.spanLabel ?? "Period \(block.periodID.storageKey)"]
-        parts.append(TimeDisplay.range(block.start, block.end, pref))
+        var parts = [TimeDisplay.range(block.start, block.end, pref)]
         if let room = block.room { parts.append(room) }
         return parts.joined(separator: " · ")
+    }
+
+    private func accessibilityLabel(for block: ResolvedBlock, pref: TimeFormatPref) -> String {
+        var parts = [block.spanLabel.map { "Period \($0)" } ?? "Period \(block.periodID.storageKey)",
+                     block.displayName,
+                     "\(TimeDisplay.time(block.start, pref)) to \(TimeDisplay.time(block.end, pref))"]
+        if let room = block.room { parts.append("room \(room)") }
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -141,24 +150,28 @@ struct BlockEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                switch target {
-                case .half(let period, let half):
-                    halfContent(period: period, half: half)
-                default:
-                    kindSection
-                    switch currentKind {
-                    case .classwork:
-                        classFields
-                        lengthSection
-                    case .lunch:
-                        if UserConfig.advisoryPeriods.contains(number) {
-                            advisorySection
+                Group {
+                    switch target {
+                    case .half(let period, let half):
+                        halfContent(period: period, half: half)
+                    default:
+                        kindSection
+                        switch currentKind {
+                        case .classwork:
+                            classFields
+                            lengthSection
+                        case .lunch:
+                            if UserConfig.advisoryPeriods.contains(number) {
+                                advisorySection
+                            }
+                        case .free:
+                            EmptyView()
                         }
-                    case .free:
-                        EmptyView()
                     }
                 }
+                .jacketRows()
             }
+            .jacketForm()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -246,7 +259,7 @@ struct BlockEditSheet: View {
                     Text(emoji.nilIfBlank ?? ScheduleStyle.subjectEmoji(name))
                         .font(.title3)
                         .frame(width: 44, height: 44)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                        .background(Jacket.lining, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Choose class emoji")
@@ -358,7 +371,7 @@ struct BlockEditSheet: View {
             } else if let backwardBlocker {
                 Text("Can't start in \(number - 1)B — it holds your \(backwardBlocker == .lunch ? "lunch" : "advisory").")
             } else if currentLength != .standard {
-                Text("The leftover half period shows as its own card — tap it to make it lunch or free.")
+                Text("The leftover half period shows as its own row. Tap it to make it lunch or free.")
             }
         }
     }
@@ -574,7 +587,8 @@ private struct ClassEmojiPicker: View {
                     ForEach(Self.categories, id: \.title) { category in
                         VStack(alignment: .leading, spacing: 12) {
                             Text(category.title)
-                                .font(.headline)
+                                .jacketLabel()
+                                .foregroundStyle(Jacket.ink2)
 
                             LazyVGrid(columns: columns, spacing: 10) {
                                 ForEach(category.emoji, id: \.self) { emoji in
@@ -587,8 +601,8 @@ private struct ClassEmojiPicker: View {
                                             .frame(maxWidth: .infinity, minHeight: 44)
                                             .background {
                                                 if selection == emoji {
-                                                    RoundedRectangle(cornerRadius: 10)
-                                                        .fill(Color.accentColor.opacity(0.16))
+                                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                        .fill(Jacket.accent.opacity(0.16))
                                                 }
                                             }
                                             .contentShape(Rectangle())
@@ -603,6 +617,7 @@ private struct ClassEmojiPicker: View {
                 }
                 .padding(20)
             }
+            .background(Jacket.lining)
             .navigationTitle("Choose an Emoji")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -627,18 +642,18 @@ private struct ClassEmojiPicker: View {
                         .font(.headline)
                     Text("Matches your class name")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Jacket.ink2)
                 }
 
                 Spacer()
 
                 if selection.isEmpty {
                     Image(systemName: "checkmark")
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Jacket.accent)
                 }
             }
             .padding(14)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            .background(Jacket.raised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selection.isEmpty ? .isSelected : [])
