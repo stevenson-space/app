@@ -108,7 +108,9 @@ sends a morning alert), and unknown event ranges.
 covers the date. Single-date entries still win, so `mapWinsOverWeekend` holds.
 No School ranges still apply, because either reading means no school and that
 keeps today's labels for breaks such as Memorial Day weekend. A weekend date
-listed on its own still outranks a No School range around it.
+listed on its own still outranks a No School range around it. A weekend
+inside a range that falls outside every bundled school year, such as a summer
+session, resolves as a weekend rather than Summer Break.
 
 **Risk.** This changes how ranges are read for weekend dates. If the school
 ever means a weekend inside a range to be a school day, it has to list that
@@ -134,7 +136,9 @@ kind of unreliable network students run into.
 
 **Fix.** Retry in full only when the request that got the 304 was
 conditional. A 304 to an unconditional request is recorded as `HTTP 304` and
-the last-good cache is left alone. New tests cover the single retry and the
+the last-good cache is left alone. That holds with a cache too, as after a
+data-source reset clears the ETag, so the 304 can't record a success and
+hide an overdue check. New tests cover the single retry and the
 termination.
 
 **Risk.** Low. The happy paths (200, conditional 304 with a cache) are
