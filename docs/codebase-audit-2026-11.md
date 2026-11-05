@@ -24,8 +24,10 @@ was fixed on that branch or only documented.
 
 - **Languages and frameworks.** Swift and SwiftUI throughout, iOS 18+. The app
   target builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` and
-  approachable concurrency. The two packages use Swift 5 language mode, so
-  their nonisolated async work (Vision, networking) runs off the main actor.
+  approachable concurrency. The two packages use Swift 5 language mode and do
+  not default to MainActor isolation. `StudentIDExtractor`'s Vision pipeline is
+  nonisolated, and `ScheduleSyncService` and `LunchMenuSyncService` are
+  ordinary actors, so that work runs off the main actor.
 - **Architecture.** All logic lives in two packages that run without UI.
   `ScheduleKit` holds the bell tables, `resolveDay` / `momentState`, sync,
   storage, notification planning, and widget timeline planning.
@@ -105,7 +107,8 @@ sends a morning alert), and unknown event ranges.
 **Fix.** On a weekend, `match` ignores entries whose *multi-day* span merely
 covers the date. Single-date entries still win, so `mapWinsOverWeekend` holds.
 No School ranges still apply, because either reading means no school and that
-keeps today's labels for breaks such as Memorial Day weekend.
+keeps today's labels for breaks such as Memorial Day weekend. A weekend date
+listed on its own still outranks a No School range around it.
 
 **Risk.** This changes how ranges are read for weekend dates. If the school
 ever means a weekend inside a range to be a school day, it has to list that
