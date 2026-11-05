@@ -61,7 +61,10 @@ struct DayTimelineListView: View {
                     RowStitch()
                 }
                 ScheduleRow(
-                    periodLabel: periodLabel(for: block),
+                    // The bell schedule identity, not list position or customization
+                    // identity: early dismissal can reorder periods and continuation
+                    // classes can share a name.
+                    periodLabel: block.periodLabel,
                     emoji: emoji(for: block, config: config),
                     title: block.displayName,
                     subtitle: subtitle(for: block, pref: pref),
@@ -80,13 +83,6 @@ struct DayTimelineListView: View {
         }
     }
 
-    /// Use the bell schedule identity, not list position or customization identity:
-    /// early dismissal can reorder periods and continuation classes can share a name.
-    private func periodLabel(for block: ResolvedBlock) -> String? {
-        guard let number = block.periodID.periodNumber else { return nil }
-        return block.spanLabel ?? String(number)
-    }
-
     /// Classes show the student's emoji; lunch, free and the rest are named
     /// plainly, so the emoji stays the student's own content.
     private func emoji(for block: ResolvedBlock, config: UserConfig) -> String? {
@@ -103,7 +99,7 @@ struct DayTimelineListView: View {
     private func accessibilitySummary(for block: ResolvedBlock, now: Date?,
                                       pref: TimeFormatPref) -> String {
         var parts = [block.displayName]
-        if let period = periodLabel(for: block) {
+        if let period = block.periodLabel {
             parts.insert("Period \(period)", at: 0)
         }
         if let room = block.room { parts.append("room \(room)") }
