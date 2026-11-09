@@ -57,6 +57,9 @@ struct LunchMenuView: View {
                 guard navigation.lunchTodayRequest > 0 else { return }
                 selectedDay = today
             }
+            .onChange(of: today) { oldDay, _ in
+                if selectedDay == oldDay { selectedDay = nil }
+            }
             .toolbar {
                 if day != preferredDay {
                     ToolbarItem(placement: .topBarTrailing) {
