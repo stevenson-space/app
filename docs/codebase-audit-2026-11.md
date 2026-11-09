@@ -11,14 +11,18 @@ was fixed on that branch or only documented.
 
 | Commit | Change |
 |--------|--------|
-| `8422c6b` | This report |
-| `2c3b3c7` | Weekends inside multi-day ranges stay weekends (finding 1) |
-| `63cf089` | Schedule sync retries a 304 at most once (finding 2) |
-| `737e91e` | Shared day labels use the school calendar (finding 3) |
-| `6865e91` | Tests for subject-emoji matching (finding 5) |
-| `7941cde` | Subject-emoji rule table is built once (finding 5) |
-| `f7eb40b` | The Lunch tab rolls over at midnight (finding 4) |
-| `a596288` | Corrected photo-storage comment (finding 6) |
+| `73b9243` | This report |
+| `8deadba` | Weekends inside multi-day ranges stay weekends (finding 1) |
+| `af21c63` | Schedule sync retries a 304 at most once (finding 2) |
+| `64bed8e` | Shared day labels use the school calendar (finding 3) |
+| `ddff239` | Tests for subject-emoji matching (finding 5) |
+| `e477540` | Subject-emoji rule table is built once (finding 5) |
+| `badb983` | The Lunch tab rolls over at midnight (finding 4) |
+| `6764fc2` | Corrected photo-storage comment (finding 6) |
+| `0cce50b` | A weekend listed on its own beats a No School range (finding 1) |
+| `03d1a07` | Any 304 to an unconditional request fails (finding 2) |
+| `1fbf234` | A weekend inside a summer session stays a weekend (finding 1) |
+| `360065f` | A Lunch selection pinned to the previous today follows the new day (finding 4) |
 
 ## How the app is built
 
@@ -71,12 +75,12 @@ conditions; **Improvement** = optional quality work.
 
 | # | Severity | Kind | Area | Status |
 |---|----------|------|------|--------|
-| 1 | Medium | Bug | Weekends inside multi-day calendar ranges resolve as school days | Fixed in `2c3b3c7` |
-| 2 | Medium | Potential | Schedule sync retries a 304 without end when no cached copy exists | Fixed in `63cf089` |
-| 3 | Low | Bug | Shared day labels use the device's calendar, not the school's | Fixed in `737e91e` |
-| 4 | Low | Bug | Lunch tab's "today" is not observable, so it can go stale after midnight | Fixed in `f7eb40b` |
-| 5 | Low | Improvement | Subject-emoji rule table is rebuilt on every call, and has no tests | Fixed in `6865e91`, `7941cde` |
-| 6 | Low | Bug (docs) | Photo-store comment recommends moving the ID photo into the App Group | Fixed in `a596288` |
+| 1 | Medium | Bug | Weekends inside multi-day calendar ranges resolve as school days | Fixed in `8deadba`, `0cce50b`, `1fbf234` |
+| 2 | Medium | Potential | Schedule sync retries a 304 without end when no cached copy exists | Fixed in `af21c63`, `03d1a07` |
+| 3 | Low | Bug | Shared day labels use the device's calendar, not the school's | Fixed in `64bed8e` |
+| 4 | Low | Bug | Lunch tab's "today" is not observable, so it can go stale after midnight | Fixed in `badb983`, `360065f` |
+| 5 | Low | Improvement | Subject-emoji rule table is rebuilt on every call, and has no tests | Fixed in `ddff239`, `e477540` |
+| 6 | Low | Bug (docs) | Photo-store comment recommends moving the ID photo into the App Group | Fixed in `6764fc2` |
 | 7 | Medium | Bug (UX) | "Rotation unverified — tap to fix" cannot be fixed in release builds | Documented |
 | 8 | Low | Improvement | Past overrides are never pruned | Documented |
 | 9 | Low | Improvement | The ID photo is rewritten on every launch | Documented |
@@ -177,7 +181,9 @@ midnight. Another: the app comes back after midnight within the one-hour sync
 throttle.
 
 **Fix.** Read `model.todayTimeline.day`, which the heartbeat refreshes and
-SwiftUI observes. Home already does this.
+SwiftUI observes. Home already does this. When today changes, clear a
+selection pinned to the previous today so it follows the new preferred lunch
+day. Selections of other dates remain unchanged.
 
 **Risk.** Low. It is the same value except for under one second around
 midnight. This is an app-target change, so it needs an Xcode build to verify
@@ -326,11 +332,10 @@ jobs:
 
 ## Verification
 
-The audit ran in a Linux container without Xcode, an iOS Simulator, or a
-usable Swift toolchain. **Nothing in this branch has been compiled or run
-here.** Every change was checked by reading the affected code paths and the
-existing tests, and the new tests are written to the suites' existing
-conventions, but none of them has been executed.
+The original audit ran in a Linux container without Xcode, an iOS Simulator,
+or a usable Swift toolchain. Nothing was compiled or run during that audit.
+Every change was checked by reading the affected code paths and the existing
+tests, and the new tests followed the suites' existing conventions.
 
 These checks did run:
 
@@ -342,6 +347,11 @@ These checks did run:
   `static let`.
 - Brackets, braces, and parentheses balance in every changed Swift file.
 
+Follow-up validation on November 9, 2026: the app built successfully in Xcode
+27.2 for the iPhone 18 Pro simulator, and all 293 ScheduleKit tests passed.
+Every commit cited in this report was verified as an ancestor of the branch
+head. The manual rollover check below was not performed in this follow-up.
+
 Before merging, on a Mac:
 
 1. `swift test --package-path Packages/ScheduleKit`. Expect the new tests in
@@ -351,8 +361,9 @@ Before merging, on a Mac:
 2. `swift test --package-path Packages/StudentIDKit`. That package only had a
    comment change.
 3. `xcodebuild -scheme "Stevenson Space" -destination 'generic/platform=iOS Simulator' build`.
-4. Manual regression check for finding 4: in a DEBUG build, open the Lunch
-   tab and use time travel to jump across midnight. The week strip's "today"
-   ring should follow. (The original staleness only shows in Release builds,
-   where `model.today` is not observed, so this checks that nothing
-   regressed, not the fix itself.)
+4. Manual regression check for finding 4: in a DEBUG build, open Lunch from
+   its widget or select today in the week strip, then use time travel to
+   jump across midnight. The "today" ring and preferred lunch day should
+   advance. Repeat with a different date selected; that selection should
+   stay unchanged. Also check foregrounding after a date change. (The
+   original unobserved-clock issue only shows in Release builds.)
