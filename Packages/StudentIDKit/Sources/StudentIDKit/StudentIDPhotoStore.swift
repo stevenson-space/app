@@ -48,10 +48,12 @@ public struct StudentIDPhotoStore: Sendable {
         try? Data(contentsOf: fileURL)
     }
 
-    /// Rewrites an existing photo with the current protection class.
+    /// Rewrites an existing photo with the current protection class, unless
+    /// it already has it. An unreadable attribute falls through to the rewrite.
     public func reapplyProtectionIfPresent() {
         #if os(iOS)
-        guard let data = loadData() else { return }
+        let protection = try? fileURL.resourceValues(forKeys: [.fileProtectionKey]).fileProtection
+        guard protection != .complete, let data = loadData() else { return }
         try? data.write(to: fileURL, options: [.atomic, .completeFileProtection])
         #endif
     }
