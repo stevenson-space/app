@@ -1,9 +1,8 @@
 import Foundation
 
-/// Assembles the lunch manifest from the per-station files the website
-/// publishes under `src/data/lunch-rotating`, with the same last-good-cache
-/// guarantee used by schedule syncing: nothing replaces the cache unless every
-/// station was fetched and the combined manifest validated.
+/// Fetches the lunch menus from the website's API with the same last-good-cache
+/// guarantee as schedule syncing: nothing replaces the cache unless the
+/// response parses and validates.
 public actor LunchMenuSyncService {
     public static let throttleInterval: TimeInterval = 3600
 
@@ -15,95 +14,79 @@ public actor LunchMenuSyncService {
         self.session = session ?? ScheduleSyncService.makeSession()
     }
 
+    /// Whether an automatic check should wait. Only a menu that can be shown
+    /// earns the wait: after a first launch that failed, or an update from a
+    /// version whose cache this one cannot read, the next activation retries.
+    public static func isThrottled(_ metadata: FetchMetadata, hasMenu: Bool, at now: Date) -> Bool {
+        hasMenu && metadata.isThrottled(at: now, interval: throttleInterval)
+    }
+
     @discardableResult
     public func refresh(force: Bool, now: Date = Date()) async -> SyncResult {
         var metadata = store.lunchFetchMetadata
-        if !force, metadata.isThrottled(at: now, interval: Self.throttleInterval) {
+        let cached = store.cachedLunchMenuData
+        let cachedMenu = LunchMenuLoader.load(cachedData: cached)
+        if !force, Self.isThrottled(metadata, hasMenu: cachedMenu != nil, at: now) {
             return .skippedThrottled
         }
 
         metadata.recordAttempt(at: now)
-        // Six documents have no single entity tag between them, so the lunch
-        // path does not make conditional requests; freshness comes from
-        // comparing the assembled bytes. Clear any tag a previous build stored
-        // for the retired single-manifest endpoint.
-        metadata.etag = nil
         store.lunchFetchMetadata = metadata
 
+        var request = URLRequest(url: SharedStore.lunchMenuURL)
+        // A 304 answers "what you hold is current", so only ask that way while
+        // holding a menu this version can read.
+        let conditionalETag = cachedMenu == nil ? nil : metadata.etag
+        if let conditionalETag {
+            request.setValue(conditionalETag, forHTTPHeaderField: "If-None-Match")
+        }
+
         do {
-            let data = try await fetchManifest()
-            // Parsing is the gate: a manifest that does not validate never
-            // reaches the cache, so the last known-good menu survives.
-            _ = try LunchMenuParser.parse(data)
-            let changed = data != store.cachedLunchMenuData
-            metadata.lastSuccess = now
-            metadata.lastError = nil
-            if changed {
-                metadata.lastChanged = now
-                store.cachedLunchMenuData = data
+            let (byteStream, response) = try await session.bytes(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
             }
-            store.lunchFetchMetadata = metadata
-            return changed ? .updated : .notModified
+
+            switch http.statusCode {
+            case 304 where conditionalETag != nil:
+                metadata.lastSuccess = now
+                metadata.lastError = nil
+                store.lunchFetchMetadata = metadata
+                return .notModified
+
+            case 200:
+                // Bound the body before materializing it: abort as soon as the
+                // stream exceeds the parser's limit instead of buffering it all.
+                let data = try await byteStream.collectBody(
+                    limit: LunchMenuParser.maxBytes, tooLarge: LunchMenuParserError.tooLarge)
+                // Parsing is the gate: a response that does not validate never
+                // reaches the cache, so the last known-good menus survive.
+                let menu = try LunchMenuParser.parse(data)
+                // The payload is restamped by every site build. Compare the
+                // menus, which do change daily as the window slides forward.
+                let changed = menu != cachedMenu
+                metadata.lastSuccess = now
+                metadata.lastError = nil
+                metadata.etag = http.value(forHTTPHeaderField: "ETag")
+                if changed { metadata.lastChanged = now }
+                // Stored even when only the stamp moved, so the cache is always
+                // the payload the ETag above describes.
+                if data != cached { store.cachedLunchMenuData = data }
+                store.lunchFetchMetadata = metadata
+                return changed ? .updated : .notModified
+
+            default:
+                // Includes a 304 to a request that was not conditional (a
+                // captive portal or a misbehaving proxy), which confirms nothing.
+                metadata.lastError = "HTTP \(http.statusCode)"
+                store.lunchFetchMetadata = metadata
+                return .failed("HTTP \(http.statusCode)")
+            }
         } catch {
             let message = (error as? LunchMenuParserError)?.description ?? error.localizedDescription
             metadata.lastError = message
             store.lunchFetchMetadata = metadata
             return .failed(message)
         }
-    }
-
-    /// Fetches every station at once and folds the results into the manifest
-    /// shape the parser reads. The bundled manifest supplies only the rotation
-    /// metadata the website does not publish — `validFrom`, `validTo`,
-    /// `semesterSwitch` and `offset`. Every station value comes from the live
-    /// files, and one failed or oversized station fails the whole refresh.
-    private func fetchManifest() async throws -> Data {
-        let session = self.session
-        var payloads: [String: Data] = [:]
-        try await withThrowingTaskGroup(of: (String, Data).self) { group in
-            for name in SharedStore.lunchStationNames {
-                let url = SharedStore.lunchStationURL(named: name)
-                group.addTask {
-                    // Streamed rather than buffered: six sources fetched at
-                    // once, each read whole, is six unbounded allocations if an
-                    // endpoint misbehaves. `collectBody` stops reading the
-                    // moment one goes over the limit.
-                    let (byteStream, response) = try await session.bytes(from: url)
-                    guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                        throw LunchMenuParserError.invalid(
-                            "lunch source \(name) returned HTTP \(status)")
-                    }
-                    let data = try await byteStream.collectBody(
-                        limit: LunchMenuParser.maxBytes, tooLarge: LunchMenuParserError.tooLarge)
-                    return (name, data)
-                }
-            }
-            for try await (name, data) in group {
-                payloads[name] = data
-            }
-        }
-
-        guard var manifest = try JSONSerialization.jsonObject(
-            with: LunchMenuParser.bundledData()) as? [String: Any] else {
-            throw LunchMenuParserError.invalid("bundled lunch manifest is not an object")
-        }
-        var stations: [String: Any] = [:]
-        for name in SharedStore.lunchStationNames {
-            guard let data = payloads[name] else {
-                throw LunchMenuParserError.invalid("lunch source \(name) is missing")
-            }
-            let value = try JSONSerialization.jsonObject(with: data)
-            // `special` is a top-level array of semesters, not a station.
-            if name == "special" {
-                manifest["special"] = value
-            } else {
-                stations[name] = value
-            }
-        }
-        manifest["stations"] = stations
-        // Sorted keys so a byte comparison against the cache reflects content
-        // changes rather than dictionary ordering.
-        return try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys])
     }
 }

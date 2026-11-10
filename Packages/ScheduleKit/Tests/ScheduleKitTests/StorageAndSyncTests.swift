@@ -304,6 +304,8 @@ private struct WriteRefusingSecretStore: SecretStore {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         for raw in ["http://stevenson.space/api/v1/a.json",            // not HTTPS
+                    // The repository file earlier versions read directly.
+                    "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json",
                     "https://evil.example.com/dates.json",             // wrong host
                     "https://stevenson.space.example.com/a.json",      // lookalike host
                     "https://stevenson.space:8443/api/v1/a.json",      // odd port

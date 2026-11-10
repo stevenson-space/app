@@ -32,10 +32,12 @@ import Testing
         let realNow = simulated.addingTimeInterval(-offset)
         let clock = WidgetDebugClock(offset: offset)
         let entries = LunchWidgetTimelinePlanner.entries(
-            from: clock.scheduleDate(for: realNow), cachedData: nil, inputs: TestSupport.inputs())
+            from: clock.scheduleDate(for: realNow), cachedData: TestSupport.septemberLunchPayload,
+            inputs: TestSupport.inputs())
         let first = try #require(entries.first)
         #expect(first.day == day(2026, 9, 14))
-        #expect(first.menu == (try LunchMenuParser.loadBundled()).menu(for: first.day))
+        #expect(first.menu != nil)
+        #expect(first.menu == TestSupport.septemberLunchMenu.menu(for: first.day))
         #expect(clock.realDate(for: first.date) == realNow)
         #expect(entries[1].day == day(2026, 9, 15))
         #expect(clock.realDate(for: entries[1].date) == realNow.addingTimeInterval(60))
@@ -49,17 +51,18 @@ import Testing
         let clock = WidgetDebugClock(offset: simulated.timeIntervalSince(realNow))
         var inputs = TestSupport.inputs()
         inputs.overrides[simulatedDay] = DayOverride(day: simulatedDay, type: .asynchronous)
+        let cached = TestSupport.septemberLunchPayload
         let entries = LunchWidgetTimelinePlanner.entries(
-            from: clock.scheduleDate(for: realNow), cachedData: nil, inputs: inputs)
+            from: clock.scheduleDate(for: realNow), cachedData: cached, inputs: inputs)
         #expect(entries[0].day == simulatedDay)
         #expect(entries[0].menu == nil)
         #expect(!entries[0].isServingDay)
         inputs.overrides.removeValue(forKey: simulatedDay)
         let restored = LunchWidgetTimelinePlanner.entries(
-            from: clock.scheduleDate(for: realNow), cachedData: nil, inputs: inputs)
+            from: clock.scheduleDate(for: realNow), cachedData: cached, inputs: inputs)
         #expect(restored[0].menu != nil)
         let realEntries = LunchWidgetTimelinePlanner.entries(
-            from: WidgetDebugClock().scheduleDate(for: realNow), cachedData: nil, inputs: inputs)
+            from: WidgetDebugClock().scheduleDate(for: realNow), cachedData: cached, inputs: inputs)
         #expect(realEntries[0].day == day(2026, 9, 20))
         #expect(realEntries[0].menu == nil)
     }

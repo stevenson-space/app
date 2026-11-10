@@ -105,7 +105,7 @@ struct GetScheduleTypeIntent: AppIntent {
 struct GetLunchMenuIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Lunch Menu"
     static let description = IntentDescription(
-        "Get all lunch stations for a date as text. Leave Date empty for today. Uses the saved or bundled menu and school calendar in Chicago time. Returns no value when lunch isn't served or the menu is unavailable.")
+        "Get all lunch stations for a date as text. Leave Date empty for today. Uses the saved menu and school calendar in Chicago time. Returns no value when lunch isn't served or the menu is unavailable.")
 
     @Parameter(title: "Date") var date: Date?
     static var parameterSummary: some ParameterSummary {

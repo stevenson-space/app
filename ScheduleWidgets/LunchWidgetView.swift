@@ -244,5 +244,5 @@ struct LunchWidgetBackground: View {
 #Preview("Lunch · missing stations", as: .systemLarge) {
     LunchMenuWidget()
 } timeline: {
-    LunchWidgetData.example(day: DayKey(year: 2026, month: 11, day: 16))
+    LunchWidgetData.example(omitting: [.comfort, .mindful, .sides])
 }

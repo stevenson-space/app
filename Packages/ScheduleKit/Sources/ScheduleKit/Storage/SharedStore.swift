@@ -12,20 +12,12 @@ public final class SharedStore: @unchecked Sendable {
     /// generated on every site build, so its shape is a contract rather than
     /// the layout of the website's repository.
     public static let defaultMapURL = URL(string: "https://stevenson.space/api/v1/schedule-dates.json")!
-    /// The website publishes the lunch rotation as one file per station under
-    /// `src/data/lunch-rotating`. There is no consolidated manifest, so the app
-    /// fetches every station and assembles the manifest itself.
-    public static let lunchStationNames = [
-        "comfort", "international", "mindful", "sides", "soup", "special",
-    ]
+    /// The lunch menus for the weeks around today, from the same API.
+    public static let lunchMenuURL = URL(string: "https://stevenson.space/api/v1/lunch.json")!
 
-    public static func lunchStationURL(named name: String) -> URL {
-        URL(string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-rotating/\(name).json")!
-    }
-
-    /// Hosts the day-type map and the lunch station files. Every remote source
-    /// the app is allowed to reach lives here; nothing else is fetchable.
-    public static let allowedHosts: Set<String> = ["stevenson.space", "raw.githubusercontent.com"]
+    /// Hosts the API. Every remote source the app is allowed to reach lives
+    /// here; nothing else is fetchable.
+    public static let allowedHosts: Set<String> = ["stevenson.space"]
 
     private let defaults: UserDefaults
     private let secrets: SecretStore
@@ -322,7 +314,7 @@ public final class SharedStore: @unchecked Sendable {
         set { encode(newValue, key: Keys.fetchMetadata) }
     }
 
-    /// Raw bytes of the last successfully validated lunch manifest.
+    /// Raw bytes of the last successfully validated lunch response.
     public var cachedLunchMenuData: Data? {
         get { defaults.data(forKey: Keys.lunchMenuData) }
         set { defaults.set(newValue, forKey: Keys.lunchMenuData) }
