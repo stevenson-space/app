@@ -12,7 +12,7 @@ private final class RedirectPolicy: NSObject, URLSessionTaskDelegate {
 public enum SyncResult: Equatable, Sendable {
     /// New content validated and committed to the cache.
     case updated
-    /// Server reached; content unchanged (304 or byte-identical 200).
+    /// Server reached; content unchanged (a 304, or a 200 that says the same thing).
     case notModified
     /// Skipped because a recent attempt exists and `force` was false.
     case skippedThrottled
@@ -108,15 +108,20 @@ public actor ScheduleSyncService {
                     limit: ScheduleDatesParser.maxBytes, tooLarge: ParserError.tooLarge)
                 guard generation == invalidationGeneration else { return .notModified }
                 // Validate before committing — this is the last-good guarantee.
-                _ = try ScheduleDatesParser.parse(data)
-                let changed = data != store.cachedMapData
+                let map = try ScheduleDatesParser.parse(data)
+                // Every site build restamps the payload, so its bytes differ
+                // nightly. Compare the dates it lists, or each rebuild would
+                // count as a change and reload the widgets for nothing.
+                let cached = store.cachedMapData
+                let cachedMap = cached.flatMap { try? ScheduleDatesParser.parse($0) }
+                let changed = map != cachedMap
                 metadata.lastSuccess = now
                 metadata.lastError = nil
                 metadata.etag = http.value(forHTTPHeaderField: "ETag")
-                if changed {
-                    metadata.lastChanged = now
-                    store.cachedMapData = data
-                }
+                if changed { metadata.lastChanged = now }
+                // Stored even when only the stamp moved, so the cache is always
+                // the payload the ETag above describes.
+                if data != cached { store.cachedMapData = data }
                 store.fetchMetadata = metadata
                 return changed ? .updated : .notModified
 

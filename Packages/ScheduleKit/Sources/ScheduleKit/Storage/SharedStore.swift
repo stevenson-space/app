@@ -8,8 +8,10 @@ import Foundation
 /// instead, which reads schedule keys without initializing secrets or migrating.
 public final class SharedStore: @unchecked Sendable {
     public static let appGroupID = "group.space.stevenson.shared"
-    public static let defaultMapURL = URL(
-        string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json")!
+    /// The day-type map, from the website's static data API. The API is
+    /// generated on every site build, so its shape is a contract rather than
+    /// the layout of the website's repository.
+    public static let defaultMapURL = URL(string: "https://stevenson.space/api/v1/schedule-dates.json")!
     /// The website publishes the lunch rotation as one file per station under
     /// `src/data/lunch-rotating`. There is no consolidated manifest, so the app
     /// fetches every station and assembles the manifest itself.
@@ -21,9 +23,9 @@ public final class SharedStore: @unchecked Sendable {
         URL(string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-rotating/\(name).json")!
     }
 
-    /// Hosts the schedule manifest and the lunch station files. Every remote
-    /// source the app is allowed to reach lives here; nothing else is fetchable.
-    public static let allowedHosts: Set<String> = ["raw.githubusercontent.com"]
+    /// Hosts the day-type map and the lunch station files. Every remote source
+    /// the app is allowed to reach lives here; nothing else is fetchable.
+    public static let allowedHosts: Set<String> = ["stevenson.space", "raw.githubusercontent.com"]
 
     private let defaults: UserDefaults
     private let secrets: SecretStore

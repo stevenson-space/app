@@ -97,17 +97,22 @@ public enum ParserError: Error, Equatable, CustomStringConvertible {
     }
 }
 
-/// Parses `schedule-dates.json`: `{"Late Arrival": ["8/21/2025", "12/18/2025-12/19/2025", …], …}`.
+/// Parses the day-type map: `{"Late Arrival": ["8/21/2025", "12/18/2025-12/19/2025", …], …}`.
 /// M/D/YYYY, no leading zeros, ranges via "start-end". Malformed individual
 /// entries are skipped with warnings; a non-conforming file fails wholesale so
 /// the caller keeps its last-good cache.
+///
+/// The API serves the map under `scheduleDates`, inside an envelope of build
+/// metadata. A bare map parses the same way: that is what versions before the
+/// API cached, and it has to keep loading until the next refresh replaces it.
 public enum ScheduleDatesParser {
     public static let maxBytes = 262_144
 
     public static func parse(_ data: Data, calendar: Calendar = SchoolTime.calendar) throws -> DayTypeMap {
         guard data.count <= maxBytes else { throw ParserError.tooLarge(bytes: data.count) }
         guard let object = try? JSONSerialization.jsonObject(with: data),
-              let dict = object as? [String: Any] else { throw ParserError.notAnObject }
+              let top = object as? [String: Any] else { throw ParserError.notAnObject }
+        let dict = top["scheduleDates"] as? [String: Any] ?? top
 
         var entries: [DayTypeMap.Entry] = []
         var warnings: [String] = []
