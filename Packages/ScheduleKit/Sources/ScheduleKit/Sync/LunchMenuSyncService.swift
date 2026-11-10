@@ -74,7 +74,8 @@ public actor LunchMenuSyncService {
                         throw LunchMenuParserError.invalid(
                             "lunch source \(name) returned HTTP \(status)")
                     }
-                    let data = try await Self.collectBody(byteStream, limit: LunchMenuParser.maxBytes)
+                    let data = try await byteStream.collectBody(
+                        limit: LunchMenuParser.maxBytes, tooLarge: LunchMenuParserError.tooLarge)
                     return (name, data)
                 }
             }
@@ -104,36 +105,5 @@ public actor LunchMenuSyncService {
         // Sorted keys so a byte comparison against the cache reflects content
         // changes rather than dictionary ordering.
         return try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys])
-    }
-
-    /// Size of the staging buffer `collectBody` fills before appending to the
-    /// result. `Data.append(_: UInt8)` is far more expensive per call than
-    /// appending to an array, and six stations stream in parallel, so the bytes
-    /// are batched instead of pushed into `Data` one at a time.
-    private static let collectChunkSize = 16 * 1024
-
-    /// Reads the whole body but stops the moment it goes past `limit`, so a
-    /// misbehaving endpoint cannot make the app buffer an unbounded response.
-    /// The check runs per chunk rather than per byte, so at most one extra
-    /// chunk beyond the limit is held before the throw.
-    private static func collectBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
-        var data = Data()
-        var chunk = [UInt8]()
-        chunk.reserveCapacity(collectChunkSize)
-        for try await byte in bytes {
-            chunk.append(byte)
-            if chunk.count == collectChunkSize {
-                data.append(contentsOf: chunk)
-                chunk.removeAll(keepingCapacity: true)
-                if data.count > limit {
-                    throw LunchMenuParserError.tooLarge(bytes: data.count)
-                }
-            }
-        }
-        data.append(contentsOf: chunk)
-        if data.count > limit {
-            throw LunchMenuParserError.tooLarge(bytes: data.count)
-        }
-        return data
     }
 }

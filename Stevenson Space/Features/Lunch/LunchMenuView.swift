@@ -6,8 +6,11 @@ struct LunchMenuView: View {
     @Environment(AppModel.self) private var model
     @State private var selectedDay: DayKey?
 
+    /// Observed, unlike `model.today` (a clock read), so the week strip and
+    /// the preferred day roll over at midnight while the tab stays open.
+    private var today: DayKey { model.todayTimeline.day }
     private var preferredDay: DayKey {
-        model.preferredLunchDay(startingAt: model.today)
+        model.preferredLunchDay(startingAt: today)
     }
     private var day: DayKey { selectedDay ?? preferredDay }
     private var weekStart: DayKey {
@@ -36,7 +39,7 @@ struct LunchMenuView: View {
                         WeekPicker(
                             weekdays: weekdays,
                             selectedDay: day,
-                            today: model.today,
+                            today: today,
                             hasMenu: { model.lunchMenu(for: $0) != nil },
                             select: { selectedDay = $0 },
                             moveWeek: moveWeek)
@@ -52,12 +55,15 @@ struct LunchMenuView: View {
             .navigationTitle("Lunch")
             .onChange(of: navigation.lunchTodayRequest, initial: true) {
                 guard navigation.lunchTodayRequest > 0 else { return }
-                selectedDay = model.today
+                selectedDay = today
+            }
+            .onChange(of: today) { oldDay, _ in
+                if selectedDay == oldDay { selectedDay = nil }
             }
             .toolbar {
                 if day != preferredDay {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(preferredDay == model.today ? "Today" : "Next Lunch") {
+                        Button(preferredDay == today ? "Today" : "Next Lunch") {
                             selectedDay = nil
                         }
                     }
