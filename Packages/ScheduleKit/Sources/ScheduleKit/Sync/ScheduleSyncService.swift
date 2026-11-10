@@ -104,7 +104,8 @@ public actor ScheduleSyncService {
             case 200:
                 // Bound the body before materializing it: abort as soon as the
                 // stream exceeds the parser's limit instead of buffering it all.
-                let data = try await collectBody(byteStream, limit: ScheduleDatesParser.maxBytes)
+                let data = try await byteStream.collectBody(
+                    limit: ScheduleDatesParser.maxBytes, tooLarge: ParserError.tooLarge)
                 guard generation == invalidationGeneration else { return .notModified }
                 // Validate before committing — this is the last-good guarantee.
                 _ = try ScheduleDatesParser.parse(data)
@@ -143,17 +144,5 @@ public actor ScheduleSyncService {
         var metadata = store.fetchMetadata
         metadata.etag = nil
         store.fetchMetadata = metadata
-    }
-
-    /// Accumulates a byte stream into `Data`, throwing `ParserError.tooLarge` the
-    /// moment it would exceed `limit` — the payload is never fully buffered if
-    /// it's oversized.
-    private func collectBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
-        var data = Data()
-        for try await byte in bytes {
-            data.append(byte)
-            if data.count > limit { throw ParserError.tooLarge(bytes: data.count) }
-        }
-        return data
     }
 }
