@@ -70,7 +70,9 @@ Unknown schedule types report that the schedule is unavailable; empty results
 do not imply that classes or lunch are confirmed absent.
 Unavailable shared storage produces an actionable error instead of silently
 returning a default student configuration. Lunch uses the app's serving-day
-and validity-window rules, rather than silently substituting the next menu day.
+rules and the menus the website has published, rather than silently substituting
+the next menu day. It has no bundled fallback: before the first download, or for
+a date outside the published window, the menu is reported as unavailable.
 
 In DEBUG builds, current/next queries and queries with no supplied date use the
 developer time-travel clock shared with widgets. Explicit dates are used as
