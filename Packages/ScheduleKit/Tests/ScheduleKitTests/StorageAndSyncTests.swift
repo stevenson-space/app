@@ -627,11 +627,16 @@ private final class ConditionalHeaderLog: @unchecked Sendable {
         #expect(reopenedStore.fetchMetadata.isUpdateCheckOverdue(at: later))
     }
 
-    @Test func garbagePayloadNeverTouchesLastGoodCache() async {
+    @Test(arguments: [
+        "<html>oops</html>",
+        #"{"scheduleDates": null, "No School": ["9/18/2026"]}"#,
+        #"{"scheduleDates": ["9/18/2026"]}"#,
+    ])
+    func garbagePayloadNeverTouchesLastGoodCache(payload: String) async {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         store.cachedMapData = validJSON
-        StubURLProtocol.handler = { _ in (200, [:], Data("<html>oops</html>".utf8)) }
+        StubURLProtocol.handler = { _ in (200, [:], Data(payload.utf8)) }
 
         let result = await makeService(store).refresh(force: true)
 

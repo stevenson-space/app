@@ -56,6 +56,14 @@ import Foundation
         }
     }
 
+    @Test(arguments: ["null", "[]", #"["9/18/2026"]"#, #""invalid""#, "42", "true"])
+    func anInvalidEnvelopeCannotFallBackToTopLevelDates(value: String) {
+        let payload = #"{"scheduleDates": \#(value), "Late Arrival": ["9/18/2026"]}"#
+        #expect(throws: ParserError.notAnObject) {
+            _ = try ScheduleDatesParser.parse(Data(payload.utf8))
+        }
+    }
+
     @Test func datesWithoutLeadingZerosAndRanges() throws {
         let map = try TestSupport.map(
             #"{"No School": ["9/1/2026", "11/25/2026-11/27/2026"]}"#)

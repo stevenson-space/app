@@ -112,7 +112,13 @@ public enum ScheduleDatesParser {
         guard data.count <= maxBytes else { throw ParserError.tooLarge(bytes: data.count) }
         guard let object = try? JSONSerialization.jsonObject(with: data),
               let top = object as? [String: Any] else { throw ParserError.notAnObject }
-        let dict = top["scheduleDates"] as? [String: Any] ?? top
+        let dict: [String: Any]
+        if let scheduleDates = top["scheduleDates"] {
+            guard let map = scheduleDates as? [String: Any] else { throw ParserError.notAnObject }
+            dict = map
+        } else {
+            dict = top
+        }
 
         var entries: [DayTypeMap.Entry] = []
         var warnings: [String] = []
