@@ -43,7 +43,7 @@ was fixed on that branch or only documented.
   the next school day. A 1 Hz heartbeat in `RootView` moves state across bell
   boundaries.
 - **Networking.** Two actors, `ScheduleSyncService` (ETag) and
-  `LunchMenuSyncService` (six station files). They are throttled to one check
+  `LunchMenuSyncService` (the lunch API, ETag). They are throttled to one check
   an hour, coalesced through `SyncQueue`, and only commit a payload once it
   parses. Requests go to an allow-listed host, redirects included.
 - **Persistence.** The schedule, overrides, preferences, and caches are in the
