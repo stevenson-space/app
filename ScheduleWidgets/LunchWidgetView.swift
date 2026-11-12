@@ -32,7 +32,7 @@ struct LunchWidgetView: View {
                     empty(title: "Menu not posted", detail: "Check the app for other options.")
                 }
             } else if entry.lunch == nil {
-                empty(title: "Let’s do lunch", detail: "Open the app to load your menu.")
+                empty(title: "No menu yet", detail: "Open the app to load today’s menu.")
             } else if entry.lunch?.isServingDay == false {
                 empty(title: "No lunch today", detail: "The menu returns on school days.")
             } else {
