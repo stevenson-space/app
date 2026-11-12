@@ -154,12 +154,13 @@ launch and deletes the plaintext copies only once the Keychain write succeeds.
    that date on its own. Early Dismissal rotation
    is inferred from position within a range (1st school-weekday → periods
    6·2·3·4, 2nd → 5·1·7·8). The app refetches with ETag on launch/foreground
-   (1 h throttle) and always keeps the last good copy if a fetch or parse fails.
+   (throttled to 1 h after a successful check, 5 min after a failed one) and
+   always keeps the last good copy if a fetch or parse fails.
    The site is rebuilt nightly, which restamps the file; a refresh counts as a
    change only when the dates differ.
 
 4. **Lunch menu** — live from `https://stevenson.space/api/v1/lunch.json`,
-   refetched with ETag on the same 1 h throttle (which applies only while there
+   refetched with ETag on the same throttle (which applies only while there
    is a menu to show). **Nothing in the app needs a yearly update**: the
    rotation, its date range, and the semester switch live in the website
    (`src/data/lunch-rotating/` and `src/utils/food/rotating-map.ts`), and the

@@ -5,6 +5,8 @@ import Foundation
 /// response parses and validates.
 public actor LunchMenuSyncService {
     public static let throttleInterval: TimeInterval = 3600
+    /// The shorter wait after a failed check.
+    public static let retryInterval: TimeInterval = 300
 
     private let store: SharedStore
     private let session: URLSession
@@ -18,7 +20,8 @@ public actor LunchMenuSyncService {
     /// earns the wait: after a first launch that failed, or an update from a
     /// version whose cache this one cannot read, the next activation retries.
     public static func isThrottled(_ metadata: FetchMetadata, hasMenu: Bool, at now: Date) -> Bool {
-        hasMenu && metadata.isThrottled(at: now, interval: throttleInterval)
+        hasMenu && metadata.isThrottled(at: now, interval: throttleInterval,
+                                        retryInterval: retryInterval)
     }
 
     @discardableResult

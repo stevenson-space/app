@@ -720,13 +720,45 @@ private final class ConditionalHeaderLog: @unchecked Sendable {
         #expect(await service.refresh(force: false, now: later) == .notModified)
     }
 
+    @Test func failedCheckIsRetriedAfterTheShortDelay() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        store.cachedMapData = validJSON
+        StubURLProtocol.handler = { _ in throw URLError(.notConnectedToInternet) }
+        let service = makeService(store)
+
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        guard case .failed = await service.refresh(force: false, now: t0) else {
+            Issue.record("expected failure"); return
+        }
+        // Still throttled right away, so a down API isn't hit on every activation.
+        let soon = t0.addingTimeInterval(60)
+        #expect(await service.refresh(force: false, now: soon) == .skippedThrottled)
+
+        let json = validJSON
+        StubURLProtocol.handler = { _ in (200, [:], json) }
+        let retry = t0.addingTimeInterval(ScheduleSyncService.retryInterval)
+        #expect(await service.refresh(force: false, now: retry) == .notModified)
+        // The success restores the hourly cadence.
+        let afterRetry = retry.addingTimeInterval(ScheduleSyncService.retryInterval)
+        #expect(await service.refresh(force: false, now: afterRetry) == .skippedThrottled)
+    }
+
     @Test func throttleWindowCoversOnlyRecentPastAttempts() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let interval = ScheduleSyncService.throttleInterval
-        #expect(!FetchMetadata().isThrottled(at: now, interval: interval))
-        #expect(FetchMetadata(lastAttempt: now - 600).isThrottled(at: now, interval: interval))
-        #expect(!FetchMetadata(lastAttempt: now - interval).isThrottled(at: now, interval: interval))
+        let retry = ScheduleSyncService.retryInterval
+        func throttled(_ metadata: FetchMetadata) -> Bool {
+            ScheduleSyncService.isThrottled(metadata, at: now)
+        }
+        #expect(!throttled(FetchMetadata()))
+        #expect(throttled(FetchMetadata(lastAttempt: now - 600, lastSuccess: now - 600)))
+        #expect(!throttled(FetchMetadata(lastAttempt: now - interval)))
+        // After a failure only the short retry delay applies.
+        #expect(throttled(FetchMetadata(lastAttempt: now - 60, lastError: "Offline")))
+        #expect(!throttled(FetchMetadata(lastAttempt: now - retry, lastError: "Offline")))
         // A clock corrected backwards must not stall automatic checks.
-        #expect(!FetchMetadata(lastAttempt: now + 600).isThrottled(at: now, interval: interval))
+        #expect(!throttled(FetchMetadata(lastAttempt: now + 600)))
+        #expect(!throttled(FetchMetadata(lastAttempt: now + 600, lastError: "Offline")))
     }
 }

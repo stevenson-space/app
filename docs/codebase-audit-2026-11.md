@@ -43,9 +43,9 @@ was fixed on that branch or only documented.
   the next school day. A 1 Hz heartbeat in `RootView` moves state across bell
   boundaries.
 - **Networking.** Two actors, `ScheduleSyncService` (ETag) and
-  `LunchMenuSyncService` (the lunch API, ETag). They are throttled to one check
-  an hour, coalesced through `SyncQueue`, and only commit a payload once it
-  parses. Requests go to an allow-listed host, redirects included.
+  `LunchMenuSyncService` (the lunch API, ETag). They are throttled to one
+  automatic check an hour, or five minutes after a failed check, coalesced
+  through `SyncQueue`, and only commit a payload once it parses. Requests go to an allow-listed host, redirects included.
 - **Persistence.** The schedule, overrides, preferences, and caches are in the
   App Group suite. The student ID fields are in the Keychain
   (`WhenUnlockedThisDeviceOnly`). The cropped photo is a file with complete

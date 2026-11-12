@@ -25,6 +25,13 @@ public enum SyncResult: Equatable, Sendable {
 /// bad deploy of the JSON can never take out users' cached schedules.
 public actor ScheduleSyncService {
     public static let throttleInterval: TimeInterval = 3600
+    /// The shorter wait after a failed check.
+    public static let retryInterval: TimeInterval = 300
+
+    /// Whether an automatic check should wait.
+    public static func isThrottled(_ metadata: FetchMetadata, at now: Date) -> Bool {
+        metadata.isThrottled(at: now, interval: throttleInterval, retryInterval: retryInterval)
+    }
 
     private let store: SharedStore
     private let session: URLSession
@@ -59,7 +66,7 @@ public actor ScheduleSyncService {
         // without committing (the queued forced refresh does the real work).
         let generation = invalidationGeneration
 
-        if !force, metadata.isThrottled(at: now, interval: Self.throttleInterval) {
+        if !force, Self.isThrottled(metadata, at: now) {
             return .skippedThrottled
         }
 

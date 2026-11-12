@@ -430,7 +430,7 @@ final class AppModel {
     func sync(force: Bool) async {
         // Skip a throttled automatic check before it reaches the queue, so it
         // never marks the feed busy and hides an overdue reminder for a frame.
-        if !force, fetchMetadata.isThrottled(at: Date(), interval: ScheduleSyncService.throttleInterval) {
+        if !force, ScheduleSyncService.isThrottled(fetchMetadata, at: Date()) {
             return
         }
         await scheduleSyncQueue.run(force: force) { [weak self] in

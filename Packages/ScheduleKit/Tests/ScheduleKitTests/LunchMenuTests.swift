@@ -409,6 +409,31 @@ import Foundation
         #expect(LunchStubURLProtocol.requests.count == 1)
     }
 
+    @Test func failedCheckIsRetriedAfterTheShortDelay() async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LunchStubURLProtocol.reset()
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, [:], body) }
+        let service = LunchMenuSyncService(store: store, session: makeStubSession())
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        #expect(await service.refresh(force: true, now: now) == .updated)
+
+        // A check past the hour fails while a menu is cached.
+        LunchStubURLProtocol.handler = { _ in (503, [:], Data()) }
+        let failedAt = now + LunchMenuSyncService.throttleInterval
+        #expect(await service.refresh(force: false, now: failedAt) == .failed("HTTP 503"))
+
+        // The next activation waits only the short delay, not another hour.
+        LunchStubURLProtocol.reset()
+        LunchStubURLProtocol.handler = { _ in (200, [:], body) }
+        #expect(await service.refresh(force: false, now: failedAt + 60) == .skippedThrottled)
+        #expect(LunchStubURLProtocol.requests.isEmpty)
+        let retry = failedAt + LunchMenuSyncService.retryInterval
+        #expect(await service.refresh(force: false, now: retry) == .notModified)
+        #expect(LunchStubURLProtocol.requests.count == 1)
+    }
+
     @Test func anOversizedResponseIsRejected() async {
         let (store, defaults, suite) = makeLunchStore()
         defer { defaults.removePersistentDomain(forName: suite) }

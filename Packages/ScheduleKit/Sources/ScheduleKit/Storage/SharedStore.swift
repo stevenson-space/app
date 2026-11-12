@@ -459,13 +459,17 @@ public struct FetchMetadata: Equatable, Sendable {
         lastAttempt = now
     }
 
-    /// Automatic checks wait `interval` after the last attempt. An attempt
+    /// Automatic checks wait `interval` after the last attempt, or only
+    /// `retryInterval` when the last finished check failed, so one bad
+    /// connection doesn't leave the data stale for the full interval. While a
+    /// check is in flight the previous outcome still applies. An attempt
     /// stamped in the future never throttles, so a clock correction can't
     /// stall syncing.
-    public func isThrottled(at now: Date, interval: TimeInterval) -> Bool {
+    public func isThrottled(at now: Date, interval: TimeInterval,
+                            retryInterval: TimeInterval) -> Bool {
         guard let lastAttempt else { return false }
         let elapsed = now.timeIntervalSince(lastAttempt)
-        return elapsed >= 0 && elapsed < interval
+        return elapsed >= 0 && elapsed < (lastError == nil ? interval : retryInterval)
     }
 
     /// Quiet for five days after a successful check, even if the content has
