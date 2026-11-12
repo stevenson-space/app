@@ -175,13 +175,13 @@ used: each feed is already one small conditional request, and the bell tables
 stay bundled (item 1).
 
 Home and Lunch stay quiet about data freshness until their respective feed has
-gone five days without a successful update check. A successful check clears
+gone two days without a successful update check. A successful check clears
 the reminder even when the data is unchanged. Installs that have never synced
 get the same grace period from their first attempt; failed retries do not reset
 it. Reminders offer **Check for Updates**, which bypasses the usual throttle,
 and show a short failure message only after a student requests a check. Automatic
 checks keep the reminder hidden while they run. Reminders use the real clock,
-independent of the selected date or DEBUG time travel, and update at the five-day
+independent of the selected date or DEBUG time travel, and update at the two-day
 deadline. Future timestamps cannot suppress a reminder after a clock correction.
 
 ## Development

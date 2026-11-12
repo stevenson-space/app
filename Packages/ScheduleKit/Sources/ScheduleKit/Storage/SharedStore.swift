@@ -472,7 +472,7 @@ public struct FetchMetadata: Equatable, Sendable {
         return elapsed >= 0 && elapsed < (lastError == nil ? interval : retryInterval)
     }
 
-    /// Quiet for five days after a successful check, even if the content has
+    /// Quiet for two days after a successful check, even if the content has
     /// not changed. Failed retries must not restart a never-synced install's
     /// grace period. Older metadata falls back to its last recorded attempt.
     public func isUpdateCheckOverdue(at now: Date) -> Bool {
@@ -487,7 +487,7 @@ public struct FetchMetadata: Equatable, Sendable {
     /// The single time at which a valid check date becomes overdue.
     public var updateCheckDeadline: Date? {
         guard let reference = updateCheckReference else { return nil }
-        return SchoolTime.calendar.date(byAdding: .day, value: 5, to: reference)
+        return SchoolTime.calendar.date(byAdding: .day, value: 2, to: reference)
     }
 
     private var updateCheckReference: Date? { lastSuccess ?? firstAttempt ?? lastAttempt }
