@@ -214,9 +214,17 @@ struct LunchWidgetView: View {
             if let station {
                 stationLabel(station)
             }
-            Text(title).font(.headline)
-            Text(detail).font(.caption).foregroundStyle(.secondary)
+            let heading = Text(title).font(.headline)
                 .fixedSize(horizontal: false, vertical: true)
+            // A small widget drops the detail rather than truncate the title.
+            ViewThatFits(in: .vertical) {
+                VStack(alignment: .leading, spacing: 8) {
+                    heading
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                heading
+            }
             Spacer(minLength: 0)
         }
     }
