@@ -69,7 +69,7 @@ The entire day stays underneath, including completed periods, free periods,
 lunch/advisory halves, and special-schedule blocks. Completed blocks use subdued labels and checkmarks; an accent bar and rounded
 highlight identify the current/next block. Room badges separate room numbers
 from bell times. After
-dismissal the full day remains visible beneath “School finished” for five minutes,
+dismissal the full day remains visible beneath “School’s out” for five minutes,
 then beneath “Next school day” with the upcoming school date and first bell. Days without
 blocks show a compact off-day header, the next school date and first bell, and
 the upcoming day's personalized schedule under “NEXT SCHOOL DAY”. The green
