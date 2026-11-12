@@ -29,7 +29,8 @@ struct LunchWidgetView: View {
                 } else if let section = menu.sections.first(where: { $0.station == entry.station }), !section.items.isEmpty {
                     category(section)
                 } else {
-                    empty(title: "Not on today’s menu", detail: "Open the app for other options.")
+                    empty(title: "Not on today’s menu", detail: "Open the app for other options.",
+                          station: entry.station)
                 }
             } else if entry.lunch == nil {
                 empty(title: "No menu yet", detail: "Open the app to load today’s menu.")
@@ -56,11 +57,7 @@ struct LunchWidgetView: View {
 
     private func category(_ section: LunchMenuSection) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(section.station.title, systemImage: section.station.icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(categoryAccent(section.station))
-                .widgetAccentable()
-                .lineLimit(1)
+            stationLabel(section.station)
             ViewThatFits(in: .vertical) {
                 if section.items.count == 1 {
                     menuOptions(section.items, spacing: 8)
@@ -197,7 +194,15 @@ struct LunchWidgetView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func empty(title: String, detail: String) -> some View {
+    private func stationLabel(_ station: LunchMenuStation) -> some View {
+        Label(station.title, systemImage: station.icon)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(categoryAccent(station))
+            .widgetAccentable()
+            .lineLimit(1)
+    }
+
+    private func empty(title: String, detail: String, station: LunchMenuStation? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Spacer(minLength: 0)
             if large {
@@ -205,6 +210,9 @@ struct LunchWidgetView: View {
                     .font(.largeTitle)
                     .foregroundStyle(accent).widgetAccentable()
                     .accessibilityHidden(true)
+            }
+            if let station {
+                stationLabel(station)
             }
             Text(title).font(.headline)
             Text(detail).font(.caption).foregroundStyle(.secondary)
