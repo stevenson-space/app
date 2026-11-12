@@ -58,6 +58,7 @@ struct LunchWidgetView: View {
     private func category(_ section: LunchMenuSection) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             stationLabel(section.station)
+                .lineLimit(1)
             ViewThatFits(in: .vertical) {
                 if section.items.count == 1 {
                     menuOptions(section.items, spacing: 8)
@@ -173,10 +174,7 @@ struct LunchWidgetView: View {
 
     private func menuCell(_ section: LunchMenuSection, spacing: CGFloat = 5) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
-            Label(section.station.title, systemImage: section.station.icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(categoryAccent(section.station))
-                .widgetAccentable()
+            stationLabel(section.station)
             menuOptions(section.items.isEmpty ? ["Not listed today"] : section.items, spacing: spacing)
                 .font(.subheadline.weight(.medium))
         }
@@ -199,7 +197,6 @@ struct LunchWidgetView: View {
             .font(.caption.weight(.semibold))
             .foregroundStyle(categoryAccent(station))
             .widgetAccentable()
-            .lineLimit(1)
     }
 
     private func empty(title: String, detail: String, station: LunchMenuStation? = nil) -> some View {
