@@ -12,6 +12,11 @@ public enum LunchMenuParserError: Error, Equatable, CustomStringConvertible {
     }
 }
 
+/// Parses the API's `lunch.json`:
+/// `{"days": [{"date": "2026-11-02", "menu": {"comfort": "…", "sides": ["…", "…"], …}}, …]}`.
+/// A payload that does not conform fails wholesale so the caller keeps its
+/// last-good cache. An empty `days` is valid: it is what the API serves when
+/// no menus fall inside its window, as over the summer.
 public enum LunchMenuParser {
     public static let maxBytes = 65_536
 
@@ -20,177 +25,92 @@ public enum LunchMenuParser {
             throw LunchMenuParserError.tooLarge(bytes: data.count)
         }
 
-        let wire: WireManifest
+        let wire: WirePayload
         do {
-            wire = try JSONDecoder().decode(WireManifest.self, from: data)
+            wire = try JSONDecoder().decode(WirePayload.self, from: data)
         } catch {
             throw LunchMenuParserError.invalid("invalid lunch-menu JSON: \(error.localizedDescription)")
         }
-
-        let validFrom = try parseDay(wire.validFrom, field: "validFrom")
-        let validTo = try parseDay(wire.validTo, field: "validTo")
-        let semesterSwitch = try parseDay(wire.semesterSwitch, field: "semesterSwitch")
-        guard validFrom < validTo else {
-            throw LunchMenuParserError.invalid("validFrom must be before validTo")
-        }
-        guard validFrom <= semesterSwitch, semesterSwitch <= validTo else {
-            throw LunchMenuParserError.invalid("semesterSwitch must be inside the valid range")
-        }
-
-        // The rotation length is whatever the website publishes, not a fixed
-        // four: it has already changed once. Every station must agree on it,
-        // because a single week index addresses all of them.
-        let weeks = try rotationWeeks(wire.stations)
-        guard (0..<weeks).contains(wire.offset) else {
-            throw LunchMenuParserError.invalid("offset must be in 0..<\(weeks)")
-        }
-
-        let comfort = try station(wire.stations.comfort, name: "comfort",
-                                  weeks: weeks, validate: nonempty)
-        let mindful = try station(wire.stations.mindful, name: "mindful",
-                                  weeks: weeks, validate: nonempty)
-        let sides = try station(wire.stations.sides, name: "sides",
-                                weeks: weeks, validate: pair)
-        let soup = try station(wire.stations.soup, name: "soup",
-                               weeks: weeks, validate: pair)
-        let international = try station(wire.stations.international, name: "international",
-                                        weeks: weeks, validate: nonempty)
-        guard wire.special.count == 2,
-              wire.special.allSatisfy({ $0.count == 5 && $0.allSatisfy(nonempty) }) else {
-            throw LunchMenuParserError.invalid("special must contain two semesters of five weekdays")
-        }
-
-        return LunchMenu(
-            rotationSettings: .init(validFrom: validFrom, validTo: validTo,
-                                    semesterSwitch: semesterSwitch, offset: wire.offset),
-            rotationWeeks: weeks,
-            comfort: comfort,
-            mindful: mindful,
-            sides: sides,
-            soup: soup,
-            international: international,
-            special: wire.special)
+        return LunchMenu(days: try wire.days.compactMap(menuDay))
     }
 
-    public static func loadBundled() throws -> LunchMenu {
-        try parse(bundledData())
-    }
+    /// Nil when the kitchen has planned nothing for the day.
+    private static func menuDay(_ wire: WireDay) throws -> LunchMenuDay? {
+        let day = try parseDay(wire.date)
+        let weekdayName = day.weekday().map { weekdayNames[$0 - 1] }
 
-    static func bundledData() throws -> Data {
-        guard let url = Bundle.module.url(forResource: "lunch-menu", withExtension: "json") else {
-            throw LunchMenuParserError.invalid("bundled lunch-menu.json is missing")
+        let sections = LunchMenuStation.allCases.compactMap { station -> LunchMenuSection? in
+            // The API passes on the placeholders the kitchen's data uses for
+            // slots it hasn't planned, such as "?? No Information" (older
+            // menus used "None Specified"). Leave those stations off the day
+            // rather than listing the placeholder as a dish.
+            let items = (wire.menu.items[station] ?? [])
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty && !isPlaceholder($0) }
+                // The special repeats by weekday and the website names it
+                // that way: "Tacos Tuesday".
+                .map { station == .special ? [$0, weekdayName].compactMap { $0 }.joined(separator: " ") : $0 }
+            return items.isEmpty ? nil : LunchMenuSection(station: station, items: items)
         }
-        return try Data(contentsOf: url)
+        return sections.isEmpty ? nil : LunchMenuDay(day: day, sections: sections)
     }
 
-    private static func parseDay(_ raw: String, field: String) throws -> DayKey {
+    /// Indexed by `DayKey.weekday()`, where 1 is Sunday.
+    private static let weekdayNames = [
+        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+    ]
+
+    private static func isPlaceholder(_ item: String) -> Bool {
+        item.hasPrefix("??") || ["no information", "none specified", "tbd"].contains(item.lowercased())
+    }
+
+    private static func parseDay(_ raw: String) throws -> DayKey {
         let parts = raw.split(separator: "-", omittingEmptySubsequences: false)
         guard parts.count == 3, parts[0].count == 4, parts[1].count == 2, parts[2].count == 2,
               let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]) else {
-            throw LunchMenuParserError.invalid("\(field) must use YYYY-MM-DD")
+            throw LunchMenuParserError.invalid("date '\(raw)' must use YYYY-MM-DD")
         }
         let key = DayKey(year: year, month: month, day: day)
         guard key.isValid else {
-            throw LunchMenuParserError.invalid("\(field) is not a valid date")
+            throw LunchMenuParserError.invalid("date '\(raw)' is not a valid date")
         }
         return key
     }
-
-    /// The rotation length the manifest as a whole runs on. Read from the
-    /// stations rather than declared, since the published files carry no such
-    /// field, and rejected outright when they disagree.
-    private static func rotationWeeks(_ stations: WireStations) throws -> Int {
-        let counts = [
-            ("comfort", stations.comfort.weekCount),
-            ("mindful", stations.mindful.weekCount),
-            ("sides", stations.sides.weekCount),
-            ("soup", stations.soup.weekCount),
-            ("international", stations.international.weekCount),
-        ]
-        let weeks = counts[0].1
-        guard weeks > 0 else {
-            throw LunchMenuParserError.invalid("the rotation must contain at least one week")
-        }
-        if let mismatch = counts.first(where: { $0.1 != weeks }) {
-            throw LunchMenuParserError.invalid(
-                "\(mismatch.0) has \(mismatch.1) weeks but the rotation is \(weeks) weeks")
-        }
-        return weeks
-    }
-
-    private static func station<Value: Decodable & Equatable & Sendable>(
-        _ wire: WireStation<Value>, name: String, weeks: Int, validate: (Value) -> Bool
-    ) throws -> StationSchedule<Value> {
-        switch wire.values {
-        case .weekly(let values):
-            guard values.count == weeks, values.allSatisfy(validate) else {
-                throw LunchMenuParserError.invalid(
-                    "\(name) weekly data must contain \(weeks) valid entries")
-            }
-            return StationSchedule(storage: .weekly(values))
-        case .daily(let values):
-            guard values.count == weeks,
-                  values.allSatisfy({ $0.count == 5 && $0.allSatisfy(validate) }) else {
-                throw LunchMenuParserError.invalid(
-                    "\(name) daily data must contain \(weeks) weeks of five valid weekdays")
-            }
-            return StationSchedule(storage: .daily(values))
-        }
-    }
-
-    private static func nonempty(_ value: String) -> Bool {
-        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private static func pair(_ value: [String]) -> Bool {
-        value.count == 2 && value.allSatisfy(nonempty)
-    }
 }
 
-private struct WireManifest: Decodable {
-    let validFrom: String
-    let validTo: String
-    let semesterSwitch: String
-    let offset: Int
-    let stations: WireStations
-    let special: [[String]]
+private struct WirePayload: Decodable {
+    let days: [WireDay]
 }
 
-private struct WireStations: Decodable {
-    let comfort: WireStation<String>
-    let mindful: WireStation<String>
-    let sides: WireStation<[String]>
-    let soup: WireStation<[String]>
-    let international: WireStation<String>
+private struct WireDay: Decodable {
+    let date: String
+    let menu: WireMenu
 }
 
-private struct WireStation<Value: Decodable>: Decodable {
-    enum Values {
-        case weekly([Value])
-        case daily([[Value]])
-    }
+/// Reads the stations the app knows and ignores any others, so the API can add
+/// one without failing every install that predates it.
+private struct WireMenu: Decodable {
+    var items: [LunchMenuStation: [String]] = [:]
 
-    let values: Values
+    private struct Key: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
 
-    var weekCount: Int {
-        switch values {
-        case .weekly(let values): return values.count
-        case .daily(let values): return values.count
-        }
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case cadence, data
+        init(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { nil }
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        switch try container.decode(String.self, forKey: .cadence) {
-        case "weekly": values = .weekly(try container.decode([Value].self, forKey: .data))
-        case "daily": values = .daily(try container.decode([[Value]].self, forKey: .data))
-        default:
-            throw DecodingError.dataCorruptedError(
-                forKey: .cadence, in: container, debugDescription: "cadence must be weekly or daily")
+        let container = try decoder.container(keyedBy: Key.self)
+        for station in LunchMenuStation.allCases {
+            let key = Key(stringValue: station.rawValue)
+            // A station serves one dish or a list of them, and which it is
+            // belongs to the kitchen's data, not to the station.
+            if let dishes = try? container.decode([String].self, forKey: key) {
+                items[station] = dishes
+            } else if let dish = try container.decodeIfPresent(String.self, forKey: key) {
+                items[station] = [dish]
+            }
         }
     }
 }

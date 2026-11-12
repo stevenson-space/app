@@ -290,7 +290,7 @@ private struct WriteRefusingSecretStore: SecretStore {
 
         // Still honoured when it names an approved source, so an install that
         // persisted one before the editor was removed keeps working.
-        let sameHost = "https://raw.githubusercontent.com/stevenson-space/shs/dev/dates.json"
+        let sameHost = "https://stevenson.space/api/v2/schedule-dates.json"
         defaults.set(sameHost, forKey: "sk.mapURL")
         #expect(store.mapURL.absoluteString == sameHost)
         #expect(!store.isUsingDefaultMapURL)
@@ -303,10 +303,13 @@ private struct WriteRefusingSecretStore: SecretStore {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        for raw in ["http://raw.githubusercontent.com/a/b.json",       // not HTTPS
+        for raw in ["http://stevenson.space/api/v1/a.json",            // not HTTPS
+                    // The repository file earlier versions read directly.
+                    "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json",
                     "https://evil.example.com/dates.json",             // wrong host
-                    "https://raw.githubusercontent.com:8443/a.json",   // odd port
-                    "https://user:pw@raw.githubusercontent.com/a.json", // credentials
+                    "https://stevenson.space.example.com/a.json",      // lookalike host
+                    "https://stevenson.space:8443/api/v1/a.json",      // odd port
+                    "https://user:pw@stevenson.space/api/v1/a.json",   // credentials
                     "file:///etc/passwd",
                     "not a url at all"] {
             defaults.set(raw, forKey: "sk.mapURL")
@@ -318,7 +321,7 @@ private struct WriteRefusingSecretStore: SecretStore {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        defaults.set("https://raw.githubusercontent.com/x/y.json", forKey: "sk.mapURL")
+        defaults.set("https://stevenson.space/api/v2/schedule-dates.json", forKey: "sk.mapURL")
         store.retireCustomMapURLIfNeeded()
         #expect(defaults.object(forKey: "sk.mapURL") == nil)
     }
@@ -410,6 +413,67 @@ private final class ConditionalHeaderLog: @unchecked Sendable {
     func makeService(_ store: SharedStore) -> ScheduleSyncService {
         let session = ScheduleSyncService.makeSession(protocolClasses: [StubURLProtocol.self])
         return ScheduleSyncService(store: store, session: session)
+    }
+
+    /// What the API serves: the map inside an envelope restamped by every build.
+    func envelope(_ dates: String, generatedAt: String = "2026-11-09T07:44:09.498Z") -> Data {
+        Data(#"{"version": 1, "generatedAt": "\#(generatedAt)", "signature": "c283", "scheduleDates": \#(dates)}"#.utf8)
+    }
+
+    @Test func fetchesTheDayTypeMapFromTheWebsiteAPI() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let body = envelope(#"{"Late Arrival": ["9/18/2026"]}"#)
+        StubURLProtocol.handler = { request in
+            #expect(request.url?.absoluteString == "https://stevenson.space/api/v1/schedule-dates.json")
+            return (200, ["ETag": "\"abc\""], body)
+        }
+
+        #expect(await makeService(store).refresh(force: true) == .updated)
+
+        #expect(store.cachedMapData == body)
+        let map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
+        #expect(map?.match(day(2026, 9, 18))?.family == .bell(.lateArrival))
+    }
+
+    @Test func aRebuildListingTheSameDatesIsNotModified() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let dates = #"{"Late Arrival": ["9/18/2026"]}"#
+        let monday = envelope(dates)
+        let tuesday = envelope(dates, generatedAt: "2026-11-10T07:44:11.020Z")
+        let t0 = TestSupport.at(day(2026, 11, 9), 12, 0)
+        let t1 = TestSupport.at(day(2026, 11, 10), 12, 0)
+        store.cachedMapData = monday
+        store.fetchMetadata = FetchMetadata(lastSuccess: t0, lastChanged: t0, etag: "\"monday\"")
+        StubURLProtocol.handler = { _ in (200, ["ETag": "\"tuesday\""], tuesday) }
+
+        // The nightly build moved the stamp and the ETag, not the calendar.
+        #expect(await makeService(store).refresh(force: true, now: t1) == .notModified)
+
+        #expect(store.fetchMetadata.lastChanged == t0)
+        #expect(store.fetchMetadata.lastSuccess == t1)
+        // The cache follows the ETag, so a later 304 refers to what is held.
+        #expect(store.fetchMetadata.etag == "\"tuesday\"")
+        #expect(store.cachedMapData == tuesday)
+    }
+
+    @Test func aMapCachedBeforeTheAPIIsComparedByItsDates() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        // An upgraded install: the bare map, as the old source served it.
+        store.cachedMapData = validJSON
+        let same = envelope(#"{"Late Arrival": ["9/18/2026"]}"#)
+        StubURLProtocol.handler = { _ in (200, [:], same) }
+        let service = makeService(store)
+
+        #expect(await service.refresh(force: true) == .notModified)
+        #expect(store.fetchMetadata.lastChanged == nil)
+
+        let updated = envelope(#"{"Late Arrival": ["9/18/2026", "10/16/2026"]}"#)
+        StubURLProtocol.handler = { _ in (200, [:], updated) }
+        #expect(await service.refresh(force: true) == .updated)
+        #expect(store.cachedMapData == updated)
     }
 
     @Test func successfulFetchCommitsDataEtagAndTimestamps() async {
@@ -563,11 +627,16 @@ private final class ConditionalHeaderLog: @unchecked Sendable {
         #expect(reopenedStore.fetchMetadata.isUpdateCheckOverdue(at: later))
     }
 
-    @Test func garbagePayloadNeverTouchesLastGoodCache() async {
+    @Test(arguments: [
+        "<html>oops</html>",
+        #"{"scheduleDates": null, "No School": ["9/18/2026"]}"#,
+        #"{"scheduleDates": ["9/18/2026"]}"#,
+    ])
+    func garbagePayloadNeverTouchesLastGoodCache(payload: String) async {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         store.cachedMapData = validJSON
-        StubURLProtocol.handler = { _ in (200, [:], Data("<html>oops</html>".utf8)) }
+        StubURLProtocol.handler = { _ in (200, [:], Data(payload.utf8)) }
 
         let result = await makeService(store).refresh(force: true)
 
@@ -651,13 +720,45 @@ private final class ConditionalHeaderLog: @unchecked Sendable {
         #expect(await service.refresh(force: false, now: later) == .notModified)
     }
 
+    @Test func failedCheckIsRetriedAfterTheShortDelay() async {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        store.cachedMapData = validJSON
+        StubURLProtocol.handler = { _ in throw URLError(.notConnectedToInternet) }
+        let service = makeService(store)
+
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        guard case .failed = await service.refresh(force: false, now: t0) else {
+            Issue.record("expected failure"); return
+        }
+        // Still throttled right away, so a down API isn't hit on every activation.
+        let soon = t0.addingTimeInterval(60)
+        #expect(await service.refresh(force: false, now: soon) == .skippedThrottled)
+
+        let json = validJSON
+        StubURLProtocol.handler = { _ in (200, [:], json) }
+        let retry = t0.addingTimeInterval(ScheduleSyncService.retryInterval)
+        #expect(await service.refresh(force: false, now: retry) == .notModified)
+        // The success restores the hourly cadence.
+        let afterRetry = retry.addingTimeInterval(ScheduleSyncService.retryInterval)
+        #expect(await service.refresh(force: false, now: afterRetry) == .skippedThrottled)
+    }
+
     @Test func throttleWindowCoversOnlyRecentPastAttempts() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let interval = ScheduleSyncService.throttleInterval
-        #expect(!FetchMetadata().isThrottled(at: now, interval: interval))
-        #expect(FetchMetadata(lastAttempt: now - 600).isThrottled(at: now, interval: interval))
-        #expect(!FetchMetadata(lastAttempt: now - interval).isThrottled(at: now, interval: interval))
+        let retry = ScheduleSyncService.retryInterval
+        func throttled(_ metadata: FetchMetadata) -> Bool {
+            ScheduleSyncService.isThrottled(metadata, at: now)
+        }
+        #expect(!throttled(FetchMetadata()))
+        #expect(throttled(FetchMetadata(lastAttempt: now - 600, lastSuccess: now - 600)))
+        #expect(!throttled(FetchMetadata(lastAttempt: now - interval)))
+        // After a failure only the short retry delay applies.
+        #expect(throttled(FetchMetadata(lastAttempt: now - 60, lastError: "Offline")))
+        #expect(!throttled(FetchMetadata(lastAttempt: now - retry, lastError: "Offline")))
         // A clock corrected backwards must not stall automatic checks.
-        #expect(!FetchMetadata(lastAttempt: now + 600).isThrottled(at: now, interval: interval))
+        #expect(!throttled(FetchMetadata(lastAttempt: now + 600)))
+        #expect(!throttled(FetchMetadata(lastAttempt: now + 600, lastError: "Offline")))
     }
 }

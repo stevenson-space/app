@@ -80,13 +80,6 @@ struct LunchMenuView: View {
                     .font(.title2.weight(.bold))
                     .accessibilityAddTraits(.isHeader)
 
-                if model.isLunchMenuBundled {
-                    Label("Showing the menu included with the app. Check for updates for the latest menu.",
-                          systemImage: "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
                     ForEach(menu.sections) { section in
                         LunchStationCard(section: section)
@@ -95,11 +88,23 @@ struct LunchMenuView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else if model.lunchMenu == nil {
-            ContentUnavailableView(
-                "Menu unavailable",
-                systemImage: "fork.knife.circle",
-                description: Text("The lunch menu could not be loaded."))
-            .frame(minHeight: 320)
+            // No menu ships with the app, so this is every install's state
+            // until its first download finishes.
+            if model.isLunchSyncing {
+                ProgressView("Loading the lunch menu…")
+                    .frame(maxWidth: .infinity, minHeight: 320)
+            } else {
+                ContentUnavailableView {
+                    Label("Menu unavailable", systemImage: "fork.knife.circle")
+                } description: {
+                    Text("The lunch menu could not be downloaded. Check your connection and try again.")
+                } actions: {
+                    Button("Try Again") {
+                        Task { await model.syncLunch(force: true) }
+                    }
+                }
+                .frame(minHeight: 320)
+            }
         } else {
             ContentUnavailableView(
                 "No lunch menu",
