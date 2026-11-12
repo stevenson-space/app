@@ -407,7 +407,7 @@ struct ScheduleWidgetView: View {
                                 .widgetAccentable()
                         }
                     } else {
-                        Text("No school days coming up")
+                        Text("Next school day not posted yet")
                             .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     }
                 }
@@ -453,7 +453,7 @@ struct ScheduleWidgetView: View {
                         .lineLimit(rectangular ? 1 : 2)
                 }
             } else {
-                Text("No school days coming up")
+                Text("Next school day not posted yet")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
         }
