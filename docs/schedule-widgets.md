@@ -70,7 +70,8 @@ lunch/advisory halves, and special-schedule blocks. Completed blocks use subdued
 highlight identify the current/next block. Room badges separate room numbers
 from bell times. After
 dismissal the full day remains visible beneath “School’s out” for five minutes,
-then beneath “Next school day” with the upcoming school date and first bell. Days without
+then beneath “Next school day” with the upcoming school date and first bell
+(it stays “School’s out” when the next school day isn’t posted yet). Days without
 blocks show a compact off-day header, the next school date and first bell, and
 the upcoming day's personalized schedule under “NEXT SCHOOL DAY”. The green
 background and gold accent remain. If no upcoming blocks are available, the

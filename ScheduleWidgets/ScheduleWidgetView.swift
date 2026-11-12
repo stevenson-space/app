@@ -461,7 +461,8 @@ struct ScheduleWidgetView: View {
 
     private func status(_ schedule: WidgetScheduleEntry) -> String {
         switch schedule.state {
-        case .afterSchool: return schedule.isFinished ? "School’s out" : "Next school day"
+        case .afterSchool:
+            return schedule.isFinished || schedule.nextSchoolDay == nil ? "School’s out" : "Next school day"
         case .unknownSchedule: return "Schedule unavailable"
         case .asynchronous: return "Asynchronous learning"
         default: return schedule.timeline.scheduleLabel
