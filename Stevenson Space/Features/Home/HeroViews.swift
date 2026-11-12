@@ -1,376 +1,336 @@
 import SwiftUI
 import ScheduleKit
 
-/// Self-ticking countdown digits. Manual rendering (rather than
-/// `Text(timerInterval:)`) so DEBUG time travel shifts it too.
-struct TickingCountdown: View {
-    let target: Date
-    let offset: TimeInterval
-    var size: CGFloat = 44
-    var tint: Color = .primary
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0)) { context in
-            let now = context.date.addingTimeInterval(offset)
-            Text(TimeDisplay.countdown(target.timeIntervalSince(now)))
-                .font(.system(size: size, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(tint)
-                .contentTransition(.numericText(countsDown: true))
-        }
-    }
-}
-
-/// The hero dial: progress ring around ticking digits.
-struct CountdownDial: View {
-    let start: Date
-    let end: Date
-    let tint: Color
-    let offset: TimeInterval
-    let label: String
-    var sublabel: String?
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0)) { context in
-            let now = context.date.addingTimeInterval(offset)
-            let total = max(end.timeIntervalSince(start), 1)
-            let fraction = min(max(now.timeIntervalSince(start) / total, 0), 1)
-            let remaining = max(end.timeIntervalSince(now), 0)
-
-            ZStack {
-                Circle()
-                    .stroke(tint.opacity(0.15), lineWidth: 16)
-                Circle()
-                    .trim(from: 0, to: fraction)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 16, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 6) {
-                    Text(TimeDisplay.countdown(remaining))
-                        .font(.system(size: 50, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .contentTransition(.numericText(countsDown: true))
-                        .minimumScaleFactor(0.5)
-                        .lineLimit(1)
-                        .padding(.horizontal, 30)
-                    Text(label)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 34)
-                }
-            }
-            .frame(width: 270, height: 270)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(label)")
-        }
-    }
-}
-
-/// Zone 2 — switches presentation per moment state. Passing gets a visibly
-/// different layout, not just a different color.
+/// Zone 2 — what is happening right now. One layout for every live state, so
+/// at a bell the countdown rolls to its new target instead of being replaced:
+/// an eyebrow (where), the varsity countdown (how long), a lead line (what),
+/// a seam (how far through) and a meta line (what's next).
 struct HeroSection: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.jacketGround) private var ground
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize = 96.0
 
+    let timeline: DayTimeline
     var isCompact = false
 
     var body: some View {
-        let pref = model.config.timeFormat
-
-        ZStack {
-            Group {
-                if isCompact {
-                    compactContent(pref: pref)
-                        .transition(collapseTransition)
-                } else {
-                    heroContent(pref: pref)
-                        .transition(.opacity)
+        if case .afterSchool = model.currentState {
+            if isCompact {
+                compactStrip {
+                    Label("Done for today", systemImage: "checkmark")
+                        .font(.headline)
+                        .foregroundStyle(ground.ink)
                 }
+            } else {
+                AfterSchoolHero(next: model.nextSchoolDay, today: model.today,
+                                lastBell: timeline.lastBell, pref: model.config.timeFormat)
             }
-                .id(model.currentSpanID)
-                .transition(heroTransition)
+        } else if let moment = Moment(state: model.currentState, timeline: timeline,
+                                      pref: model.config.timeFormat) {
+            TimelineView(.animation(minimumInterval: 1.0)) { context in
+                let now = context.date.addingTimeInterval(model.displayOffset)
+                let remaining = max(moment.target.timeIntervalSince(now), 0)
+                let total = max(moment.target.timeIntervalSince(moment.start), 1)
+                let fraction = 1 - remaining / total
+                Group {
+                    if isCompact {
+                        compact(moment, remaining: remaining, fraction: fraction)
+                    } else {
+                        expanded(moment, remaining: remaining, fraction: fraction)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(moment.spokenSummary)")
+            }
         }
-        .frame(maxWidth: .infinity)
-        .animation(heroAnimation, value: model.currentSpanID)
     }
 
-    @ViewBuilder
-    private func heroContent(pref: TimeFormatPref) -> some View {
-        switch model.currentState {
-        case .beforeSchool(let first):
-            VStack(spacing: 14) {
-                CountdownDial(
-                    start: first.start.addingTimeInterval(-3600),
-                    end: first.start,
-                    tint: .blue,
-                    offset: model.displayOffset,
-                    label: "until school starts")
-                nextLine(icon: "sunrise", text:
-                    "\(first.displayName) starts at \(TimeDisplay.time(first.start, pref))")
+    // MARK: Expanded
+
+    private func expanded(_ moment: Moment, remaining: TimeInterval, fraction: Double) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(moment.eyebrow)
+                .jacketLabel()
+                .foregroundStyle(ground.live)
+
+            Text(TimeDisplay.countdown(remaining))
+                .font(.varsity(size: heroSize))
+                .tracking(-heroSize * 0.035)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .foregroundStyle(ground.heroFace)
+                .twill(ground.heroEdge, x: heroSize / 32, y: heroSize / 24)
+                .contentTransition(.numericText(countsDown: true))
+                .padding(.leading, -4)
+                .padding(.top, 10)
+
+            switch moment.lead {
+            case .line(let text):
+                Text(text)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(ground.ink)
+                    .padding(.top, 12)
+            case .destination(let text):
+                Text(text)
+                    .font(.varsity(.largeTitle))
+                    .foregroundStyle(ground.ink)
+                    .padding(.top, 14)
             }
+
+            Seam(fraction: fraction, on: ground.seamOn, off: ground.seamOff)
+                .padding(.top, 22)
+
+            meta(moment)
+                .padding(.top, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func meta(_ moment: Moment) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                metaText(moment.metaLeading)
+                Spacer(minLength: 12)
+                if let trailing = moment.metaTrailing { metaText(trailing) }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                metaText(moment.metaLeading)
+                if let trailing = moment.metaTrailing { metaText(trailing) }
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(ground.ink2)
+    }
+
+    /// Values in the meta line are strongly emphasized and take the main ink.
+    private func metaText(_ text: AttributedString) -> some View {
+        var styled = text
+        for run in text.runs where run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true {
+            styled[run.range].foregroundColor = ground.ink
+        }
+        return Text(styled)
+            .monospacedDigit()
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: Compact
+
+    private func compact(_ moment: Moment, remaining: TimeInterval, fraction: Double) -> some View {
+        compactStrip {
+            HStack(spacing: 12) {
+                Text(TimeDisplay.countdown(remaining))
+                    .font(.varsity(.title2))
+                    .monospacedDigit()
+                    .foregroundStyle(ground.heroFace)
+                    .twill(ground.heroEdge, x: 1.5, y: 2)
+                    .contentTransition(.numericText(countsDown: true))
+                Text(moment.compactLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(ground.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Seam(fraction: fraction, on: ground.seamOn, off: ground.seamOff,
+                     stitches: 12, height: 3, spacing: 2)
+                    .frame(width: 54)
+            }
+        }
+    }
+
+    private func compactStrip<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .floatingGlass(in: Capsule())
+    }
+}
+
+/// The words around the countdown for one live state.
+private struct Moment {
+    enum Lead {
+        /// "left in AP Physics C"
+        case line(String)
+        /// "to Room 1311" — between bells the room is what matters.
+        case destination(String)
+    }
+
+    let start: Date
+    let target: Date
+    let eyebrow: String
+    let lead: Lead
+    let metaLeading: AttributedString
+    let metaTrailing: AttributedString?
+    let compactLabel: String
+    let spokenSummary: String
+
+    init?(state: MomentState, timeline: DayTimeline, pref: TimeFormatPref) {
+        func time(_ date: Date) -> String { TimeDisplay.time(date, pref) }
+        /// Plain text with the values (`strong`) emphasized. Built by hand, not
+        /// from Markdown, because class names are typed by the student.
+        func meta(_ parts: (String, Bool)...) -> AttributedString {
+            parts.reduce(into: AttributedString()) { result, part in
+                var segment = AttributedString(part.0)
+                if part.1 { segment.inlinePresentationIntent = .stronglyEmphasized }
+                result += segment
+            }
+        }
+
+        switch state {
+        case .beforeSchool(let first):
+            start = first.start.addingTimeInterval(-3600)
+            target = first.start
+            eyebrow = "Before school"
+            lead = .line("until the first bell")
+            metaLeading = meta((first.displayName, true), (" at ", false), (time(first.start), true))
+            metaTrailing = first.room.map { meta(("Room ", false), ($0, true)) }
+            compactLabel = "until the first bell"
+            spokenSummary = "until the first bell, \(first.displayName) at \(time(first.start))"
 
         case .inBlock(let current, let next):
-            VStack(spacing: 14) {
-                CountdownDial(
-                    start: current.start,
-                    end: current.end,
-                    tint: ScheduleStyle.tint(for: current.role),
-                    offset: model.displayOffset,
-                    label: heroLabel(for: current, pref: pref))
-                if let next {
-                    nextLine(icon: "arrow.right", text:
-                        "Next: \(next.displayName)\(roomSuffix(next)) at \(TimeDisplay.time(next.start, pref))")
-                } else if current.role == .free {
-                    nextLine(icon: "checkmark", text: "You're free for the rest of the day")
-                } else {
-                    nextLine(icon: "checkmark", text: "Last block of the day")
-                }
+            start = current.start
+            target = current.end
+            let period = timeline.periodLabel(for: current)
+            let place = [period.map { "Period \($0)" }, current.room.map { "Room \($0)" }]
+                .compactMap { $0 }
+            eyebrow = place.isEmpty ? timeline.scheduleLabel : place.joined(separator: " · ")
+            switch current.role {
+            case .free:
+                lead = .line("free until \(time(current.end))")
+                compactLabel = "free"
+            default:
+                lead = .line("left in \(current.displayName)")
+                compactLabel = "left in \(current.displayName)"
             }
+            metaLeading = meta(("Ends ", false), (time(current.end), true))
+            if let next {
+                metaTrailing = meta(("Next: ", false), (next.displayName, true), (" at ", false), (time(next.start), true))
+            } else {
+                metaTrailing = AttributedString(current.role == .free
+                    ? "Free for the rest of the day" : "Last block of the day")
+            }
+            spokenSummary = "\(compactLabel). " + [period.map { "Period \($0)" }, current.room.map { "room \($0)" }]
+                .compactMap { $0 }.joined(separator: ", ")
+                + (next.map { ". Next: \($0.displayName) at \(time($0.start))" } ?? "")
 
-        case .passing(_, let to, let kind):
-            PassingHero(to: to, kind: kind, offset: model.displayOffset, pref: pref)
-
-        case .afterSchool:
-            AfterSchoolHero(next: model.nextSchoolDay, today: model.today, pref: pref)
+        case .passing(let from, let to, let kind):
+            start = from.end
+            target = to.start
+            let fromLabel = timeline.periodLabel(for: from)
+            let toLabel = timeline.periodLabel(for: to)
+            let route = (fromLabel != nil && toLabel != nil) ? " · \(fromLabel!) → \(toLabel!)" : ""
+            eyebrow = (kind == .intraPeriod ? "Switching halves" : "Passing period") + route
+            if let room = to.room {
+                lead = .destination("to Room \(room)")
+                metaLeading = meta((to.displayName, true), (" starts at ", false), (time(to.start), true))
+            } else {
+                lead = .destination("to \(to.displayName)")
+                metaLeading = meta(("Starts at ", false), (time(to.start), true))
+            }
+            metaTrailing = nil
+            compactLabel = "to " + (to.room.map { "Room \($0)" } ?? to.displayName)
+            spokenSummary = "until \(to.displayName)"
+                + (to.room.map { " in room \($0)" } ?? "") + " at \(time(to.start))"
 
         default:
-            // Non-school day kinds never reach the hero; HomeView routes them
-            // to full-screen status views.
-            EmptyView()
+            return nil
         }
-    }
-
-    @ViewBuilder
-    private func compactContent(pref: TimeFormatPref) -> some View {
-        switch model.currentState {
-        case .beforeSchool(let first):
-            compactCountdown(target: first.start, label: "until school starts", tint: .blue,
-                             start: first.start.addingTimeInterval(-3600), icon: "sunrise.fill")
-        case .inBlock(let current, _):
-            compactCountdown(target: current.end, label: heroLabel(for: current, pref: pref),
-                             tint: ScheduleStyle.tint(for: current.role), start: current.start)
-        case .passing(_, let to, let kind):
-            compactCountdown(target: to.start,
-                             label: "\(kind == .intraPeriod ? "Switching halves" : "Passing") · \(to.displayName)\(roomSuffix(to))",
-                             tint: .orange, icon: "figure.walk")
-        case .afterSchool:
-            Label("Done for today", systemImage: "checkmark.circle.fill")
-                .font(.headline)
-                .foregroundStyle(.green)
-        default:
-            EmptyView()
-        }
-    }
-
-    private var collapseTransition: AnyTransition {
-        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.92, anchor: .top))
-    }
-
-    private func compactCountdown(target: Date, label: String, tint: Color,
-                                  start: Date? = nil, icon: String = "clock.fill") -> some View {
-        TimelineView(.animation(minimumInterval: 1.0)) { context in
-            let remaining = max(target.timeIntervalSince(context.date.addingTimeInterval(model.displayOffset)), 0)
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle().stroke(tint.opacity(0.16), lineWidth: 3)
-                    if let start {
-                        let duration = max(target.timeIntervalSince(start), 1)
-                        Circle()
-                            .trim(from: 0, to: min(max(1 - remaining / duration, 0), 1))
-                            .stroke(tint.gradient, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                    }
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(tint)
-                }
-                .frame(width: 36, height: 36)
-                .accessibilityHidden(true)
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) {
-                        compactDigits(remaining, tint: tint)
-                        Text(label)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
-                        compactDigits(remaining, tint: tint)
-                        Text(label)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(LinearGradient(colors: [tint.opacity(0.12), tint.opacity(0.025)],
-                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .strokeBorder(tint.opacity(0.18), lineWidth: 0.75)
-                    }
-                    .shadow(color: tint.opacity(0.08), radius: 10, y: 4)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(label)")
-        }
-    }
-
-    private func compactDigits(_ remaining: TimeInterval, tint: Color) -> some View {
-        Text(TimeDisplay.countdown(remaining))
-            .font(.system(.title2, design: .rounded, weight: .bold))
-            .monospacedDigit()
-            .foregroundStyle(tint)
-            .contentTransition(.numericText(countsDown: true))
-    }
-
-    private var heroTransition: AnyTransition {
-        if reduceMotion {
-            return .opacity
-        }
-
-        return .asymmetric(
-            insertion: .opacity
-                .combined(with: .scale(scale: 0.94))
-                .combined(with: .offset(y: 18)),
-            removal: .opacity
-                .combined(with: .scale(scale: 1.03))
-                .combined(with: .offset(y: -10))
-        )
-    }
-
-    private var heroAnimation: Animation {
-        reduceMotion
-            ? .easeInOut(duration: 0.18)
-            : .spring(response: 0.52, dampingFraction: 0.8)
-    }
-
-    private func heroLabel(for span: ResolvedSpan, pref: TimeFormatPref) -> String {
-        switch span.role {
-        case .free:
-            return "free — until \(TimeDisplay.time(span.end, pref))"
-        case .lunch:
-            return "left in Lunch"
-        case .advisory:
-            return "left in Advisory"
-        default:
-            return "left in \(span.displayName)"
-        }
-    }
-
-    private func roomSuffix(_ span: ResolvedSpan) -> String {
-        span.room.map { " · Rm \($0)" } ?? ""
-    }
-
-    private func nextLine(icon: String, text: String) -> some View {
-        Label(text, systemImage: icon)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
     }
 }
 
-/// Passing period: banner card, walking icon, countdown to the next block.
-/// Deliberately unlike the class dial — a two-second glance must distinguish
-/// "keep walking" from "sit down".
-struct PassingHero: View {
-    let to: ResolvedSpan
-    let kind: PassingKind
-    let offset: TimeInterval
-    let pref: TimeFormatPref
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Label(kind == .intraPeriod ? "Switching Halves" : "Passing Period",
-                  systemImage: "figure.walk")
-                .font(.headline)
-                .foregroundStyle(.orange)
-                .textCase(.uppercase)
-
-            TickingCountdown(target: to.start, offset: offset, size: 46, tint: .orange)
-
-            Text("\(to.displayName)\(to.room.map { " · Rm \($0)" } ?? "") starts at \(TimeDisplay.time(to.start, pref))")
-                .font(.callout)
-                .foregroundStyle(.primary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.orange.opacity(0.12))
-                .strokeBorder(Color.orange.opacity(0.35), lineWidth: 1.5)
-        )
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// After the last bell: done for today, plus what tomorrow looks like.
+/// After the last bell: done for today, then the next school day.
 struct AfterSchoolHero: View {
+    @Environment(\.jacketGround) private var ground
+
     let next: DayTimeline?
     let today: DayKey
+    let lastBell: Date?
     let pref: TimeFormatPref
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.green)
+        VStack(alignment: .leading, spacing: 0) {
             Text("Done for today")
-                .font(.title2.bold())
+                .font(.varsity(.largeTitle))
+                .foregroundStyle(ground.ink)
+                .accessibilityAddTraits(.isHeader)
+            if let lastBell {
+                Text("The last bell rang at \(TimeDisplay.time(lastBell, pref)).")
+                    .font(.subheadline)
+                    .foregroundStyle(ground.ink2)
+                    .padding(.top, 8)
+            }
             if let next {
-                NextSchoolDayCard(next: next, today: today, pref: pref)
+                NextSchoolDayBlock(next: next, today: today, pref: pref)
+                    .padding(.top, 56)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-/// "Tomorrow: Late Arrival" — used by after-school, weekend, break screens.
-struct NextSchoolDayCard: View {
+/// The next school day: when it is, whether it's special, and its first bell
+/// as the hero. Used after school and on every no-school screen.
+struct NextSchoolDayBlock: View {
+    @Environment(\.jacketGround) private var ground
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize = 96.0
+
     let next: DayTimeline
     let today: DayKey
     var pref: TimeFormatPref = .system
 
     var body: some View {
-        let accent = ScheduleStyle.accent(for: next.family)
-        HStack(spacing: 10) {
-            Image(systemName: next.kind == .asynchronous
-                  ? "laptopcomputer" : ScheduleStyle.icon(for: next.family))
-                .foregroundStyle(next.kind == .asynchronous ? .blue : accent)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(TimeDisplay.dayLabel(next.day, relativeTo: today))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(next.scheduleLabel)
-                    .font(.subheadline.weight(.semibold))
-                if let note = next.dayNote {
-                    Text(note)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center) {
+                    dayLabel
+                    Spacer(minLength: 12)
+                    patch
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    dayLabel
+                    patch
                 }
             }
-            Spacer()
-            if let firstBell = next.firstBell {
-                Text(TimeDisplay.time(firstBell, pref))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+
+            if next.kind == .asynchronous {
+                Text("E-Learning Day")
+                    .font(.varsity(.largeTitle))
+                    .foregroundStyle(ground.ink)
+                    .padding(.top, 14)
+                Text("No bell schedule. Classwork is online.")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(ground.ink)
+                    .padding(.top, 10)
+            } else if let firstBell = next.firstBell {
+                BellTimeText(date: firstBell, pref: pref, size: heroSize,
+                             face: ground.heroFace, edge: ground.heroEdge)
+                    .padding(.leading, -4)
+                    .padding(.top, 14)
+                Text("First bell")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(ground.ink)
+                    .padding(.top, 10)
+            }
+
+            if let note = next.dayNote {
+                Text(note)
+                    .font(.subheadline)
+                    .foregroundStyle(ground.ink2)
+                    .padding(.top, 6)
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-        )
-        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var dayLabel: some View {
+        Text("Next school day · \(TimeDisplay.dayLabel(next.day, relativeTo: today))")
+            .jacketLabel()
+            .foregroundStyle(ground.ink2)
+    }
+
+    @ViewBuilder private var patch: some View {
+        if next.kind != .asynchronous && !next.isStandardSchedule {
+            JacketPatch(next.scheduleLabel, systemImage: ScheduleStyle.icon(for: next.family))
+        }
     }
 }

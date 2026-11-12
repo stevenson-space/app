@@ -1,0 +1,7 @@
+shots/*
+!shots/explore/
+shots/explore/*
+!shots/explore/sheet.png
+!shots/r2/
+shots/r2/*
+!shots/r2/sheet.png

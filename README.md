@@ -35,7 +35,7 @@ Packages/ScheduleKit/          Schedule logic and shared presentation helpers.
     Resolution/                resolveDay(...) priority chain + momentState(at:)
     Sync/                      Day-type map and lunch fetches (ETag), last-good cache semantics
     Storage/                   App Group store + read-only widget snapshot + Keychain SecretStore
-    Presentation/              Shared role colors, emoji, and time formatting
+    Presentation/              The letter-jacket palette and type, emoji, time formatting
     Widgets/                   Pure seven-day timeline planner
     Notifications/             Pure NotificationPlanner (56 alerts + 1 refresh reminder)
     Resources/                 bell-schedules.json
@@ -66,10 +66,17 @@ components — never `+24h` arithmetic (DST-safe).
 
 ## The Home tab
 
-Home shows today's timeline with a countdown card that stays pinned while the
-schedule scrolls. The day picker steps a day at a time or jumps to any date in
-the school years the catalog knows, so students can check tomorrow's (or next
-week's) schedule before it arrives.
+Home shows today's timeline under a countdown that collapses into a pinned
+strip while the schedule scrolls. Its ground follows the day: green while a
+block is on, gold between bells, and the plain lining when there is no school
+right now; when a bell rings with Home open, the new colour rises from the
+bottom of the screen. The day picker steps a day at a time or jumps to any date
+in the school years the catalog knows, so students can check tomorrow's (or
+next week's) schedule before it arrives. The design system behind it, the
+"letter jacket", is described in [docs/redesign](docs/redesign/DIRECTION.md).
+
+In DEBUG builds, `-SSTimeTravel 2026-09-14T10:52:19` (school time) starts the
+clock at that instant, so any Home state opens directly in the Simulator.
 
 ## Schedule widgets
 

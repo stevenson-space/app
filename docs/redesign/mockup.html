@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stevenson Space · letter jacket</title>
+<link rel="stylesheet" href="assets/device.css">
+<style>
+:root {
+  --field: #1D5A36; --gold: #D3A33A; --lining: #EEF0EA;
+  --chenille: #F3EAD2; --chenille-2: #B9CDBB; --twill: #C99A2C; --gold-ink: #E5C063;
+  --ink: #13241A; --ink-2: #4D5E52; --ink-3: #7C8A80; --raised: #FFFFFF;
+  --rule: rgba(19,36,26,.12); --accent: #1D6B3F; --on-accent: #FFFFFF;
+  --gold-face: #1D5A36; --gold-ink-text: #13241A; --gold-ink-2: #3F3413;
+}
+.screen[data-theme="dark"] {
+  --field: #0E2F1D; --gold: #5C4413; --lining: #0B120E;
+  --chenille-2: #A9C0AD; --twill: #B58A27; --gold-ink: #E0BB5C;
+  --ink: #ECEFE8; --ink-2: #A3B0A6; --ink-3: #6E7B72; --raised: #152019;
+  --rule: rgba(236,239,232,.14); --accent: #7CC293; --on-accent: #0B120E;
+  color: var(--ink);
+}
+.tnum { font-variant-numeric: tabular-nums; }
+.xp { font-stretch: 122%; }
+.label { font: 700 12px/1 var(--sf); font-stretch: 125%; letter-spacing: .1em; text-transform: uppercase; }
+.body { position: absolute; inset: var(--safe-top) 0 0; display: flex; flex-direction: column; padding: 0 20px; }
+
+/* grounds */
+.on-field { background: var(--field); color: var(--chenille); }
+.on-gold { background: var(--gold); color: var(--gold-ink-text); }
+.on-lining { background: var(--lining); color: var(--ink); }
+
+/* toolbar row */
+.top { display: flex; justify-content: space-between; align-items: center; height: 44px; margin-top: 4px; flex: none; }
+.date { font: 600 17px/1 var(--sf); display: flex; align-items: center; gap: 6px; height: 44px; }
+.date svg { width: 12px; height: 12px; fill: none; stroke: currentColor; opacity: .7; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.pair { display: flex; height: 44px; border-radius: 22px; }
+.pair span { width: 46px; display: grid; place-items: center; }
+.pair svg, .glassbtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.on-field .glass { --glass: rgba(243,234,210,.16); }
+.on-gold .glass { --glass: rgba(255,248,228,.34); }
+.glassbtn { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; }
+
+/* hero */
+.kind { margin-top: 8px; font: 400 15px/1.25 var(--sf); flex: none; }
+.on-field .kind, .on-field .sub2 { color: var(--chenille-2); }
+.eyebrow { margin-top: 36px; flex: none; }
+.on-field .eyebrow { color: var(--gold-ink); }
+.on-gold .eyebrow { color: var(--gold-ink-text); }
+.hero { font: 860 96px/1 var(--sf); font-stretch: 122%; letter-spacing: -.035em; margin: 10px 0 0 -4px;
+  font-variant-numeric: tabular-nums; flex: none; }
+.on-field .hero { color: var(--chenille); text-shadow: 3px 4px 0 var(--twill); }
+.on-gold .hero { color: var(--gold-face); text-shadow: 3px 4px 0 var(--chenille); }
+.on-lining .hero { color: var(--accent); text-shadow: 3px 4px 0 var(--twill); }
+.lead { font: 600 22px/1.2 var(--sf); letter-spacing: -.01em; margin-top: 12px; flex: none; }
+.seam { display: flex; gap: 3px; margin-top: 22px; height: 4px; flex: none; }
+.seam i { flex: 1; border-radius: 2px; }
+.on-field .seam i { background: rgba(243,234,210,.24); }
+.on-field .seam i.on { background: var(--twill); }
+.on-gold .seam i { background: rgba(19,36,26,.18); }
+.on-gold .seam i.on { background: var(--gold-face); }
+.meta { display: flex; justify-content: space-between; margin-top: 12px; font: 400 15px/1.25 var(--sf); flex: none; }
+.on-field .meta { color: var(--chenille-2); }
+.on-field .meta b { color: var(--chenille); font-weight: 600; }
+
+/* day list */
+.list { margin: 44px -12px 0; padding: 0 12px; flex: 1; min-height: 0; overflow: hidden; }
+.lh { padding-bottom: 8px; }
+.on-field .lh { color: var(--chenille-2); }
+.on-lining .lh { color: var(--ink-2); }
+.on-gold .lh, .on-gold .eyebrow { color: var(--gold-ink-2); }
+.r { display: grid; grid-template-columns: 60px 1fr auto; align-items: center; padding: 11px 0; position: relative; }
+.r::before { content: ""; position: absolute; left: 60px; right: 0; top: 0; border-top: 1.5px dashed var(--stitch, rgba(243,234,210,.17)); }
+.on-lining .r::before { --stitch: rgba(19,36,26,.16); }
+.screen[data-theme="dark"].on-lining .r::before { --stitch: rgba(236,239,232,.16); }
+.on-gold .r::before { --stitch: rgba(19,36,26,.2); }
+.r .p { font: 800 17px/1 var(--sf); font-stretch: 122%; letter-spacing: -.01em; white-space: nowrap; }
+.r .n { font: 600 17px/1.25 var(--sf); letter-spacing: -.02em; display: flex; gap: 7px; align-items: baseline; }
+.r .n .e { font-size: 15px; }
+.r .s { font: 400 15px/1.25 var(--sf); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.r .x { font: 600 15px/1 var(--sf); }
+.on-field .r .s { color: var(--chenille-2); }
+.on-field .r .x { color: var(--gold-ink); }
+.on-field .r.past { color: var(--chenille-2); }
+.on-field .r.past .n { font-weight: 500; }
+.on-lining .r .s { color: var(--ink-2); }
+.on-gold .r .s { color: var(--gold-ink-2); }
+.on-gold .r.past { color: var(--gold-ink-2); }
+.on-gold .r.past .n { font-weight: 500; }
+.r.now { margin: 2px -12px; padding: 12px; border-radius: 16px; }
+.r.now::after { content: ""; position: absolute; inset: 4px; border-radius: 12px; border: 1.5px dashed var(--nowstitch); pointer-events: none; }
+.r.now::before, .r.now + .r::before { display: none; }
+.on-field .r.now { background: var(--chenille); color: var(--field); --nowstitch: rgba(29,90,54,.38); }
+.on-field .r.now .x { color: var(--field); }
+.on-field .r.now .s { color: #3E6149; }
+.screen[data-theme="dark"].on-field .r.now { color: #0E2F1D; }
+.screen[data-theme="dark"].on-field .r.now .s { color: #375A43; }
+.r.now .x, .on-gold .r.next .x { font: 700 12px/1 var(--sf); font-stretch: 125%; letter-spacing: .1em; text-transform: uppercase; }
+.on-gold .r.next { background: var(--field); color: var(--chenille); margin: 2px -12px; padding: 12px; border-radius: 16px; }
+.on-gold .r.next::after { content: ""; position: absolute; inset: 4px; border-radius: 12px; border: 1.5px dashed rgba(243,234,210,.35); }
+.on-gold .r.next::before, .on-gold .r.next + .r::before { display: none; }
+.on-gold .r.next .s { color: var(--chenille-2); }
+
+/* tab bar */
+.tabbar { position: absolute; left: 20px; right: 20px; bottom: 21px; height: 62px; border-radius: 31px;
+  display: flex; align-items: center; justify-content: space-around; padding: 0 6px; }
+.tab { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 78px; height: 52px; justify-content: center; border-radius: 26px; font: 500 10px/1 var(--sf); }
+.tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.on-field .tabbar { --glass: rgba(243,234,210,.16); color: var(--chenille-2); }
+.on-field .tab.on { background: rgba(243,234,210,.2); color: var(--chenille); }
+.on-gold .tabbar { --glass: rgba(255,248,228,.36); color: var(--gold-ink-2); }
+.on-gold .tab.on { background: rgba(19,36,26,.1); color: var(--gold-ink-text); }
+.on-lining .tabbar { color: var(--ink-2); }
+.on-lining .tab.on { background: rgba(19,36,26,.07); color: var(--accent); }
+.screen[data-theme="dark"].on-lining .tab.on { background: rgba(236,239,232,.1); }
+.screen[data-theme="dark"].on-field .tabbar { --glass-dark: rgba(243,234,210,.12); }
+
+/* patch: special days */
+.patch { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 14px; border-radius: 16px;
+  background: var(--twill); color: #13241A; position: relative; font: 700 12px/1 var(--sf); font-stretch: 125%; letter-spacing: .08em; text-transform: uppercase; }
+.patch::after { content: ""; position: absolute; inset: 3px; border-radius: 13px; border: 1.2px dashed rgba(19,36,26,.42); }
+.patch svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* lining screens */
+.title { font: 860 34px/1.1 var(--sf); font-stretch: 122%; letter-spacing: -.01em; margin-top: 10px; flex: none; color: var(--accent); text-shadow: 2px 2.5px 0 var(--twill); }
+.navtop { display: flex; justify-content: space-between; align-items: center; height: 44px; margin-top: 4px; flex: none; }
+
+/* lunch */
+.week { margin-top: 20px; flex: none; }
+.weekhead { display: flex; justify-content: space-between; align-items: center; }
+.weekhead .m { font: 600 17px/1 var(--sf); }
+.days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+.d { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 12px; border-radius: 14px; position: relative; }
+.d .w { font: 700 12px/1 var(--sf); font-stretch: 125%; letter-spacing: .08em; color: var(--ink-2); }
+.d .n { font: 860 22px/1 var(--sf); font-stretch: 122%; }
+.d.sel { background: var(--accent); color: var(--on-accent); }
+.d.sel::before { content: ""; position: absolute; inset: 4px; border-radius: 10px; border: 1.2px dashed rgba(243,234,210,.45); }
+.d.sel .w { color: rgba(255,255,255,.8); }
+.screen[data-theme="dark"] .d.sel .w { color: rgba(11,18,14,.7); }
+.d.today::after { content: ""; position: absolute; left: 30%; right: 30%; bottom: 5px; border-top: 2px dashed var(--twill); }
+.d.none { color: var(--ink-3); }
+.menuday { margin-top: 32px; font: 600 22px/1.2 var(--sf); letter-spacing: -.01em; flex: none; }
+.stations { margin-top: 6px; flex: 1; min-height: 0; overflow: hidden; }
+.st { padding: 14px 0; position: relative; }
+.st::before { content: ""; position: absolute; left: 0; right: 0; top: 0; border-top: 1.5px dashed rgba(19,36,26,.16); }
+.st .label { color: var(--ink-2); }
+.st .it { font: 600 22px/1.2 var(--sf); letter-spacing: -.015em; margin-top: 8px; }
+.st .it.small { font: 400 17px/1.3 var(--sf); margin-top: 6px; }
+.st2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; }
+
+/* id */
+.card { margin-top: 22px; width: 100%; aspect-ratio: 1.586; border-radius: 15px; overflow: hidden; background: #fff; flex: none;
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 10px 24px rgba(19,36,26,.18), 0 2px 4px rgba(19,36,26,.12); display: flex; flex-direction: column; color: #161619; }
+.card .crest { height: 37%; background: linear-gradient(#C99A2C, #B58721); display: flex; align-items: center; padding: 0 18px; justify-content: space-between; }
+.card .crest img { height: 72%; }
+.card .well { width: 60px; height: 72px; border-radius: 6px; border: 2.5px solid rgba(255,255,255,.85); background: rgba(255,255,255,.5); display: grid; place-items: center; }
+.card .well svg { width: 30px; height: 30px; fill: rgba(22,22,25,.28); }
+.card .yr { text-align: right; font: 800 14px/1.25 var(--sf); }
+.card .yr span { font-weight: 600; display: block; }
+.card .name { height: 14.7%; background: #1F5D39; color: #fff; display: grid; place-items: center; font: 700 21px/1 var(--sf); }
+.card .low { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 8px 18px 9px; }
+.card .school { font: 600 11.5px/1 var(--sf); letter-spacing: .08em; color: rgba(22,22,25,.62); }
+.card .bars { height: 42px; width: 100%; }
+.card .num { font: 600 16px/1 var(--sf-mono); letter-spacing: .2em; }
+.cta { margin-top: 24px; height: 54px; border-radius: 27px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px/1 var(--sf); flex: none; }
+.cta svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.note { margin-top: 14px; font: 400 15px/1.35 var(--sf); color: var(--ink-2); flex: none; }
+.facts { margin-top: 44px; flex: none; }
+.fact { display: grid; grid-template-columns: 1fr auto; padding: 13px 0; position: relative; font: 400 17px/1.2 var(--sf); }
+.fact::before { content: ""; position: absolute; left: 0; right: 0; top: 0; border-top: 1.5px dashed rgba(19,36,26,.16); }
+.fact span:last-child { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* storyboard */
+.board { position: absolute; inset: 0; padding: 56px 20px 40px; background: #E7E9E3; color: #13241A; }
+.board h2 { margin: 0; font: 860 34px/1.08 var(--sf); font-stretch: 122%; letter-spacing: -.01em; }
+.board p.k { margin: 10px 0 0; font: 400 15px/1.4 var(--sf); color: #4D5E52; max-width: 330px; }
+.frames { display: flex; gap: 9px; margin-top: 26px; }
+.frames .mini { --mini: .295; }
+.caps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 12px; }
+.caps div { font: 400 13px/1.35 var(--sf); color: #4D5E52; }
+.caps b { display: block; font: 700 12px/1 var(--sf); font-stretch: 125%; letter-spacing: .08em; color: #13241A; margin-bottom: 6px; }
+.spec { margin-top: 26px; border-top: 1.5px dashed rgba(19,36,26,.2); }
+.spec div { display: grid; grid-template-columns: 96px 1fr; padding: 11px 0; border-bottom: 1.5px dashed rgba(19,36,26,.12); font: 400 15px/1.3 var(--sf); }
+.spec div span:first-child { font: 700 12px/1.6 var(--sf); font-stretch: 125%; letter-spacing: .08em; text-transform: uppercase; color: #4D5E52; }
+
+/* widgets */
+.wall { position: absolute; inset: 0; background: linear-gradient(170deg, #2B3A33, #121A16 70%); padding: 90px 20px 0; color: #fff; }
+.wall .label { color: rgba(255,255,255,.72); margin-bottom: 12px; }
+.wrow { display: flex; gap: 22px; }
+.w { border-radius: 24px; overflow: hidden; position: relative; padding: 16px; display: flex; flex-direction: column; }
+.w.s { width: 170px; height: 170px; }
+.w.m { width: 362px; height: 170px; flex-direction: row; gap: 16px; }
+.w .wl { font: 700 11px/1 var(--sf); font-stretch: 125%; letter-spacing: .08em; text-transform: uppercase; }
+.w .wt { font: 860 44px/1 var(--sf); font-stretch: 122%; letter-spacing: -.03em; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.w .wn { font: 600 15px/1.2 var(--sf); margin-top: auto; }
+.w .ws { font: 400 13px/1.25 var(--sf); margin-top: 3px; }
+.w.on-field .wl { color: var(--gold-ink); }
+.w.on-field .wt { text-shadow: 2px 3px 0 var(--twill); }
+.w.on-field .ws { color: var(--chenille-2); }
+.w .col { display: flex; flex-direction: column; flex: 1; }
+.w .col + .col { border-left: 1.5px dashed rgba(243,234,210,.2); padding-left: 16px; }
+.lock { margin-top: 36px; }
+.lockrow { display: flex; gap: 14px; align-items: center; }
+.lw { height: 72px; border-radius: 18px; background: rgba(255,255,255,.14); backdrop-filter: blur(10px); padding: 10px 14px; color: #fff; }
+.lw.rect { width: 172px; }
+.lw.circ { width: 72px; border-radius: 36px; display: grid; place-items: center; padding: 0; }
+.lw .a { font: 700 11px/1 var(--sf); font-stretch: 125%; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+.lw .b { font: 860 24px/1.1 var(--sf); font-stretch: 122%; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.lw .c { font: 600 13px/1.2 var(--sf); margin-top: 2px; }
+
+
+.pin { margin-top: 8px; height: 56px; border-radius: 28px; display: flex; align-items: center; gap: 12px; padding: 0 20px; flex: none; position: relative; z-index: 2; }
+.on-field .pin { --glass: rgba(243,234,210,.16); }
+.pin .pt { font: 860 22px/1 var(--sf); font-stretch: 122%; letter-spacing: -.02em; text-shadow: 1.5px 2px 0 var(--twill); font-variant-numeric: tabular-nums; }
+.pin .pl { font: 400 15px/1 var(--sf); color: var(--chenille); }
+.pseam { display: flex; gap: 2px; margin-left: auto; width: 54px; height: 3px; }
+.pseam i { flex: 1; border-radius: 2px; background: rgba(243,234,210,.24); }
+.pseam i.on { background: var(--twill); }
+.upd { margin-top: 28px; padding-top: 18px; border-top: 1.5px dashed rgba(243,234,210,.17); }
+.upd .ut { font: 600 17px/1.25 var(--sf); }
+.upd .us { font: 400 15px/1.3 var(--sf); color: var(--chenille-2); margin-top: 4px; }
+.upd .ub { margin-top: 14px; height: 44px; border-radius: 22px; display: inline-flex; align-items: center; padding: 0 20px; font: 600 15px/1 var(--sf); background: rgba(243,234,210,.16); }
+
+/* icon */
+.app-icon .ic { position: absolute; inset: 0; background: #1D5A36; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+
+<!-- 1. Home, in class -->
+<section class="screen on-field" data-name="01-home-class" data-chrome="light" data-time="10:52">
+  <div class="body">
+    <div class="top">
+      <div class="date">Mon, Sep 14 <svg viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3"/></svg></div>
+      <div class="pair glass"><span><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></span><span><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></span></div>
+    </div>
+    <div class="kind">Standard schedule</div>
+    <div class="eyebrow label">Period 3–4A · Room 1616</div>
+    <div class="hero">37:41</div>
+    <div class="lead">left in AP Physics C</div>
+    <div class="seam" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="meta"><span>Ends <b class="tnum">11:30</b></span><span>Next: <b>Lunch</b> at <b class="tnum">11:37</b></span></div>
+    <div class="list" data-scrolls>
+      <div class="lh label">Today</div>
+      <div class="r past"><span class="p">1</span><div><div class="n"><span class="e">📚</span>AP English Language</div><div class="s">8:30 – 9:21 · 2108</div></div><span></span></div>
+      <div class="r past"><span class="p">2</span><div><div class="n"><span class="e">📐</span>Precalculus Honors</div><div class="s">9:26 – 10:13 · 1311</div></div><span></span></div>
+      <div class="r now"><span class="p">3–4A</span><div><div class="n"><span class="e">⚛️</span>AP Physics C</div><div class="s">10:18 – 11:30 · 1616</div></div><span class="x">Now</span></div>
+      <div class="r"><span class="p">4B</span><div><div class="n">Lunch</div><div class="s">11:37 – 11:57</div></div><span class="x">in 45m</span></div>
+      <div class="r"><span class="p">5</span><div><div class="n"><span class="e">🏛️</span>AP US History</div><div class="s">12:02 – 12:49 · 2215</div></div><span></span></div>
+      <div class="r"><span class="p">6</span><div><div class="n"><span class="e">🌍</span>Spanish 4</div><div class="s">12:54 – 1:41 · 1034</div></div><span></span></div>
+    </div>
+  </div>
+  <nav class="tabbar glass" data-system data-float>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Home</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M7 3v6c0 1.4 1 2.4 2.4 2.4S11.8 10.4 11.8 9V3M9.4 11.4V21M17 3c-1.6 1-2.6 3.2-2.6 6.2V13H17v8"/></svg>Lunch</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.6 16c.6-1.5 1.6-2.3 2.9-2.3s2.3.8 2.9 2.3M14 10h4M14 13.5h4"/></svg>ID</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.7 2.4 2.8-.7.7 2.8 2.4 1.7-1.3 2.6 1.3 2.6-2.4 1.7-.7 2.8-2.8-.7L12 21.2l-1.7-2.4-2.8.7-.7-2.8-2.4-1.7L5.7 12.4 4.4 9.8l2.4-1.7.7-2.8 2.8.7z"/></svg>Settings</div>
+  </nav>
+</section>
+
+
+<!-- 1b. Home, scrolled: compact pinned countdown -->
+<section class="screen on-field" data-name="01b-home-scrolled" data-dense data-chrome="light" data-time="10:52">
+  <div class="body">
+    <div class="pin glass" data-float>
+      <span class="pt">37:41</span><span class="pl">left in AP Physics C</span>
+      <span class="pseam"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+    <div class="list" data-scrolls style="margin-top: 10px;">
+      <div class="r past" style="opacity:.0"><span class="p">2</span><div><div class="n">Precalculus Honors</div><div class="s">9:26 – 10:13 · 1311</div></div><span></span></div>
+      <div class="r now"><span class="p">3–4A</span><div><div class="n"><span class="e">⚛️</span>AP Physics C</div><div class="s">10:18 – 11:30 · 1616</div></div><span class="x">Now</span></div>
+      <div class="r"><span class="p">4B</span><div><div class="n">Lunch</div><div class="s">11:37 – 11:57</div></div><span class="x">in 45m</span></div>
+      <div class="r"><span class="p">5</span><div><div class="n"><span class="e">🏛️</span>AP US History</div><div class="s">12:02 – 12:49 · 2215</div></div><span></span></div>
+      <div class="r"><span class="p">6</span><div><div class="n"><span class="e">🌍</span>Spanish 4</div><div class="s">12:54 – 1:41 · 1034</div></div><span></span></div>
+      <div class="r"><span class="p">7</span><div><div class="n">Free</div><div class="s">1:46 – 2:33</div></div><span></span></div>
+      <div class="r"><span class="p">8</span><div><div class="n"><span class="e">💻</span>AP Computer Science A</div><div class="s">2:38 – 3:25 · 3012</div></div><span></span></div>
+      <div class="upd">
+        <div class="ut">Schedule updates</div>
+        <div class="us">Last checked 3 days ago. Check for updates to get this week's special days.</div>
+        <div class="ub">Check for Updates</div>
+      </div>
+    </div>
+  </div>
+  <nav class="tabbar glass" data-system data-float>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Home</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M7 3v6c0 1.4 1 2.4 2.4 2.4S11.8 10.4 11.8 9V3M9.4 11.4V21M17 3c-1.6 1-2.6 3.2-2.6 6.2V13H17v8"/></svg>Lunch</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.6 16c.6-1.5 1.6-2.3 2.9-2.3s2.3.8 2.9 2.3M14 10h4M14 13.5h4"/></svg>ID</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.7 2.4 2.8-.7.7 2.8 2.4 1.7-1.3 2.6 1.3 2.6-2.4 1.7-.7 2.8-2.8-.7L12 21.2l-1.7-2.4-2.8.7-.7-2.8-2.4-1.7L5.7 12.4 4.4 9.8l2.4-1.7.7-2.8 2.8.7z"/></svg>Settings</div>
+  </nav>
+</section>
+
+<!-- 2. Home, passing -->
+<section class="screen on-gold" data-name="02-home-passing" data-time="9:23">
+  <div class="body">
+    <div class="top">
+      <div class="date">Mon, Sep 14 <svg viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3"/></svg></div>
+      <div class="pair glass"><span><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></span><span><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></span></div>
+    </div>
+    <div class="kind">Standard schedule</div>
+    <div class="eyebrow label">Passing period · 1 → 2</div>
+    <div class="hero">2:50</div>
+    <div class="lead" style="font: 860 34px/1.1 var(--sf); font-stretch: 122%; letter-spacing: -.01em; margin-top: 16px;">to Room 1311</div>
+    <div class="meta" style="color: var(--gold-ink-2); margin-top: 8px;"><span>Precalculus Honors starts at 9:26</span></div>
+    <div class="seam" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="list" data-scrolls style="margin-top: 40px;">
+      <div class="lh label">Today</div>
+      <div class="r past"><span class="p">1</span><div><div class="n"><span class="e">📚</span>AP English Language</div><div class="s">8:30 – 9:21 · 2108</div></div><span></span></div>
+      <div class="r next"><span class="p">2</span><div><div class="n"><span class="e">📐</span>Precalculus Honors</div><div class="s">9:26 – 10:13 · 1311</div></div><span class="x">Next</span></div>
+      <div class="r"><span class="p">3–4A</span><div><div class="n"><span class="e">⚛️</span>AP Physics C</div><div class="s">10:18 – 11:30 · 1616</div></div><span></span></div>
+      <div class="r"><span class="p">4B</span><div><div class="n">Lunch</div><div class="s">11:37 – 11:57</div></div><span></span></div>
+      <div class="r"><span class="p">5</span><div><div class="n"><span class="e">🏛️</span>AP US History</div><div class="s">12:02 – 12:49 · 2215</div></div><span></span></div>
+    </div>
+  </div>
+  <nav class="tabbar glass" data-system data-float>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Home</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M7 3v6c0 1.4 1 2.4 2.4 2.4S11.8 10.4 11.8 9V3M9.4 11.4V21M17 3c-1.6 1-2.6 3.2-2.6 6.2V13H17v8"/></svg>Lunch</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.6 16c.6-1.5 1.6-2.3 2.9-2.3s2.3.8 2.9 2.3M14 10h4M14 13.5h4"/></svg>ID</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.7 2.4 2.8-.7.7 2.8 2.4 1.7-1.3 2.6 1.3 2.6-2.4 1.7-.7 2.8-2.8-.7L12 21.2l-1.7-2.4-2.8.7-.7-2.8-2.4-1.7L5.7 12.4 4.4 9.8l2.4-1.7.7-2.8 2.8.7z"/></svg>Settings</div>
+  </nav>
+</section>
+
+<!-- 3. Home, after school (lining) -->
+<section class="screen on-lining" data-name="03-home-after-school" data-time="4:12">
+  <div class="body">
+    <div class="top">
+      <div class="date">Fri, Sep 18 <svg viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3"/></svg></div>
+      <div class="pair glass"><span><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></span><span><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></span></div>
+    </div>
+    <div class="title" style="margin-top: 28px; color: var(--ink); text-shadow: none;">Done for today</div>
+    <div class="kind" style="color: var(--ink-2); margin-top: 8px;">The last bell rang at 3:25.</div>
+    <div style="margin-top: 64px; display: flex; align-items: center; justify-content: space-between; flex: none;">
+      <span class="label" style="color: var(--ink-2);">Monday, Sep 21</span>
+      <span class="patch"><svg viewBox="0 0 24 24"><path d="M4 17h16M7 17a5 5 0 0 1 10 0M12 5v3M5.5 9.5l2 2M18.5 9.5l-2 2"/></svg>Late Arrival</span>
+    </div>
+    <div class="hero" style="margin-top: 14px;">10:30</div>
+    <div class="lead" style="margin-top: 10px;">First bell, two hours later than usual</div>
+    <div class="list" data-scrolls style="margin-top: 40px;">
+      <div class="lh label">Monday's day</div>
+      <div class="r"><span class="p">1</span><div><div class="n"><span class="e">📚</span>AP English Language</div><div class="s">10:30 – 11:05 · 2108</div></div><span></span></div>
+      <div class="r"><span class="p">2</span><div><div class="n"><span class="e">📐</span>Precalculus Honors</div><div class="s">11:10 – 11:40 · 1311</div></div><span></span></div>
+      <div class="r"><span class="p">3</span><div><div class="n"><span class="e">⚛️</span>AP Physics C</div><div class="s">11:45 – 12:15 · 1616</div></div><span></span></div>
+    </div>
+  </div>
+  <nav class="tabbar glass" data-system data-float>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Home</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M7 3v6c0 1.4 1 2.4 2.4 2.4S11.8 10.4 11.8 9V3M9.4 11.4V21M17 3c-1.6 1-2.6 3.2-2.6 6.2V13H17v8"/></svg>Lunch</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.6 16c.6-1.5 1.6-2.3 2.9-2.3s2.3.8 2.9 2.3M14 10h4M14 13.5h4"/></svg>ID</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.7 2.4 2.8-.7.7 2.8 2.4 1.7-1.3 2.6 1.3 2.6-2.4 1.7-.7 2.8-2.8-.7L12 21.2l-1.7-2.4-2.8.7-.7-2.8-2.4-1.7L5.7 12.4 4.4 9.8l2.4-1.7.7-2.8 2.8.7z"/></svg>Settings</div>
+  </nav>
+</section>
+
+<!-- 4. Lunch -->
+<section class="screen on-lining" data-name="04-lunch" data-time="10:52">
+  <div class="body">
+    <div class="title" style="margin-top: 48px;">Lunch</div>
+    <div class="week">
+      <div class="weekhead"><span class="m">September 2026</span>
+        <div class="pair glass"><span><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></span><span><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></span></div></div>
+      <div class="days">
+        <div class="d sel today"><span class="w">M</span><span class="n">14</span></div>
+        <div class="d"><span class="w">T</span><span class="n">15</span></div>
+        <div class="d"><span class="w">W</span><span class="n">16</span></div>
+        <div class="d"><span class="w">T</span><span class="n">17</span></div>
+        <div class="d"><span class="w">F</span><span class="n">18</span></div>
+      </div>
+    </div>
+    <div class="menuday">Monday, September 14</div>
+    <div class="stations" data-scrolls>
+      <div class="st" style="margin-top: 10px;"><div class="label">Comfort Food</div><div class="it">Cheese Tortellini</div></div>
+      <div class="st"><div class="label">Mindful</div><div class="it">Lemon Garlic Baked Chicken</div></div>
+      <div class="st"><div class="label">Sides</div><div class="it small">Roasted Carrots</div><div class="it small" style="margin-top:2px">Roasted Red Potatoes</div></div>
+      <div class="st st2"><div><div class="label">Soup</div><div class="it small">Smoky Poblano</div><div class="it small" style="margin-top:2px">Chicken Noodle</div></div>
+        <div><div class="label">International</div><div class="it small">Asian Bowl</div></div></div>
+      <div class="st"><div class="label">Special</div><div class="it small">Sushi</div></div>
+    </div>
+  </div>
+  <nav class="tabbar glass" data-system data-float>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Home</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><path d="M7 3v6c0 1.4 1 2.4 2.4 2.4S11.8 10.4 11.8 9V3M9.4 11.4V21M17 3c-1.6 1-2.6 3.2-2.6 6.2V13H17v8"/></svg>Lunch</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.6 16c.6-1.5 1.6-2.3 2.9-2.3s2.3.8 2.9 2.3M14 10h4M14 13.5h4"/></svg>ID</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.7 2.4 2.8-.7.7 2.8 2.4 1.7-1.3 2.6 1.3 2.6-2.4 1.7-.7 2.8-2.8-.7L12 21.2l-1.7-2.4-2.8.7-.7-2.8-2.4-1.7L5.7 12.4 4.4 9.8l2.4-1.7.7-2.8 2.8.7z"/></svg>Settings</div>
+  </nav>
+</section>
+
+<!-- 5. ID -->
+<section class="screen on-lining" data-name="05-id" data-time="10:52">
+  <div class="body">
+    <div class="navtop"><span></span><div class="glassbtn glass"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg></div></div>
+    <div class="title">ID</div>
+    <div class="card">
+      <div class="crest">
+        <img src="../../Stevenson%20Space/Assets.xcassets/Patriot.imageset/Patriot.png" alt="">
+        <div class="well"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4.2"/><path d="M3.5 21c.9-4.4 4.2-7 8.5-7s7.6 2.6 8.5 7z"/></svg></div>
+        <div class="yr">26–27<span>Grade 11</span></div>
+      </div>
+      <div class="name">Priya Raman</div>
+      <div class="low">
+        <div class="school">ADLAI E. STEVENSON HIGH SCHOOL</div>
+        <svg class="bars" viewBox="0 0 320 42" preserveAspectRatio="none" aria-hidden="true">
+          <g fill="#161619">
+            <rect x="0" width="3" height="42"/><rect x="6" width="1.5" height="42"/><rect x="10" width="1.5" height="42"/><rect x="14" width="3" height="42"/><rect x="20" width="1.5" height="42"/>
+            <rect x="26" width="3" height="42"/><rect x="31" width="1.5" height="42"/><rect x="35" width="3" height="42"/><rect x="41" width="1.5" height="42"/><rect x="44" width="1.5" height="42"/>
+            <rect x="50" width="1.5" height="42"/><rect x="54" width="3" height="42"/><rect x="59" width="3" height="42"/><rect x="65" width="1.5" height="42"/><rect x="69" width="1.5" height="42"/>
+            <rect x="75" width="3" height="42"/><rect x="80" width="1.5" height="42"/><rect x="84" width="1.5" height="42"/><rect x="88" width="3" height="42"/><rect x="94" width="1.5" height="42"/>
+            <rect x="100" width="1.5" height="42"/><rect x="104" width="3" height="42"/><rect x="110" width="3" height="42"/><rect x="115" width="1.5" height="42"/><rect x="119" width="1.5" height="42"/>
+            <rect x="125" width="3" height="42"/><rect x="130" width="1.5" height="42"/><rect x="134" width="3" height="42"/><rect x="140" width="1.5" height="42"/><rect x="143" width="1.5" height="42"/>
+            <rect x="150" width="1.5" height="42"/><rect x="154" width="3" height="42"/><rect x="159" width="1.5" height="42"/><rect x="163" width="3" height="42"/><rect x="169" width="1.5" height="42"/>
+            <rect x="175" width="3" height="42"/><rect x="180" width="3" height="42"/><rect x="186" width="1.5" height="42"/><rect x="190" width="1.5" height="42"/><rect x="194" width="1.5" height="42"/>
+            <rect x="200" width="1.5" height="42"/><rect x="204" width="3" height="42"/><rect x="209" width="1.5" height="42"/><rect x="213" width="3" height="42"/><rect x="219" width="1.5" height="42"/>
+            <rect x="225" width="3" height="42"/><rect x="230" width="1.5" height="42"/><rect x="234" width="1.5" height="42"/><rect x="238" width="3" height="42"/><rect x="244" width="1.5" height="42"/>
+            <rect x="250" width="1.5" height="42"/><rect x="254" width="3" height="42"/><rect x="259" width="3" height="42"/><rect x="265" width="1.5" height="42"/><rect x="269" width="1.5" height="42"/>
+            <rect x="275" width="3" height="42"/><rect x="280" width="1.5" height="42"/><rect x="284" width="3" height="42"/><rect x="290" width="1.5" height="42"/><rect x="294" width="1.5" height="42"/>
+            <rect x="300" width="1.5" height="42"/><rect x="304" width="3" height="42"/><rect x="309" width="1.5" height="42"/><rect x="313" width="1.5" height="42"/><rect x="317" width="3" height="42"/>
+          </g>
+        </svg>
+        <div class="num">512837</div>
+      </div>
+    </div>
+    <div class="cta"><svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M8 8v8M11 8v8M14 8v8M17 8v8"/></svg>Show for Scanning</div>
+    <div class="note">Tap the card to open the barcode full screen at full brightness.</div>
+    <div class="facts">
+      <div class="fact"><span>School year</span><span>2026–27</span></div>
+      <div class="fact"><span>Photo</span><span>Hidden</span></div>
+      <div class="fact"><span>Stored</span><span>On this iPhone only</span></div>
+    </div>
+  </div>
+  <nav class="tabbar glass" data-system data-float>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Home</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M7 3v6c0 1.4 1 2.4 2.4 2.4S11.8 10.4 11.8 9V3M9.4 11.4V21M17 3c-1.6 1-2.6 3.2-2.6 6.2V13H17v8"/></svg>Lunch</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.6 16c.6-1.5 1.6-2.3 2.9-2.3s2.3.8 2.9 2.3M14 10h4M14 13.5h4"/></svg>ID</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.7 2.4 2.8-.7.7 2.8 2.4 1.7-1.3 2.6 1.3 2.6-2.4 1.7-.7 2.8-2.8-.7L12 21.2l-1.7-2.4-2.8.7-.7-2.8-2.4-1.7L5.7 12.4 4.4 9.8l2.4-1.7.7-2.8 2.8.7z"/></svg>Settings</div>
+  </nav>
+</section>
+
+<!-- 6. My Schedule -->
+<section class="screen on-lining" data-name="06-my-schedule" data-dense data-time="10:52">
+  <div class="body">
+    <div class="navtop"><div class="glassbtn glass"><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></div><span></span></div>
+    <div class="title">My Schedule</div>
+    <div class="kind" style="color: var(--ink-2);">Your Standard day. Tap a block to change it.</div>
+    <div class="list" style="margin-top: 26px;" data-scrolls>
+      <div class="r" style="--c:1"><span class="p">1</span><div><div class="n"><span class="e">📚</span>AP English Language</div><div class="s">8:30 – 9:21 · 2108</div></div><span class="chev"><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div class="r"><span class="p">2</span><div><div class="n"><span class="e">📐</span>Precalculus Honors</div><div class="s">9:26 – 10:13 · 1311</div></div><span><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div class="r"><span class="p">3–4A</span><div><div class="n"><span class="e">⚛️</span>AP Physics C</div><div class="s">10:18 – 11:30 · 1616</div></div><span><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div class="r"><span class="p">4B</span><div><div class="n">Lunch</div><div class="s">11:37 – 11:57</div></div><span><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div class="r"><span class="p">5</span><div><div class="n"><span class="e">🏛️</span>AP US History</div><div class="s">12:02 – 12:49 · 2215</div></div><span><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div class="r"><span class="p">6</span><div><div class="n"><span class="e">🌍</span>Spanish 4</div><div class="s">12:54 – 1:41 · 1034</div></div><span><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div class="r"><span class="p">7</span><div><div class="n">Free</div><div class="s">1:46 – 2:33</div></div><span><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div class="r"><span class="p">8</span><div><div class="n"><span class="e">💻</span>AP Computer Science A</div><div class="s">2:38 – 3:25 · 3012</div></div><span><svg width="9" height="15" viewBox="0 0 9 15" fill="none" stroke="#7C8A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5l6 6-6 6"/></svg></span></div>
+      <div style="margin-top: 22px; text-align: center; font: 600 17px/44px var(--sf); color: #C2362B;">Reset Schedule</div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. The signature storyboard -->
+<section class="screen" data-name="07-signature-bell" data-chrome="none">
+  <div class="board">
+    <div class="label" style="color:#4D5E52">Signature</div>
+    <h2 style="margin-top: 10px;">The bell turns<br>the jacket</h2>
+    <p class="k">When a block ends with Home open, the gold side rises from the bottom over the green and the countdown rolls to the passing time.</p>
+    <div class="frames">
+      <div class="mini"><div class="mini-screen on-field" data-chrome="light" data-time="9:20">
+        <div class="body"><div class="top"><div class="date">Mon, Sep 14</div></div>
+          <div class="eyebrow label">Period 1 · Room 2108</div><div class="hero">0:01</div><div class="lead">left in AP English Language</div>
+          <div class="seam"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div></div></div></div>
+      <div class="mini"><div class="mini-screen on-field" data-chrome="light" data-time="9:21">
+        <div class="body"><div class="top"><div class="date">Mon, Sep 14</div></div>
+          <div class="eyebrow label">Period 1 · Room 2108</div><div class="hero">0:00</div><div class="lead">left in AP English Language</div></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height: 46%; background: var(--gold);"></div></div></div>
+      <div class="mini"><div class="mini-screen on-gold" data-time="9:21">
+        <div class="body"><div class="top"><div class="date">Mon, Sep 14</div></div>
+          <div class="eyebrow label">Passing period · 1 → 2</div><div class="hero">4:59</div><div class="lead" style="font: 860 34px/1.1 var(--sf); font-stretch: 122%;">to Room 1311</div></div></div></div>
+    </div>
+    <div class="caps">
+      <div><b>0 ms</b>0:00. The last stitch of the seam turns gold.</div>
+      <div><b>80–620 ms</b>Heavy haptic, then gold rises from the bottom.</div>
+      <div><b>620 ms</b>Settled. The time rolls to 4:59.</div>
+    </div>
+    <div class="spec">
+      <div><span>Spring</span><span>0.55 s, no bounce; interruptible</span></div>
+      <div><span>Haptic</span><span>Heavy impact at the bell, once</span></div>
+      <div><span>Reduced</span><span>0.25 s cross-fade, no movement, haptic kept</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. Home, in class, dark -->
+<section class="screen on-field" data-name="08-home-class-dark" data-theme="dark" data-chrome="light" data-time="10:52">
+  <div class="body">
+    <div class="top">
+      <div class="date">Mon, Sep 14 <svg viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3"/></svg></div>
+      <div class="pair glass"><span><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></span><span><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></span></div>
+    </div>
+    <div class="kind">Standard schedule</div>
+    <div class="eyebrow label">Period 3–4A · Room 1616</div>
+    <div class="hero">37:41</div>
+    <div class="lead">left in AP Physics C</div>
+    <div class="seam" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="meta"><span>Ends <b class="tnum">11:30</b></span><span>Next: <b>Lunch</b> at <b class="tnum">11:37</b></span></div>
+    <div class="list" data-scrolls>
+      <div class="lh label">Today</div>
+      <div class="r past"><span class="p">1</span><div><div class="n"><span class="e">📚</span>AP English Language</div><div class="s">8:30 – 9:21 · 2108</div></div><span></span></div>
+      <div class="r past"><span class="p">2</span><div><div class="n"><span class="e">📐</span>Precalculus Honors</div><div class="s">9:26 – 10:13 · 1311</div></div><span></span></div>
+      <div class="r now"><span class="p">3–4A</span><div><div class="n"><span class="e">⚛️</span>AP Physics C</div><div class="s">10:18 – 11:30 · 1616</div></div><span class="x">Now</span></div>
+      <div class="r"><span class="p">4B</span><div><div class="n">Lunch</div><div class="s">11:37 – 11:57</div></div><span class="x">in 45m</span></div>
+      <div class="r"><span class="p">5</span><div><div class="n"><span class="e">🏛️</span>AP US History</div><div class="s">12:02 – 12:49 · 2215</div></div><span></span></div>
+      <div class="r"><span class="p">6</span><div><div class="n"><span class="e">🌍</span>Spanish 4</div><div class="s">12:54 – 1:41 · 1034</div></div><span></span></div>
+    </div>
+  </div>
+  <nav class="tabbar glass" data-system data-float>
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Home</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M7 3v6c0 1.4 1 2.4 2.4 2.4S11.8 10.4 11.8 9V3M9.4 11.4V21M17 3c-1.6 1-2.6 3.2-2.6 6.2V13H17v8"/></svg>Lunch</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.6 16c.6-1.5 1.6-2.3 2.9-2.3s2.3.8 2.9 2.3M14 10h4M14 13.5h4"/></svg>ID</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.7 2.4 2.8-.7.7 2.8 2.4 1.7-1.3 2.6 1.3 2.6-2.4 1.7-.7 2.8-2.8-.7L12 21.2l-1.7-2.4-2.8.7-.7-2.8-2.4-1.7L5.7 12.4 4.4 9.8l2.4-1.7.7-2.8 2.8.7z"/></svg>Settings</div>
+  </nav>
+</section>
+
+<!-- 9. Widgets -->
+<section class="screen" data-name="09-widgets" data-chrome="light" data-time="10:52">
+  <div class="wall">
+    <div class="label">Home Screen</div>
+    <div class="wrow">
+      <div class="w s on-field">
+        <div class="wl">3–4A · 1616</div>
+        <div class="wt">37:41</div>
+        <div class="wn">AP Physics C</div>
+        <div class="ws">Lunch at 11:37</div>
+      </div>
+      <div class="w s on-gold">
+        <div class="wl">Passing · to 1311</div>
+        <div class="wt" style="color: var(--gold-face); text-shadow: 2px 3px 0 var(--chenille);">2:50</div>
+        <div class="wn">Precalculus Honors</div>
+        <div class="ws" style="color: var(--gold-ink-2)">Starts at 9:26</div>
+      </div>
+    </div>
+    <div class="w m on-field" style="margin-top: 22px;">
+      <div class="col">
+        <div class="wl">Now · 3–4A · 1616</div>
+        <div class="wt">37:41</div>
+        <div class="wn">AP Physics C</div>
+        <div class="ws">Ends 11:30</div>
+      </div>
+      <div class="col">
+        <div class="wl" style="color: var(--chenille-2)">Up next</div>
+        <div class="wn" style="margin-top: 12px;">Lunch</div>
+        <div class="ws">4B · 11:37</div>
+        <div class="wn" style="margin-top: auto; font-weight: 400; font-size: 13px; color: var(--chenille-2);">Standard schedule</div>
+      </div>
+    </div>
+    <div class="lock">
+      <div class="label">Lock Screen</div>
+      <div class="lockrow">
+        <div class="lw rect"><div class="a">3–4A · Rm 1616</div><div class="b">37:41</div><div class="c">AP Physics C</div></div>
+        <div class="lw circ"><div style="text-align:center"><div class="a" style="font-size:11px">3–4A</div><div class="b" style="font-size:19px; margin-top:2px">37m</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. Icon proposal -->
+<section class="app-icon" data-name="10-icon">
+  <div class="ic">
+    <svg viewBox="0 0 1024 1024" width="100%" height="100%">
+      <rect width="1024" height="1024" fill="#1D5A36"/>
+      <rect x="92" y="92" width="840" height="840" rx="200" fill="none" stroke="#F3EAD2" stroke-opacity=".28" stroke-width="10" stroke-dasharray="34 22"/>
+      <text x="530" y="770" text-anchor="middle" font-family="SF Pro" font-weight="900" font-stretch="125%" font-size="700" fill="#C99A2C">S</text>
+      <text x="508" y="742" text-anchor="middle" font-family="SF Pro" font-weight="900" font-stretch="125%" font-size="700" fill="#F3EAD2">S</text>
+    </svg>
+  </div>
+</section>
+
+<script src="assets/device.js"></script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import ScheduleKit
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
     @State private var navigation: SceneNavigation
 
     init(model: AppModel) {
@@ -15,17 +16,26 @@ struct RootView: View {
         TabView(selection: $navigation.selectedTab) {
             Tab("Home", systemImage: "clock", value: RootTab.home) {
                 HomeView()
+                    .environment(\.colorScheme, homeColorScheme)
             }
             Tab("Lunch", systemImage: "fork.knife", value: RootTab.lunch) {
                 LunchMenuView()
+                    .environment(\.colorScheme, colorScheme)
             }
             Tab("ID", systemImage: "person.text.rectangle", value: RootTab.id) {
                 StudentIDView()
+                    .environment(\.colorScheme, colorScheme)
             }
             Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
                 SettingsView()
+                    .environment(\.colorScheme, colorScheme)
             }
         }
+        // The tab bar's glass reads dark over Home's green field; every tab
+        // restores the real appearance for its own content above.
+        .environment(\.colorScheme, navigation.selectedTab == .home ? homeColorScheme : colorScheme)
+        .environment(\.appColorScheme, colorScheme)
+        .tint(tabTint)
         .onOpenURL { navigation.openWidgetURL($0) }
         .background {
             Color.clear
@@ -57,6 +67,21 @@ struct RootView: View {
                 try? await Task.sleep(for: .seconds(1))
             }
         }
+    }
+
+    /// Home's chrome (toolbar and tab bar glass) is dark over the green field
+    /// in either appearance; light glass over it washes out to mint.
+    private var homeColorScheme: ColorScheme {
+        navigation.homeGround == .field ? .dark : colorScheme
+    }
+
+    /// The selected tab reads in the ground's ink on Home's field and gold
+    /// side; everywhere else it is the accent.
+    private var tabTint: Color {
+        guard navigation.selectedTab == .home, navigation.homeGround != .lining else {
+            return Jacket.accent
+        }
+        return navigation.homeGround.ink
     }
 
     private func attachNavigation() {
