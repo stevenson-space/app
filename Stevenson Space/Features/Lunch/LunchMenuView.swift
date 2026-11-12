@@ -233,7 +233,7 @@ private struct WeekLabelStyle: LabelStyle {
     }
 }
 
-private struct WeekdayButton: View {
+struct WeekdayButton: View {
     let day: DayKey
     let weekday: String
     let isSelected: Bool
@@ -303,7 +303,7 @@ private struct WeekdayButton: View {
     }
 }
 
-private enum LunchDateDisplay {
+enum LunchDateDisplay {
     private static func formatter(_ template: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.calendar = SchoolTime.calendar

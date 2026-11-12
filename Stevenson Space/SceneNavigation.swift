@@ -28,6 +28,10 @@ final class SceneNavigation {
     let model: AppModel
     @ObservationIgnored weak var window: UIWindow?
     var selectedTab: RootTab = .home
+    /// Shown on first launch until finished, and again from Settings. A
+    /// request to open a tab or the scanner closes it without finishing, so
+    /// it returns on the next launch.
+    var isOnboardingPresented = !UserDefaults.standard.bool(forKey: SceneNavigation.onboardingCompletedKey)
     var isStudentIDScanning = false
     var isStudentIDScannerPresented = false
     var isStudentIDScannerDismissing = false
@@ -36,8 +40,16 @@ final class SceneNavigation {
     private(set) var homeTodayRequest = 0
     private(set) var lunchTodayRequest = 0
 
+    static let onboardingCompletedKey = "onboardingCompleted"
+
     init(model: AppModel) {
         self.model = model
+    }
+
+    func finishOnboarding() {
+        UserDefaults.standard.set(true, forKey: Self.onboardingCompletedKey)
+        selectedTab = .home
+        isOnboardingPresented = false
     }
 
     func openStudentIDScanner() throws -> StudentIDPresentationResult {
@@ -66,6 +78,7 @@ final class SceneNavigation {
         }
         model.reloadStudentIDIfUnread()
         selectedTab = .id
+        isOnboardingPresented = false
         isStudentIDScanning = model.studentID != nil
         return isStudentIDScanning ? .opening : .needsImport
     }
@@ -83,6 +96,7 @@ final class SceneNavigation {
     func openTab(_ tab: RootTab) {
         reopenStudentIDAfterDismissal = false
         isStudentIDScanning = false
+        isOnboardingPresented = false
         switch tab {
         case .home: openWidgetURL(WidgetTimelinePlanner.homeURL)
         case .lunch: openWidgetURL(LunchWidgetTimelinePlanner.lunchURL)
@@ -94,6 +108,7 @@ final class SceneNavigation {
         if url == LunchWidgetTimelinePlanner.lunchURL {
             reopenStudentIDAfterDismissal = false
             isStudentIDScanning = false
+            isOnboardingPresented = false
             model.prepareForNavigation()
             selectedTab = .lunch
             lunchTodayRequest += 1
@@ -102,6 +117,7 @@ final class SceneNavigation {
         guard WidgetTimelinePlanner.isHomeURL(url) else { return }
         reopenStudentIDAfterDismissal = false
         isStudentIDScanning = false
+        isOnboardingPresented = false
         model.prepareForNavigation()
         selectedTab = .home
         homeTodayRequest += 1
