@@ -29,12 +29,12 @@ struct LunchWidgetView: View {
                 } else if let section = menu.sections.first(where: { $0.station == entry.station }), !section.items.isEmpty {
                     category(section)
                 } else {
-                    empty(title: "Menu not posted", detail: "Check the app for other options.")
+                    empty(title: "Not on today’s menu", detail: "Open the app for other options.")
                 }
             } else if entry.lunch == nil {
                 empty(title: "No menu yet", detail: "Open the app to load today’s menu.")
             } else if entry.lunch?.isServingDay == false {
-                empty(title: "No lunch today", detail: "The menu returns on school days.")
+                empty(title: "No lunch today", detail: "Menus are posted on school days.")
             } else {
                 empty(title: "Menu unavailable", detail: "Open the app for the latest menu.")
             }
