@@ -39,9 +39,9 @@ struct ScheduleWidgetView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Open Stevenson Space", systemImage: "calendar.badge.exclamationmark")
+                    Label("No schedule yet", systemImage: "calendar.badge.exclamationmark")
                         .font(.headline)
-                    Text("Open the app to share your schedule.")
+                    Text("Open the app to load your schedule.")
                         .font(.caption)
                 }
             }
@@ -119,7 +119,7 @@ struct ScheduleWidgetView: View {
                         Text(TimeDisplay.time(next.start, format)).font(.caption).foregroundStyle(ink2)
                     } else {
                         Text("Last period").widgetLabel().foregroundStyle(ink2)
-                        Text("School finishes at \(TimeDisplay.time(focus.end, format))")
+                        Text("School ends at \(TimeDisplay.time(focus.end, format))")
                             .font(.subheadline).lineLimit(3)
                     }
                     Text(schedule.timeline.scheduleLabel).font(.caption2).foregroundStyle(ink2).lineLimit(2)
@@ -136,7 +136,7 @@ struct ScheduleWidgetView: View {
             if let focus = schedule.focus {
                 largeHeader(schedule, focus: focus)
             } else if schedule.isFinished {
-                Label("School finished", systemImage: "checkmark.circle.fill")
+                Label("School’s out", systemImage: "checkmark.circle.fill")
                     .font(.title2.bold())
                     .padding(.vertical, 8)
             } else if !schedule.timeline.blocks.isEmpty {
@@ -262,7 +262,7 @@ struct ScheduleWidgetView: View {
                         .twill(twillEdge, x: 1.5, y: 2)
                         .contentTransition(.identity)
                         .multilineTextAlignment(.trailing)
-                    Text(focus.start > schedule.date ? "until start" : "remaining")
+                    Text(focus.start > schedule.date ? "until it starts" : "remaining")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(ink2)
                 } else {
@@ -428,7 +428,7 @@ struct ScheduleWidgetView: View {
                                 .widgetAccentable()
                         }
                     } else {
-                        Text("No upcoming school day available")
+                        Text("Next school day not posted yet")
                             .font(.caption).foregroundStyle(ink2).lineLimit(2)
                     }
                 }
@@ -474,7 +474,7 @@ struct ScheduleWidgetView: View {
                         .lineLimit(rectangular ? 1 : 2)
                 }
             } else {
-                Text("No upcoming school day available")
+                Text("Next school day not posted yet")
                     .font(.caption).foregroundStyle(ink2).lineLimit(2)
             }
         }
@@ -482,7 +482,8 @@ struct ScheduleWidgetView: View {
 
     private func status(_ schedule: WidgetScheduleEntry) -> String {
         switch schedule.state {
-        case .afterSchool: return schedule.isFinished ? "School finished" : "Next school day"
+        case .afterSchool:
+            return schedule.isFinished || schedule.nextSchoolDay == nil ? "School’s out" : "Next school day"
         case .unknownSchedule: return "Schedule unavailable"
         case .asynchronous: return "Asynchronous learning"
         default: return schedule.timeline.scheduleLabel

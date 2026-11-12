@@ -50,10 +50,24 @@ public struct DayTypeMap: Equatable, Sendable {
         self.warnings = warnings
     }
 
+    /// The entry that decides `day`, by precedence when several apply.
+    ///
+    /// A multi-day range speaks for the school days inside it, so on a weekend
+    /// it is skipped: a Friday–Monday finals range must not turn the Saturday
+    /// between into a finals day. No School ranges still apply, and a weekend
+    /// listed as its own date always counts, even inside a No School range.
     public func match(_ day: DayKey) -> Match? {
-        let hits = entries.enumerated().filter { $0.element.span.contains(day) }
+        let isWeekend = day.isWeekend
+        let hits = entries.enumerated().filter { hit in
+            let entry = hit.element
+            guard entry.span.contains(day) else { return false }
+            return !isWeekend || entry.span.isSingleDay || entry.family == .noSchool
+        }
+        // On a weekend, a date listed on its own outranks any range around it.
+        let rangeRank = { (entry: Entry) in isWeekend && !entry.span.isSingleDay ? 1 : 0 }
         guard let best = hits.min(by: {
-            ($0.element.family.precedenceRank, $0.offset) < ($1.element.family.precedenceRank, $1.offset)
+            (rangeRank($0.element), $0.element.family.precedenceRank, $0.offset)
+                < (rangeRank($1.element), $1.element.family.precedenceRank, $1.offset)
         }) else { return nil }
         return Match(rawKey: best.element.rawKey,
                      family: best.element.family,

@@ -39,12 +39,13 @@ struct LunchWidgetView: View {
                 } else if let section = menu.sections.first(where: { $0.station == entry.station }), !section.items.isEmpty {
                     category(section)
                 } else {
-                    empty(title: "Menu not posted", detail: "Check the app for other options.")
+                    empty(title: "Not on today’s menu", detail: "Open the app for other options.",
+                          station: entry.station)
                 }
             } else if entry.lunch == nil {
-                empty(title: "Let’s do lunch", detail: "Open the app to load your menu.")
+                empty(title: "No menu yet", detail: "Open the app to load today’s menu.")
             } else if entry.lunch?.isServingDay == false {
-                empty(title: "No lunch today", detail: "The menu returns on school days.")
+                empty(title: "No lunch today", detail: "Menus are posted on school days.")
             } else {
                 empty(title: "Menu unavailable", detail: "Open the app for the latest menu.")
             }
@@ -203,7 +204,7 @@ struct LunchWidgetView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func empty(title: String, detail: String) -> some View {
+    private func empty(title: String, detail: String, station: LunchMenuStation? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Spacer(minLength: 0)
             if large {
@@ -212,9 +213,21 @@ struct LunchWidgetView: View {
                     .foregroundStyle(accent).widgetAccentable()
                     .accessibilityHidden(true)
             }
-            Text(title).font(.headline)
-            Text(detail).font(.caption).foregroundStyle(ink2)
+            if let station {
+                stationLabel(station)
+                    .widgetAccentable()
+            }
+            let heading = Text(title).font(.headline)
                 .fixedSize(horizontal: false, vertical: true)
+            // A small widget drops the detail rather than truncate the title.
+            ViewThatFits(in: .vertical) {
+                VStack(alignment: .leading, spacing: 8) {
+                    heading
+                    Text(detail).font(.caption).foregroundStyle(ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                heading
+            }
             Spacer(minLength: 0)
         }
     }

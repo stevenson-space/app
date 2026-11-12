@@ -202,6 +202,7 @@ import Testing
         #expect(bell.day.month == 8)
         #expect(bell.time == TestSupport.at(bell.day, 8, 30))
         let formatter = DateFormatter()
+        formatter.calendar = SchoolTime.calendar
         formatter.timeZone = SchoolTime.timeZone
         formatter.dateFormat = "EEE, MMM d"
         #expect(TimeDisplay.shortDayLabel(bell.day) == formatter.string(from: bell.time))
@@ -211,6 +212,7 @@ import Testing
 
     @Test func compactFirstBellLabelsUseTodayOrWeekday() throws {
         let formatter = DateFormatter()
+        formatter.calendar = SchoolTime.calendar
         formatter.timeZone = SchoolTime.timeZone
         formatter.dateFormat = "EEE"
         for date in [TestSupport.at(monday, 7, 0), TestSupport.at(monday, 15, 30),

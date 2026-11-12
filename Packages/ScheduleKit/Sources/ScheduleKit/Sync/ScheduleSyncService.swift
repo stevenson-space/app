@@ -80,6 +80,15 @@ public actor ScheduleSyncService {
 
             switch http.statusCode {
             case 304:
+                // Only a conditional request can earn a 304. One answering an
+                // unconditional request (a captive portal or a misbehaving
+                // proxy) confirms nothing: with a cache it would hide an overdue
+                // check, and without one the refetch below would loop forever.
+                guard metadata.etag != nil else {
+                    metadata.lastError = "HTTP 304"
+                    store.fetchMetadata = metadata
+                    return .failed("HTTP 304")
+                }
                 // A 304 is only meaningful if we still hold the payload it refers
                 // to; if the cache is gone, drop the ETag and refetch in full.
                 guard store.cachedMapData != nil else {
@@ -95,7 +104,8 @@ public actor ScheduleSyncService {
             case 200:
                 // Bound the body before materializing it: abort as soon as the
                 // stream exceeds the parser's limit instead of buffering it all.
-                let data = try await collectBody(byteStream, limit: ScheduleDatesParser.maxBytes)
+                let data = try await byteStream.collectBody(
+                    limit: ScheduleDatesParser.maxBytes, tooLarge: ParserError.tooLarge)
                 guard generation == invalidationGeneration else { return .notModified }
                 // Validate before committing — this is the last-good guarantee.
                 _ = try ScheduleDatesParser.parse(data)
@@ -134,17 +144,5 @@ public actor ScheduleSyncService {
         var metadata = store.fetchMetadata
         metadata.etag = nil
         store.fetchMetadata = metadata
-    }
-
-    /// Accumulates a byte stream into `Data`, throwing `ParserError.tooLarge` the
-    /// moment it would exceed `limit` — the payload is never fully buffered if
-    /// it's oversized.
-    private func collectBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
-        var data = Data()
-        for try await byte in bytes {
-            data.append(byte)
-            if data.count > limit { throw ParserError.tooLarge(bytes: data.count) }
-        }
-        return data
     }
 }
