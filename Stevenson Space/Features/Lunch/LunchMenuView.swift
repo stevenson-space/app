@@ -82,25 +82,30 @@ struct LunchMenuView: View {
                     .foregroundStyle(Jacket.ink)
                     .accessibilityAddTraits(.isHeader)
 
-                if model.isLunchMenuBundled {
-                    Label("Showing the menu included with the app. Check for updates for the latest menu.",
-                          systemImage: "info.circle")
-                        .font(.subheadline)
-                        .foregroundStyle(Jacket.ink2)
-                        .padding(.top, 8)
-                }
-
                 StationList(sections: menu.sections)
                     .padding(.top, 16)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else if model.lunchMenu == nil {
-            ContentUnavailableView(
-                "Menu unavailable",
-                systemImage: "fork.knife",
-                description: Text("The lunch menu could not be loaded."))
-            .foregroundStyle(Jacket.ink)
-            .frame(minHeight: 320)
+            // No menu ships with the app, so this is every install's state
+            // until its first download finishes.
+            if model.isLunchSyncing {
+                ProgressView("Loading the lunch menu…")
+                    .foregroundStyle(Jacket.ink2)
+                    .frame(maxWidth: .infinity, minHeight: 320)
+            } else {
+                ContentUnavailableView {
+                    Label("Menu unavailable", systemImage: "fork.knife")
+                } description: {
+                    Text("The lunch menu could not be downloaded. Check your connection and try again.")
+                } actions: {
+                    Button("Try Again") {
+                        Task { await model.syncLunch(force: true) }
+                    }
+                }
+                .foregroundStyle(Jacket.ink)
+                .frame(minHeight: 320)
+            }
         } else {
             ContentUnavailableView(
                 "No lunch menu",

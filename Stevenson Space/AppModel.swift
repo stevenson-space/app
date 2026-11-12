@@ -28,9 +28,8 @@ final class AppModel {
     private(set) var map: DayTypeMap?
     private(set) var fetchMetadata: FetchMetadata
     var isSyncing: Bool { scheduleSyncQueue.isRunning }
-    private var loadedLunchMenu: (menu: LunchMenu?, isBundled: Bool)
-    var lunchMenu: LunchMenu? { loadedLunchMenu.menu }
-    var isLunchMenuBundled: Bool { loadedLunchMenu.isBundled }
+    /// Nil until the first successful lunch refresh; no menu ships with the app.
+    private(set) var lunchMenu: LunchMenu?
     private(set) var lunchFetchMetadata: FetchMetadata
     var isLunchSyncing: Bool { lunchSyncQueue.isRunning }
     /// Only ever written from a screenshot the extractor read; there is no code
@@ -106,7 +105,7 @@ final class AppModel {
         self.map = map
         self.prefs = store.notificationPrefs
         self.fetchMetadata = store.fetchMetadata
-        self.loadedLunchMenu = LunchMenuLoader.loadWithSource(cachedData: store.cachedLunchMenuData)
+        self.lunchMenu = LunchMenuLoader.load(cachedData: store.cachedLunchMenuData)
         self.lunchFetchMetadata = store.lunchFetchMetadata
 
         // Both the card and its photo are protected while the device is locked,
@@ -205,12 +204,12 @@ final class AppModel {
     }
 
     /// The tab opens on today when lunch is served, otherwise the next day for
-    /// which both the school calendar and lunch manifest have data.
+    /// which both the school calendar and the published menus have data.
     func preferredLunchDay(startingAt day: DayKey) -> DayKey {
-        guard let menu = lunchMenu, day <= menu.validTo else { return day }
+        guard let lastDay = lunchMenu?.lastDay else { return day }
 
-        var candidate = max(day, menu.validFrom)
-        while candidate <= menu.validTo {
+        var candidate = day
+        while candidate <= lastDay {
             if lunchMenu(for: candidate) != nil { return candidate }
             candidate = candidate.advanced(by: 1)
         }
@@ -431,7 +430,7 @@ final class AppModel {
     func sync(force: Bool) async {
         // Skip a throttled automatic check before it reaches the queue, so it
         // never marks the feed busy and hides an overdue reminder for a frame.
-        if !force, fetchMetadata.isThrottled(at: Date(), interval: ScheduleSyncService.throttleInterval) {
+        if !force, ScheduleSyncService.isThrottled(fetchMetadata, at: Date()) {
             return
         }
         await scheduleSyncQueue.run(force: force) { [weak self] in
@@ -452,7 +451,8 @@ final class AppModel {
     }
 
     func syncLunch(force: Bool) async {
-        if !force, lunchFetchMetadata.isThrottled(at: Date(), interval: LunchMenuSyncService.throttleInterval) {
+        if !force, LunchMenuSyncService.isThrottled(
+            lunchFetchMetadata, hasMenu: lunchMenu != nil, at: Date()) {
             return
         }
         await lunchSyncQueue.run(force: force) { [weak self] in
@@ -463,8 +463,8 @@ final class AppModel {
     private func performLunchSync(force: Bool) async {
         let result = await lunchSyncService.refresh(force: force, now: Date())
         lunchFetchMetadata = store.lunchFetchMetadata
-        if result == .updated, let cached = store.cachedLunchMenuData {
-            loadedLunchMenu = LunchMenuLoader.loadWithSource(cachedData: cached)
+        if result == .updated {
+            lunchMenu = LunchMenuLoader.load(cachedData: store.cachedLunchMenuData)
             reloadLunchWidgets()
         }
     }
@@ -502,7 +502,7 @@ final class AppModel {
         prefs = store.notificationPrefs
         map = store.cachedMapData.flatMap { try? ScheduleDatesParser.parse($0) }
         fetchMetadata = store.fetchMetadata
-        loadedLunchMenu = LunchMenuLoader.loadWithSource(cachedData: store.cachedLunchMenuData)
+        lunchMenu = LunchMenuLoader.load(cachedData: store.cachedLunchMenuData)
         lunchFetchMetadata = store.lunchFetchMetadata
         scheduleDataReady = true
         refreshDerived()

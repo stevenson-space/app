@@ -57,12 +57,25 @@ enum LunchWidgetData {
             }
     }
 
-    static func example(day: DayKey = DayKey(year: 2026, month: 9, day: 3),
-                        station: LunchMenuStation = .comfort) -> LunchTimelineEntry {
+    /// The widget gallery and placeholders are drawn before any real menu can
+    /// be read, so they show a fixed sample day.
+    static func example(station: LunchMenuStation = .comfort,
+                        omitting omitted: Set<LunchMenuStation> = []) -> LunchTimelineEntry {
+        let day = DayKey(year: 2026, month: 9, day: 3)
         let date = day.date()!
+        let menu = LunchMenuDay(day: day, sections: sampleSections.filter { !omitted.contains($0.station) })
         return LunchTimelineEntry(date: date, lunch: LunchWidgetEntry(date: date, day: day,
-            menu: (try? LunchMenuParser.loadBundled())?.menu(for: day), isServingDay: true), station: station)
+            menu: menu, isServingDay: true), station: station)
     }
+
+    private static let sampleSections = [
+        LunchMenuSection(station: .comfort, items: ["Tuna Noodle Casserole"]),
+        LunchMenuSection(station: .mindful, items: ["Adobo Roasted Turkey Breast"]),
+        LunchMenuSection(station: .sides, items: ["Roasted Corn", "Cauliflower"]),
+        LunchMenuSection(station: .soup, items: ["Street Corn Soup", "Chicken Gumbo"]),
+        LunchMenuSection(station: .international, items: ["Macaroni and Cheese Bowl"]),
+        LunchMenuSection(station: .special, items: ["Nachos Thursday"]),
+    ]
 }
 
 struct LunchCategoryProvider: AppIntentTimelineProvider {

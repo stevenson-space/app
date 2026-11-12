@@ -24,6 +24,46 @@ import Foundation
         #expect(map.match(day(2025, 9, 3)) == nil)
     }
 
+    @Test func parsesTheAPIEnvelope() throws {
+        let map = try ScheduleDatesParser.parse(TestSupport.fixture("schedule-dates-api-v1"))
+        // The envelope's own fields are build metadata, not day types that
+        // failed to parse.
+        #expect(map.warnings.isEmpty)
+
+        #expect(map.match(day(2026, 11, 5))?.family == .bell(.lateArrival))
+        #expect(map.match(day(2026, 11, 10))?.family == .bell(.activityPeriod))
+        let thanksgiving = try #require(map.match(day(2026, 11, 26)))
+        #expect(thanksgiving.family == .noSchool)
+        #expect(thanksgiving.span == DateSpan(start: day(2026, 11, 25), end: day(2026, 11, 27)))
+        #expect(map.match(day(2026, 11, 12)) == nil)
+    }
+
+    @Test func theEnvelopeAndTheBareMapItWrapsParseAlike() throws {
+        // Installs that synced before the API hold the bare map in their cache.
+        let bare = #"{"Late Arrival": ["9/18/2026"], "No School": ["11/25/2026-11/27/2026"]}"#
+        let envelope = #"{"version": 1, "generatedAt": "2026-11-09T07:44:09.498Z", "signature": "c283", "scheduleDates": \#(bare)}"#
+        #expect(try TestSupport.map(envelope) == TestSupport.map(bare))
+    }
+
+    @Test func anEnvelopeWithoutUsableDatesFailsWholesale() {
+        // Neither may read as "a year with no exceptions".
+        #expect(throws: ParserError.noValidEntries) {
+            _ = try ScheduleDatesParser.parse(Data(#"{"version": 1, "scheduleDates": {}}"#.utf8))
+        }
+        #expect(throws: ParserError.noValidEntries) {
+            _ = try ScheduleDatesParser.parse(
+                Data(#"{"version": 1, "generatedAt": "2026-11-09T07:44:09.498Z", "signature": "c283"}"#.utf8))
+        }
+    }
+
+    @Test(arguments: ["null", "[]", #"["9/18/2026"]"#, #""invalid""#, "42", "true"])
+    func anInvalidEnvelopeCannotFallBackToTopLevelDates(value: String) {
+        let payload = #"{"scheduleDates": \#(value), "Late Arrival": ["9/18/2026"]}"#
+        #expect(throws: ParserError.notAnObject) {
+            _ = try ScheduleDatesParser.parse(Data(payload.utf8))
+        }
+    }
+
     @Test func datesWithoutLeadingZerosAndRanges() throws {
         let map = try TestSupport.map(
             #"{"No School": ["9/1/2026", "11/25/2026-11/27/2026"]}"#)
