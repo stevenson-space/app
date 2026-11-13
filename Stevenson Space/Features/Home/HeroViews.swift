@@ -77,18 +77,24 @@ struct HeroSection: View {
     var body: some View {
         let pref = model.config.timeFormat
 
+        // Each size keys its content by span inside its own container, so a bell
+        // change cross-fades in place and only a collapse runs the size transitions.
         ZStack {
-            Group {
-                if isCompact {
+            if isCompact {
+                ZStack {
                     compactContent(pref: pref)
-                        .transition(collapseTransition)
-                } else {
-                    heroContent(pref: pref)
+                        .id(model.currentSpanID)
                         .transition(.opacity)
                 }
+                .transition(collapseTransition)
+            } else {
+                ZStack {
+                    heroContent(pref: pref)
+                        .id(model.currentSpanID)
+                        .transition(.opacity)
+                }
+                .transition(shrinkTransition)
             }
-                .id(model.currentSpanID)
-                .transition(heroTransition)
         }
         .frame(maxWidth: .infinity)
         .animation(heroAnimation, value: model.currentSpanID)
@@ -163,7 +169,21 @@ struct HeroSection: View {
     }
 
     private var collapseTransition: AnyTransition {
-        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.92, anchor: .top))
+        guard !reduceMotion else { return .opacity }
+        return .modifier(active: LateFade(progress: 0), identity: LateFade(progress: 1))
+            .combined(with: .scale(scale: 0.92, anchor: .top))
+    }
+
+    /// The full hero shrinks toward the top as the header collapses under it,
+    /// so it reads as becoming the pill and never fades out over the cards.
+    private var shrinkTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        // The dial lands on the pill's ring; the other heroes have no ring.
+        let anchor: UnitPoint = switch model.currentState {
+        case .beforeSchool, .inBlock: .topLeading
+        default: .top
+        }
+        return .opacity.combined(with: .scale(scale: 0.14, anchor: anchor))
     }
 
     private func compactCountdown(target: Date, label: String, tint: Color,
@@ -276,6 +296,21 @@ struct HeroSection: View {
         Label(text, systemImage: icon)
             .font(.subheadline)
             .foregroundStyle(.secondary)
+    }
+}
+
+/// Holds the pill back for the first half of the collapse, so the shrinking
+/// hero is mostly out of the way before the pill shows through it.
+private struct LateFade: ViewModifier, Animatable {
+    var progress: Double
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        content.opacity(max(0, progress * 2 - 1))
     }
 }
 
