@@ -81,7 +81,7 @@ struct HomeView: View {
                 }
             }
             .padding(.bottom, 24)
-            .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86), value: isTimerCompact)
+            .animation(reduceMotion ? nil : .smooth(duration: 0.4), value: isTimerCompact)
         }
         .onGeometryChange(for: CGFloat.self) { geometry in
             geometry.size.height
