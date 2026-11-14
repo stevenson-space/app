@@ -13,17 +13,29 @@ struct RootView: View {
     var body: some View {
         @Bindable var navigation = navigation
         TabView(selection: $navigation.selectedTab) {
-            Tab("Home", systemImage: "clock", value: RootTab.home) {
+            Tab(value: RootTab.home) {
                 HomeView()
+            } label: {
+                Label("Home", systemImage: "clock")
+                    .labelStyle(.iconOnly)
             }
-            Tab("Lunch", systemImage: "fork.knife", value: RootTab.lunch) {
+            Tab(value: RootTab.lunch) {
                 LunchMenuView()
+            } label: {
+                Label("Lunch", systemImage: "fork.knife")
+                    .labelStyle(.iconOnly)
             }
-            Tab("ID", systemImage: "person.text.rectangle", value: RootTab.id) {
+            Tab(value: RootTab.id) {
                 StudentIDView()
+            } label: {
+                Label("ID", systemImage: "person.text.rectangle")
+                    .labelStyle(.iconOnly)
             }
-            Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
+            Tab(value: RootTab.settings) {
                 SettingsView()
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+                    .labelStyle(.iconOnly)
             }
         }
         .onOpenURL { navigation.openWidgetURL($0) }
