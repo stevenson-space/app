@@ -15,29 +15,36 @@ struct RootView: View {
         TabView(selection: $navigation.selectedTab) {
             Tab(value: RootTab.home) {
                 HomeView()
+                    .tint(.blue)
             } label: {
                 Label("Home", systemImage: "clock")
                     .labelStyle(.iconOnly)
             }
             Tab(value: RootTab.lunch) {
                 LunchMenuView()
+                    .tint(.blue)
             } label: {
                 Label("Lunch", systemImage: "fork.knife")
                     .labelStyle(.iconOnly)
             }
             Tab(value: RootTab.id) {
                 StudentIDView()
+                    .tint(.blue)
             } label: {
                 Label("ID", systemImage: "person.text.rectangle")
                     .labelStyle(.iconOnly)
             }
             Tab(value: RootTab.settings) {
                 SettingsView()
+                    .tint(.blue)
             } label: {
                 Label("Settings", systemImage: "gearshape")
                     .labelStyle(.iconOnly)
             }
         }
+        // A neutral selected tab, like Instagram's. Each tab sets its content back
+        // to the system blue; Color.accentColor would follow this tint instead.
+        .tint(.primary)
         .onOpenURL { navigation.openWidgetURL($0) }
         .background {
             Color.clear
