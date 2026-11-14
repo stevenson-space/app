@@ -17,6 +17,16 @@ struct StevensonSpaceApp: App {
         _model = State(initialValue: model)
         AppDependencyManager.shared.add(dependency: model)
         StevensonShortcuts.updateAppShortcutParameters()
+        // A neutral selected tab, like Instagram's. Set on the tab bar alone:
+        // a SwiftUI tint on the TabView would also recolor every screen in it,
+        // and the TabView overrides UITabBar.tintColor with its own accent.
+        let tabBar = UITabBarAppearance()
+        for item in [tabBar.stackedLayoutAppearance, tabBar.inlineLayoutAppearance,
+                     tabBar.compactInlineLayoutAppearance] {
+            item.selected.iconColor = .label
+        }
+        UITabBar.appearance().standardAppearance = tabBar
+        UITabBar.appearance().scrollEdgeAppearance = tabBar
     }
 
     var body: some Scene {
