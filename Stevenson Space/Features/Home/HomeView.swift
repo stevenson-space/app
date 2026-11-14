@@ -81,6 +81,7 @@ struct HomeView: View {
         } action: { _, offset in
             scroll.offset = offset
         }
+        .scrollTargetBehavior(CollapseSnap(scroll: scroll))
         .background(Color(.systemGroupedBackground))
         .overlay(alignment: .top) {
             GeometryReader { geometry in
@@ -122,6 +123,25 @@ struct HomeView: View {
 @Observable
 private final class HomeScroll {
     var offset: CGFloat = 0
+    /// Scroll offsets, as in `offset`, that the hero collapses across. Read only
+    /// when a scroll is about to settle, so it doesn't redraw anything.
+    @ObservationIgnored var collapseRange: ClosedRange<CGFloat> = 0...0
+}
+
+/// Settles a scroll that would come to rest part-way through the collapse on
+/// whichever end is nearer, so the hero is never left half-shrunk.
+private struct CollapseSnap: ScrollTargetBehavior {
+    let scroll: HomeScroll
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        let range = scroll.collapseRange
+        // The target's origin is already measured from the top of the content,
+        // like the offset the hero follows.
+        let offset = target.rect.origin.y
+        guard offset > range.lowerBound, offset < range.upperBound else { return }
+        target.rect.origin.y = offset - range.lowerBound < range.upperBound - offset
+            ? range.lowerBound : range.upperBound
+    }
 }
 
 /// The hero above the day's cards. It keeps its full height in the layout, so
@@ -157,6 +177,10 @@ private struct PinnedHero: View {
             .onChange(of: pillHeight, initial: true) { _, height in
                 compactHeight = height + Self.insets.top + Self.insets.bottom
             }
+            .onChange(of: pinOffset...(pinOffset + range), initial: true) { _, span in
+                scroll.collapseRange = span
+            }
+            .onDisappear { scroll.collapseRange = 0...0 }
     }
 }
 
