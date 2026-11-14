@@ -164,8 +164,9 @@ private final class HomeScroll {
 /// still is left alone here: `HomeView` animates it itself once it stops, much
 /// faster than the scroll view would carry it.
 private struct CollapseSnap: ScrollTargetBehavior {
-    /// Points per second, below which a release counts as still.
-    private static let stillSpeed: CGFloat = 200
+    /// Points per millisecond, the unit the scroll view reports its velocity
+    /// in, below which a release counts as still.
+    private static let stillSpeed: CGFloat = 0.2
 
     let scroll: HomeScroll
 
