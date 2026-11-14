@@ -16,26 +16,22 @@ struct RootView: View {
             Tab(value: RootTab.home) {
                 HomeView()
             } label: {
-                Label("Home", systemImage: "clock")
-                    .labelStyle(.iconOnly)
+                TabLabel("Home", systemImage: "clock")
             }
             Tab(value: RootTab.lunch) {
                 LunchMenuView()
             } label: {
-                Label("Lunch", systemImage: "fork.knife")
-                    .labelStyle(.iconOnly)
+                TabLabel("Lunch", systemImage: "fork.knife")
             }
             Tab(value: RootTab.id) {
                 StudentIDView()
             } label: {
-                Label("ID", systemImage: "person.text.rectangle")
-                    .labelStyle(.iconOnly)
+                TabLabel("ID", systemImage: "person.text.rectangle")
             }
             Tab(value: RootTab.settings) {
                 SettingsView()
             } label: {
-                Label("Settings", systemImage: "gearshape")
-                    .labelStyle(.iconOnly)
+                TabLabel("Settings", systemImage: "gearshape")
             }
         }
         .onOpenURL { navigation.openWidgetURL($0) }
@@ -94,6 +90,27 @@ struct RootView: View {
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .cancel))
         presenter.present(alert, animated: true)
+    }
+}
+
+/// Icons alone in the iOS 26 tab bar; older systems keep the standard titles
+/// under each icon. The title stays the item's accessibility label either way.
+private struct TabLabel: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+
+    init(_ title: LocalizedStringKey, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        if #available(iOS 26, *) {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+        } else {
+            Label(title, systemImage: systemImage)
+        }
     }
 }
 
