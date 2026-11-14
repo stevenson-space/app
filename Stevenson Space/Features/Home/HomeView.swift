@@ -78,7 +78,8 @@ struct HomeView: View {
         .scrollPosition($scrollPosition)
         .onScrollGeometryChange(for: CGFloat.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top
-        } action: { _, offset in
+        } action: { old, offset in
+            if offset != old { scroll.isScrollingDown = offset > old }
             scroll.offset = offset
         }
         .scrollTargetBehavior(CollapseSnap(scroll: scroll))
@@ -126,11 +127,17 @@ private final class HomeScroll {
     /// Scroll offsets, as in `offset`, that the hero collapses across. Read only
     /// when a scroll is about to settle, so it doesn't redraw anything.
     @ObservationIgnored var collapseRange: ClosedRange<CGFloat> = 0...0
+    /// Which way the last movement went, for a scroll released without momentum.
+    @ObservationIgnored var isScrollingDown = false
 }
 
-/// Settles a scroll that would come to rest part-way through the collapse on
-/// whichever end is nearer, so the hero is never left half-shrunk.
+/// Settles a scroll that would come to rest part-way through the collapse, so
+/// the hero is never left half-shrunk. It follows the direction of the scroll:
+/// moving down, the hero collapses once it is `commitment` of the way there;
+/// moving up, it expands once it has come back that far.
 private struct CollapseSnap: ScrollTargetBehavior {
+    static let commitment: CGFloat = 0.25
+
     let scroll: HomeScroll
 
     func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
@@ -139,8 +146,13 @@ private struct CollapseSnap: ScrollTargetBehavior {
         // like the offset the hero follows.
         let offset = target.rect.origin.y
         guard offset > range.lowerBound, offset < range.upperBound else { return }
-        target.rect.origin.y = offset - range.lowerBound < range.upperBound - offset
-            ? range.lowerBound : range.upperBound
+
+        let progress = (offset - range.lowerBound) / (range.upperBound - range.lowerBound)
+        let isScrollingDown = context.velocity.dy == 0
+            ? scroll.isScrollingDown : context.velocity.dy > 0
+        let collapses = isScrollingDown
+            ? progress >= Self.commitment : progress > 1 - Self.commitment
+        target.rect.origin.y = collapses ? range.upperBound : range.lowerBound
     }
 }
 
