@@ -4,11 +4,12 @@ import ScheduleKit
 struct HomeView: View {
     @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     // nil follows the live day, including midnight and foreground rollovers.
     @State private var selectedDay: DayKey?
-    @State private var isTimerCompact = false
+    @State private var scroll = HomeScroll()
     @State private var viewportHeight: CGFloat = 0
+    /// Scroll offset at which the hero reaches the top and pins.
+    @State private var heroPinOffset: CGFloat = 0
     @State private var compactHeaderHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
@@ -39,6 +40,11 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 22)
+                .onGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.size.height
+                } action: { height in
+                    heroPinOffset = height
+                }
 
                 if timeline.isSchoolDay {
                     if isToday {
@@ -50,26 +56,8 @@ struct HomeView: View {
                                 minimumHeight: max(viewportHeight - compactHeaderHeight - 24, 0))
                                 .padding(.horizontal, 16)
                         } header: {
-                            HeroSection(isCompact: isTimerCompact)
-                                .padding(.horizontal, 16)
-                                .padding(.top, 12)
-                                .padding(.bottom, 34)
-                                .frame(maxWidth: .infinity)
-                                .background(Color(.systemGroupedBackground))
-                                .background {
-                                    HeroSection(isCompact: true)
-                                        .padding(.horizontal, 16)
-                                        .padding(.top, 12)
-                                        .padding(.bottom, 34)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .hidden()
-                                        .accessibilityHidden(true)
-                                        .onGeometryChange(for: CGFloat.self) { geometry in
-                                            geometry.size.height
-                                        } action: { height in
-                                            compactHeaderHeight = height
-                                        }
-                                }
+                            PinnedHero(scroll: scroll, pinOffset: heroPinOffset,
+                                       compactHeight: $compactHeaderHeight)
                         }
                     } else {
                         DayTimelineListView(timeline: timeline, isLive: false)
@@ -81,7 +69,6 @@ struct HomeView: View {
                 }
             }
             .padding(.bottom, 24)
-            .animation(reduceMotion ? nil : .smooth(duration: 0.4), value: isTimerCompact)
         }
         .onGeometryChange(for: CGFloat.self) { geometry in
             geometry.size.height
@@ -89,13 +76,10 @@ struct HomeView: View {
             viewportHeight = height
         }
         .scrollPosition($scrollPosition)
-        .onScrollGeometryChange(for: Int.self) { geometry in
-            let offset = geometry.contentOffset.y + geometry.contentInsets.top
-            return offset <= 16 ? 0 : (offset > 32 ? 2 : 1)
-        } action: { _, region in
-            // Use hysteresis to avoid toggling during a small drag near the top.
-            if region == 2 { isTimerCompact = true }
-            if region == 0 { isTimerCompact = false }
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top
+        } action: { _, offset in
+            scroll.offset = offset
         }
         .background(Color(.systemGroupedBackground))
         .overlay(alignment: .top) {
@@ -111,14 +95,12 @@ struct HomeView: View {
         }
         .onChange(of: navigation.homeTodayRequest) { _, _ in
             selectedDay = nil
-            isTimerCompact = false
             scrollPosition.scrollTo(edge: .top)
         }
         .onChange(of: today) { _, _ in
             selectedDay = nil
         }
         .onChange(of: timeline) { _, _ in
-            isTimerCompact = false
             scrollPosition.scrollTo(edge: .top)
         }
         #if DEBUG
@@ -132,6 +114,49 @@ struct HomeView: View {
 
     private func selectDay(_ day: DayKey) {
         selectedDay = day == today ? nil : day
+    }
+}
+
+/// Home's scroll offset. It lives outside `HomeView`'s own state so that
+/// scrolling redraws only the pinned hero, not the whole screen.
+@Observable
+private final class HomeScroll {
+    var offset: CGFloat = 0
+}
+
+/// The hero above the day's cards. It keeps its full height in the layout, so
+/// the list never jumps; once pinned, the part that shows gives way to the
+/// list point for point until only the pill is left.
+private struct PinnedHero: View {
+    private static let insets = EdgeInsets(top: 12, leading: 16, bottom: 34, trailing: 16)
+
+    let scroll: HomeScroll
+    /// Scroll offset at which the hero reaches the top and pins.
+    let pinOffset: CGFloat
+    /// Height of the header once only the pill is left.
+    @Binding var compactHeight: CGFloat
+
+    @State private var fullHeight: CGFloat = 0
+    @State private var pillHeight: CGFloat = 0
+
+    var body: some View {
+        // What the hero can give up, and how much of it the list has taken.
+        let range = max(fullHeight - pillHeight, 0)
+        let given = min(max(scroll.offset - pinOffset, 0), range)
+
+        HeroSection(collapse: range > 0 ? given / range : 0, pillHeight: $pillHeight)
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                geometry.size.height
+            } action: { height in
+                fullHeight = height
+            }
+            .padding(Self.insets)
+            .frame(maxWidth: .infinity)
+            .background(Color(.systemGroupedBackground))
+            .clipShape(Rectangle().offset(y: -given))
+            .onChange(of: pillHeight, initial: true) { _, height in
+                compactHeight = height + Self.insets.top + Self.insets.bottom
+            }
     }
 }
 
