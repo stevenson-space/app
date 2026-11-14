@@ -83,6 +83,17 @@ struct HomeView: View {
             scroll.offset = offset
         }
         .scrollTargetBehavior(CollapseSnap(scroll: scroll))
+        .onScrollPhaseChange { _, phase in
+            guard phase == .idle,
+                  let end = scroll.settledOffset(from: scroll.offset,
+                                                 isScrollingDown: scroll.isScrollingDown)
+            else { return }
+            // A timing curve, not a spring, which would keep creeping for a
+            // while after it looks done.
+            withAnimation(.easeOut(duration: 0.25)) {
+                scrollPosition.scrollTo(y: end)
+            }
+        }
         .background(Color(.systemGroupedBackground))
         .overlay(alignment: .top) {
             GeometryReader { geometry in
@@ -129,30 +140,43 @@ private final class HomeScroll {
     @ObservationIgnored var collapseRange: ClosedRange<CGFloat> = 0...0
     /// Which way the last movement went, for a scroll released without momentum.
     @ObservationIgnored var isScrollingDown = false
+
+    /// How far through the collapse a scroll must get, going down, to carry on
+    /// to the pill, and how far back, going up, to carry on to the full hero.
+    private static let commitment: CGFloat = 0.25
+
+    /// The end of the collapse that a scroll resting at `offset` should settle
+    /// on, or nil when it is already at one end or outside the collapse.
+    func settledOffset(from offset: CGFloat, isScrollingDown: Bool) -> CGFloat? {
+        guard offset > collapseRange.lowerBound, offset < collapseRange.upperBound else {
+            return nil
+        }
+        let progress = (offset - collapseRange.lowerBound)
+            / (collapseRange.upperBound - collapseRange.lowerBound)
+        let collapses = isScrollingDown
+            ? progress >= Self.commitment : progress > 1 - Self.commitment
+        return collapses ? collapseRange.upperBound : collapseRange.lowerBound
+    }
 }
 
-/// Settles a scroll that would come to rest part-way through the collapse, so
-/// the hero is never left half-shrunk. It follows the direction of the scroll:
-/// moving down, the hero collapses once it is `commitment` of the way there;
-/// moving up, it expands once it has come back that far.
+/// Carries a flick that would come to rest part-way through the collapse on to
+/// an end, so the hero is never left half-shrunk. A scroll let go of nearly
+/// still is left alone here: `HomeView` animates it itself once it stops, much
+/// faster than the scroll view would carry it.
 private struct CollapseSnap: ScrollTargetBehavior {
-    static let commitment: CGFloat = 0.25
+    /// Points per second, below which a release counts as still.
+    private static let stillSpeed: CGFloat = 200
 
     let scroll: HomeScroll
 
     func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        let range = scroll.collapseRange
+        guard abs(context.velocity.dy) >= Self.stillSpeed else { return }
         // The target's origin is already measured from the top of the content,
         // like the offset the hero follows.
-        let offset = target.rect.origin.y
-        guard offset > range.lowerBound, offset < range.upperBound else { return }
-
-        let progress = (offset - range.lowerBound) / (range.upperBound - range.lowerBound)
-        let isScrollingDown = context.velocity.dy == 0
-            ? scroll.isScrollingDown : context.velocity.dy > 0
-        let collapses = isScrollingDown
-            ? progress >= Self.commitment : progress > 1 - Self.commitment
-        target.rect.origin.y = collapses ? range.upperBound : range.lowerBound
+        if let end = scroll.settledOffset(from: target.rect.origin.y,
+                                          isScrollingDown: context.velocity.dy > 0) {
+            target.rect.origin.y = end
+        }
     }
 }
 
