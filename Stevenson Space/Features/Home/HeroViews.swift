@@ -5,86 +5,162 @@ import ScheduleKit
 /// at a bell the countdown rolls to its new target instead of being replaced:
 /// an eyebrow (where), the varsity countdown (how long), a lead line (what),
 /// a seam (how far through) and a meta line (what's next).
+///
+/// It always takes the full hero's height and draws the collapsed strip over
+/// its top. `collapse` says how far along it is between the two, so whoever
+/// lays it out can scrub the collapse; Home ties it to the scroll position.
 struct HeroSection: View {
     @Environment(AppModel.self) private var model
     @Environment(\.jacketGround) private var ground
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize = 96.0
 
     let timeline: DayTimeline
-    var isCompact = false
+    /// 0 is the full hero and 1 the strip.
+    var collapse: CGFloat = 0
+    /// Height of the strip, measured here for whoever drives `collapse`.
+    @Binding var pillHeight: CGFloat
+
+    /// Where the hero's countdown and the strip's sit, so the collapse can
+    /// shrink one onto the other.
+    @State private var heroDigitsFrame: CGRect = .zero
+    @State private var stripDigitsFrame: CGRect = .zero
+
+    private static let space = "HeroSection"
+
+    /// When each part leaves or arrives, as fractions of the collapse.
+    private enum Phase {
+        static let lowerOut: ClosedRange<CGFloat> = 0...0.25
+        static let eyebrowOut: ClosedRange<CGFloat> = 0.1...0.35
+        static let plateIn: ClosedRange<CGFloat> = 0.75...1
+        static let stripTextIn: ClosedRange<CGFloat> = 0.8...1
+        // "Done for today" has nothing to hand over and swaps for its strip as a whole.
+        static let heroOut: ClosedRange<CGFloat> = 0.35...0.7
+        static let stripIn: ClosedRange<CGFloat> = 0.6...0.9
+        // Reduce Motion: nothing moves, so the hero clears before the list reaches it.
+        static let plainHeroOut: ClosedRange<CGFloat> = 0...0.3
+        static let plainStripIn: ClosedRange<CGFloat> = 0.3...0.6
+    }
 
     var body: some View {
-        if case .afterSchool = model.currentState {
-            if isCompact {
-                compactStrip {
-                    Label("Done for today", systemImage: "checkmark")
-                        .font(.headline)
-                        .foregroundStyle(ground.ink)
+        Group {
+            if case .afterSchool = model.currentState {
+                layers {
+                    compactStrip(plateOpacity: stripOpacity) {
+                        Label("Done for today", systemImage: "checkmark")
+                            .font(.headline)
+                            .foregroundStyle(ground.ink)
+                            .opacity(stripOpacity)
+                    }
+                } hero: {
+                    AfterSchoolHero(next: model.nextSchoolDay, today: model.today,
+                                    lastBell: timeline.lastBell, pref: model.config.timeFormat)
+                        .shrinking(toHeight: pillHeight, progress: motion)
+                        .opacity(1 - ramp(reduceMotion ? Phase.plainHeroOut : Phase.heroOut))
                 }
-            } else {
-                AfterSchoolHero(next: model.nextSchoolDay, today: model.today,
-                                lastBell: timeline.lastBell, pref: model.config.timeFormat)
-            }
-        } else if let moment = Moment(state: model.currentState, timeline: timeline,
-                                      pref: model.config.timeFormat) {
-            TimelineView(.animation(minimumInterval: 1.0)) { context in
-                let now = context.date.addingTimeInterval(model.displayOffset)
-                let remaining = max(moment.target.timeIntervalSince(now), 0)
-                let total = max(moment.target.timeIntervalSince(moment.start), 1)
-                let fraction = 1 - remaining / total
-                Group {
-                    if isCompact {
+            } else if let moment = Moment(state: model.currentState, timeline: timeline,
+                                          pref: model.config.timeFormat) {
+                TimelineView(.animation(minimumInterval: 1.0)) { context in
+                    let now = context.date.addingTimeInterval(model.displayOffset)
+                    let remaining = max(moment.target.timeIntervalSince(now), 0)
+                    let total = max(moment.target.timeIntervalSince(moment.start), 1)
+                    let fraction = 1 - remaining / total
+                    layers {
                         compact(moment, remaining: remaining, fraction: fraction)
-                    } else {
+                    } hero: {
                         expanded(moment, remaining: remaining, fraction: fraction)
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(moment.spokenSummary)")
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(TimeDisplay.spokenDuration(remaining)) \(moment.spokenSummary)")
             }
+        }
+        .frame(maxWidth: .infinity)
+        .coordinateSpace(.named(Self.space))
+    }
+
+    /// The strip under the full hero, top-aligned, each heard only while it is
+    /// the one showing.
+    private func layers(@ViewBuilder strip: () -> some View,
+                        @ViewBuilder hero: () -> some View) -> some View {
+        ZStack(alignment: .top) {
+            strip()
+                .onGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.size.height
+                } action: { height in
+                    pillHeight = height
+                }
+                .accessibilityHidden(collapse < 0.5)
+            // On top, so the countdown that shrinks into the strip sits on its plate.
+            hero()
+                .accessibilityHidden(collapse >= 0.5)
         }
     }
 
     // MARK: Expanded
 
     private func expanded(_ moment: Moment, remaining: TimeInterval, fraction: Double) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        // The parts under the countdown go first: the list takes their space.
+        let lowerOpacity = reduceMotion ? 1 : 1 - ramp(Phase.lowerOut)
+
+        return VStack(alignment: .leading, spacing: 0) {
             Text(moment.eyebrow)
                 .jacketLabel()
                 .foregroundStyle(ground.live)
+                .opacity(reduceMotion ? 1 : 1 - ramp(Phase.eyebrowOut))
 
-            Text(TimeDisplay.countdown(remaining))
-                .font(.varsity(size: heroSize))
-                .tracking(-heroSize * 0.035)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .foregroundStyle(ground.heroFace)
-                .twill(ground.heroEdge, x: heroSize / 32, y: heroSize / 24)
-                .contentTransition(.numericText(countsDown: true))
+            heroDigits(remaining)
                 .padding(.leading, -4)
                 .padding(.top, 10)
 
-            switch moment.lead {
-            case .line(let text):
-                Text(text)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(ground.ink)
+            Group {
+                switch moment.lead {
+                case .line(let text):
+                    Text(text)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(ground.ink)
+                        .padding(.top, 12)
+                case .destination(let text):
+                    Text(text)
+                        .font(.varsity(.largeTitle))
+                        .foregroundStyle(ground.ink)
+                        .padding(.top, 14)
+                }
+
+                Seam(fraction: fraction, on: ground.seamOn, off: ground.seamOff)
+                    .padding(.top, 22)
+
+                meta(moment)
                     .padding(.top, 12)
-            case .destination(let text):
-                Text(text)
-                    .font(.varsity(.largeTitle))
-                    .foregroundStyle(ground.ink)
-                    .padding(.top, 14)
             }
-
-            Seam(fraction: fraction, on: ground.seamOn, off: ground.seamOff)
-                .padding(.top, 22)
-
-            meta(moment)
-                .padding(.top, 12)
+            .opacity(lowerOpacity)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .opacity(reduceMotion ? 1 - ramp(Phase.plainHeroOut) : 1)
+    }
+
+    /// The varsity countdown. As the hero collapses it shrinks onto the strip's
+    /// countdown and stays there as its digits.
+    private func heroDigits(_ remaining: TimeInterval) -> some View {
+        let morph = DigitsMorph(progress: motion, from: heroDigitsFrame, to: stripDigitsFrame)
+
+        return Text(TimeDisplay.countdown(remaining))
+            .font(.varsity(size: heroSize))
+            .tracking(-heroSize * 0.035)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .foregroundStyle(ground.heroFace)
+            .twill(ground.heroEdge, x: heroSize / 32, y: heroSize / 24)
+            .contentTransition(.numericText(countsDown: true))
+            .scaleEffect(morph.scale, anchor: .topLeading)
+            .offset(morph.offset)
+            // Measured outside the scale and offset, so this is where it is laid out.
+            .onGeometryChange(for: CGRect.self) { geometry in
+                geometry.frame(in: .named(Self.space))
+            } action: { frame in
+                heroDigitsFrame = frame
+            }
     }
 
     private func meta(_ moment: Moment) -> some View {
@@ -117,7 +193,9 @@ struct HeroSection: View {
     // MARK: Compact
 
     private func compact(_ moment: Moment, remaining: TimeInterval, fraction: Double) -> some View {
-        compactStrip {
+        let textOpacity = ramp(reduceMotion ? Phase.plainStripIn : Phase.stripTextIn)
+
+        return compactStrip(plateOpacity: ramp(reduceMotion ? Phase.plainStripIn : Phase.plateIn)) {
             HStack(spacing: 12) {
                 Text(TimeDisplay.countdown(remaining))
                     .font(.varsity(.title2))
@@ -125,23 +203,85 @@ struct HeroSection: View {
                     .foregroundStyle(ground.heroFace)
                     .twill(ground.heroEdge, x: 1.5, y: 2)
                     .contentTransition(.numericText(countsDown: true))
+                    .onGeometryChange(for: CGRect.self) { geometry in
+                        geometry.frame(in: .named(Self.space))
+                    } action: { frame in
+                        stripDigitsFrame = frame
+                    }
+                    // The hero's countdown arrives in this slot and stands in for
+                    // these digits; Reduce Motion fades them in instead.
+                    .opacity(reduceMotion ? textOpacity : 0)
                 Text(moment.compactLabel)
                     .font(.subheadline)
                     .foregroundStyle(ground.ink)
                     .lineLimit(1)
+                    .opacity(textOpacity)
                 Spacer(minLength: 4)
                 Seam(fraction: fraction, on: ground.seamOn, off: ground.seamOff,
                      stitches: 12, height: 3, spacing: 2)
                     .frame(width: 54)
+                    .opacity(textOpacity)
             }
         }
     }
 
-    private func compactStrip<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func compactStrip<Content: View>(plateOpacity: Double,
+                                             @ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(.horizontal, 20)
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            .floatingGlass(in: Capsule())
+            .background {
+                Color.clear
+                    .floatingGlass(in: Capsule())
+                    .opacity(plateOpacity)
+            }
+    }
+
+    // MARK: Collapse
+
+    /// Progress of everything that moves or resizes; Reduce Motion keeps to fades.
+    private var motion: CGFloat {
+        reduceMotion ? 0 : collapse
+    }
+
+    private var stripOpacity: Double {
+        ramp(reduceMotion ? Phase.plainStripIn : Phase.stripIn)
+    }
+
+    /// 0 before `phase`, 1 after it, linear across it.
+    private func ramp(_ phase: ClosedRange<CGFloat>) -> Double {
+        let span = phase.upperBound - phase.lowerBound
+        return Double(min(max((collapse - phase.lowerBound) / span, 0), 1))
+    }
+}
+
+/// Where the hero's countdown is part-way through the collapse: scaled from its
+/// top leading corner and moved, from its own place to the strip's countdown.
+private struct DigitsMorph {
+    let scale: CGFloat
+    let offset: CGSize
+
+    init(progress: CGFloat, from hero: CGRect, to strip: CGRect) {
+        guard progress > 0, hero.height > 0, strip.height > 0 else {
+            scale = 1
+            offset = .zero
+            return
+        }
+        scale = 1 + (strip.height / hero.height - 1) * progress
+        offset = CGSize(width: (strip.minX - hero.minX) * progress,
+                        height: (strip.minY - hero.minY) * progress)
+    }
+}
+
+private extension View {
+    /// Scales the view toward its top leading corner, where the hero's text
+    /// starts, so its height runs from its own to `height` as `progress` goes
+    /// from 0 to 1.
+    func shrinking(toHeight height: CGFloat, progress: CGFloat) -> some View {
+        visualEffect { content, geometry in
+            let fit = geometry.size.height > 0 ? height / geometry.size.height : 1
+            return content.scaleEffect(1 + (fit - 1) * progress, anchor: .topLeading)
+        }
     }
 }
 
