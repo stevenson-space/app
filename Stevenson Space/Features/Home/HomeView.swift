@@ -58,7 +58,8 @@ struct HomeView: View {
                                 .padding(.horizontal, 16)
                         } header: {
                             PinnedHero(scroll: scroll, pinOffset: heroPinOffset,
-                                       compactHeight: $compactHeaderHeight)
+                                       compactHeight: $compactHeaderHeight,
+                                       collapseRangeChanged: keepCollapseEnd)
                         }
                     } else {
                         DayTimelineListView(timeline: timeline, isLive: false)
@@ -143,6 +144,15 @@ struct HomeView: View {
             scrollPosition.scrollTo(y: end)
         }
     }
+
+    /// Holds a resting hero on its end when the hero resizes or moves, which
+    /// nothing else settles because the scroll itself never moved.
+    private func keepCollapseEnd(from old: ClosedRange<CGFloat>, to new: ClosedRange<CGFloat>) {
+        guard scroll.isAtRest,
+              let offset = scroll.offsetKeepingEnd(from: old, to: new)
+        else { return }
+        scrollPosition.scrollTo(y: offset)
+    }
 }
 
 /// Home's scroll offset. It lives outside `HomeView`'s own state so that
@@ -173,21 +183,37 @@ private final class HomeScroll {
     /// How far through the collapse a scroll must get, going down, to carry on
     /// to the pill, and how far back, going up, to carry on to the full hero.
     private static let commitment: CGFloat = 0.25
+    /// Subpoint rounding at either end that still counts as resting on it.
+    private static let tolerance: CGFloat = 0.5
 
     /// The end of the collapse that a scroll resting at `offset` should settle
     /// on, or nil when it is already at one end or outside the collapse.
     func settledOffset(from offset: CGFloat, isScrollingDown: Bool) -> CGFloat? {
-        // Treat subpoint rounding at either endpoint as already settled.
-        let tolerance: CGFloat = 0.5
-        guard offset > collapseRange.lowerBound + tolerance,
-              offset < collapseRange.upperBound - tolerance else {
-            return nil
-        }
+        guard isInsideCollapse(offset, collapseRange) else { return nil }
         let progress = (offset - collapseRange.lowerBound)
             / (collapseRange.upperBound - collapseRange.lowerBound)
         let collapses = isScrollingDown
             ? progress >= Self.commitment : progress > 1 - Self.commitment
         return collapses ? collapseRange.upperBound : collapseRange.lowerBound
+    }
+
+    /// Where the scroll should move once the collapse range changes under it,
+    /// say when a bell swaps in a taller hero, so a hero resting on either end
+    /// stays there and the list stays under it. Nil when the scroll can stay put,
+    /// including when SwiftUI has already moved it along with the content.
+    func offsetKeepingEnd(from old: ClosedRange<CGFloat>, to new: ClosedRange<CGFloat>) -> CGFloat? {
+        guard isInsideCollapse(offset, new) else { return nil }
+        if offset >= old.upperBound - Self.tolerance {
+            return offset + new.upperBound - old.upperBound
+        }
+        if offset <= old.lowerBound + Self.tolerance {
+            return offset + new.lowerBound - old.lowerBound
+        }
+        return nil
+    }
+
+    private func isInsideCollapse(_ offset: CGFloat, _ range: ClosedRange<CGFloat>) -> Bool {
+        offset > range.lowerBound + Self.tolerance && offset < range.upperBound - Self.tolerance
     }
 }
 
@@ -366,6 +392,8 @@ private struct PinnedHero: View {
     let pinOffset: CGFloat
     /// Height of the header once only the pill is left.
     @Binding var compactHeight: CGFloat
+    /// Called with the old and new collapse ranges whenever the hero resizes or moves.
+    let collapseRangeChanged: (ClosedRange<CGFloat>, ClosedRange<CGFloat>) -> Void
 
     @State private var fullHeight: CGFloat = 0
     @State private var pillHeight: CGFloat = 0
@@ -388,8 +416,9 @@ private struct PinnedHero: View {
             .onChange(of: pillHeight, initial: true) { _, height in
                 compactHeight = height + Self.insets.top + Self.insets.bottom
             }
-            .onChange(of: pinOffset...(pinOffset + range), initial: true) { _, span in
+            .onChange(of: pinOffset...(pinOffset + range), initial: true) { old, span in
                 scroll.collapseRange = span
+                collapseRangeChanged(old, span)
             }
             .onDisappear { scroll.collapseRange = 0...0 }
     }
