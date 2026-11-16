@@ -1,4 +1,5 @@
 import SwiftUI
+import ScheduleKit
 import StudentIDKit
 
 /// What the import is doing right now.
@@ -33,7 +34,8 @@ struct StudentIDImportSheet: View {
                     failure(message)
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Jacket.lining)
+            .environment(\.jacketGround, .lining)
             .navigationTitle("Import ID")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -68,7 +70,7 @@ struct StudentIDImportSheet: View {
                 .font(.headline)
             Text("Scanning the barcode and reading the page.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Jacket.ink2)
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 40)
@@ -78,26 +80,23 @@ struct StudentIDImportSheet: View {
     private func review(_ extraction: StudentIDExtraction, photo: UIImage?) -> some View {
         let messages = warnings(extraction)
         return ScrollView {
-            VStack(spacing: 18) {
+            VStack(alignment: .leading, spacing: 24) {
                 ownershipWarning
 
                 StudentIDCardView(content: .card(extraction.card, photo: photo))
+                    .frame(maxWidth: .infinity)
 
                 VStack(spacing: 0) {
                     detail("Name", extraction.card.fullName ?? "Not found")
-                    Divider().padding(.leading, 16)
                     detail("Student number", extraction.card.idNumber)
                     if let grade = extraction.card.gradeLabel {
-                        Divider().padding(.leading, 16)
                         detail("Grade", grade)
                     }
                     if let year = extraction.card.schoolYearLabel {
-                        Divider().padding(.leading, 16)
                         detail("School year", year)
                     }
+                    StitchRule(JacketGround.lining.stitch)
                 }
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground)))
 
                 purchaseNote
 
@@ -105,20 +104,20 @@ struct StudentIDImportSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(messages, id: \.self) { warning in
                             Label(warning, systemImage: "exclamationmark.circle")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .font(.subheadline)
+                                .foregroundStyle(Jacket.ink2)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Button("Choose a Different Screenshot", action: onChooseAnother)
-                    .font(.subheadline)
-                    .padding(.top, 2)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 20)
             .padding(.top, 12)
-            .padding(.bottom, 28)
+            .padding(.bottom, 32)
         }
     }
 
@@ -126,17 +125,19 @@ struct StudentIDImportSheet: View {
         VStack(spacing: 18) {
             Image(systemName: "barcode.viewfinder")
                 .font(.system(size: 56))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Jacket.ink3)
             Text("Could not read that screenshot")
                 .font(.title3.weight(.semibold))
+                .foregroundStyle(Jacket.ink)
                 .multilineTextAlignment(.center)
             Text(message)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Jacket.ink2)
                 .multilineTextAlignment(.center)
             Button("Try Another Screenshot", action: onChooseAnother)
                 .buttonStyle(.borderedProminent)
-                .tint(StevensonPalette.accent)
+                .buttonBorderShape(.capsule)
+                .tint(Jacket.accent)
                 .padding(.top, 4)
         }
         .padding(.horizontal, 32)
@@ -146,7 +147,7 @@ struct StudentIDImportSheet: View {
     // MARK: - Pieces
 
     private var ownershipWarning: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Label("Only add your own ID", systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
                 .foregroundStyle(.red)
@@ -154,6 +155,7 @@ struct StudentIDImportSheet: View {
             Text("Adding someone else’s ID as your own is against school policy "
                  + "and is punishable by disciplinary action from Stevenson.")
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Jacket.ink)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(16)
@@ -171,32 +173,33 @@ struct StudentIDImportSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Not for lunch or purchases", systemImage: "creditcard")
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Jacket.ink)
 
             Text("This ID can’t be used to buy lunch or make purchases at school. "
                  + "You’ll still need the GET app for those.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Jacket.ink2)
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color(.secondarySystemGroupedBackground)))
         .accessibilityElement(children: .combine)
     }
 
     private func detail(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 12)
-            Text(value)
-                .font(.subheadline.weight(.medium))
-                .multilineTextAlignment(.trailing)
+        VStack(spacing: 0) {
+            StitchRule(JacketGround.lining.stitch)
+            HStack(alignment: .firstTextBaseline) {
+                Text(label)
+                    .foregroundStyle(Jacket.ink2)
+                Spacer(minLength: 12)
+                Text(value)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Jacket.ink)
+                    .multilineTextAlignment(.trailing)
+            }
+            .font(.subheadline)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     /// Only the gaps a student can do something about are worth a line; a

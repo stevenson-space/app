@@ -21,18 +21,19 @@ struct StudentIDView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 0) {
                     if let card = model.studentID {
                         savedCard(card)
                     } else {
                         emptyState
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
                 .padding(.top, 12)
-                .padding(.bottom, 28)
+                .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Jacket.lining)
+            .environment(\.jacketGround, .lining)
             .navigationTitle("ID")
             .toolbar {
                 if model.studentID != nil {
@@ -80,8 +81,9 @@ struct StudentIDView: View {
     // MARK: - Saved
 
     private func savedCard(_ card: StudentIDCard) -> some View {
-        VStack(spacing: 18) {
+        VStack(alignment: .leading, spacing: 0) {
             StudentIDCardView(content: .card(card, photo: model.studentIDPhotoHidden ? nil : model.studentIDPhoto))
+                .frame(maxWidth: .infinity)
                 .onTapGesture { navigation.isStudentIDScanning = true }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Opens the barcode full screen for scanning")
@@ -91,82 +93,124 @@ struct StudentIDView: View {
             } label: {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
                     .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
-            .tint(StevensonPalette.accent)
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+            .tint(Jacket.accent)
+            .padding(.top, 24)
+
+            Text("Tap the card to show the barcode full screen at full brightness.")
+                .font(.subheadline)
+                .foregroundStyle(Jacket.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 14)
 
             if model.studentIDIsFromAnEarlierSchoolYear, let year = card.schoolYearLabel {
                 Label("This ID was imported for the \(year) school year. "
                       + "Import a fresh screenshot if yours has changed.",
                       systemImage: "calendar.badge.exclamationmark")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                    .font(.subheadline)
+                    .foregroundStyle(Jacket.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 14)
             }
+
+            VStack(spacing: 0) {
+                if let year = card.schoolYearLabel {
+                    fact("School year", year)
+                }
+                if model.studentIDPhoto != nil {
+                    fact("Photo", model.studentIDPhotoHidden ? "Hidden" : "Shown")
+                }
+                fact("Stored", "On this iPhone only")
+            }
+            .padding(.top, 44)
         }
+    }
+
+    private func fact(_ label: String, _ value: String) -> some View {
+        VStack(spacing: 0) {
+            StitchRule(JacketGround.lining.stitch)
+            HStack(alignment: .firstTextBaseline) {
+                Text(label)
+                    .foregroundStyle(Jacket.ink)
+                Spacer(minLength: 12)
+                Text(value)
+                    .foregroundStyle(Jacket.ink2)
+                    .monospacedDigit()
+                    .multilineTextAlignment(.trailing)
+            }
+            .font(.body)
+            .padding(.vertical, 13)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Empty
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: 0) {
             StudentIDCardView(content: .placeholder)
                 .opacity(0.5)
+                .frame(maxWidth: .infinity)
                 .accessibilityHidden(true)
 
-            VStack(spacing: 6) {
-                Text("Add your student ID")
-                    .font(.title2.weight(.bold))
-                Text("Import a screenshot from Infinite Campus to create a sharp, scannable ID.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 8)
+            Text("Add your student ID")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(Jacket.ink)
+                .padding(.top, 28)
+            Text("Import a screenshot from Infinite Campus to create a sharp, scannable ID.")
+                .font(.subheadline)
+                .foregroundStyle(Jacket.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(spacing: 0) {
                 step(1, "Open Infinite Campus.")
                 step(2, "Screenshot the homepage, including your student details and barcode.")
                 step(3, "Import it below.")
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground)))
+            .padding(.top, 24)
 
             Button {
                 isPickerPresented = true
             } label: {
                 Label("Choose Screenshot", systemImage: "photo.on.rectangle")
                     .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
-            .tint(StevensonPalette.accent)
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+            .tint(Jacket.accent)
+            .padding(.top, 28)
 
             Text("Your ID is processed on this device and isn’t uploaded to us.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
+                .font(.subheadline)
+                .foregroundStyle(Jacket.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 14)
         }
     }
 
+    /// Numbered like the day's periods: a varsity number, then the step.
     private func step(_ number: Int, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text("\(number)")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
-                .background(Circle().fill(StevensonPalette.accent))
-            Text(text)
-                .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+        VStack(spacing: 0) {
+            StitchRule(JacketGround.lining.stitch)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text("\(number)")
+                    .font(.varsity(.headline))
+                    .foregroundStyle(Jacket.accent)
+                    .frame(width: 36, alignment: .leading)
+                Text(text)
+                    .font(.body)
+                    .foregroundStyle(Jacket.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 13)
         }
         .accessibilityElement(children: .combine)
     }
