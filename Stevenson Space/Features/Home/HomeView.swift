@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit.UIGestureRecognizerSubclass
 import ScheduleKit
 
 struct HomeView: View {
@@ -12,7 +13,6 @@ struct HomeView: View {
     @State private var heroPinOffset: CGFloat = 0
     @State private var compactHeaderHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .top)
-    @GestureState private var isTouchingScroll = false
 
     private var today: DayKey { model.todayTimeline.day }
     private var day: DayKey { selectedDay ?? today }
@@ -70,6 +70,13 @@ struct HomeView: View {
                 }
             }
             .padding(.bottom, 24)
+            .background {
+                // A finger that catches a moving scroll and lifts without
+                // dragging brings no new scroll phase, so settle on the lift too.
+                ScrollTouchReader(scroll: scroll) {
+                    settleScroll(at: scroll.offset)
+                }
+            }
         }
         .onGeometryChange(for: CGFloat.self) { geometry in
             geometry.size.height
@@ -84,17 +91,6 @@ struct HomeView: View {
             scroll.offset = offset
         }
         .scrollTargetBehavior(CollapseSnap(scroll: scroll))
-        // Catching a snap can report idle before the finger lifts. Track the
-        // touch too, so we wait for release and settle even without a new phase.
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .updating($isTouchingScroll) { _, isTouching, _ in
-                    isTouching = true
-                }
-        )
-        .onChange(of: isTouchingScroll) { _, isTouching in
-            if !isTouching { settleScroll(at: scroll.offset) }
-        }
         .onScrollPhaseChange { _, phase, context in
             scroll.phase = phase
             settleScroll(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top)
@@ -135,7 +131,7 @@ struct HomeView: View {
     }
 
     private func settleScroll(at offset: CGFloat) {
-        guard scroll.phase == .idle, !isTouchingScroll,
+        guard scroll.isAtRest,
               let end = scroll.settledOffset(from: offset,
                                              isScrollingDown: scroll.isScrollingDown)
         else { return }
@@ -157,6 +153,18 @@ private final class HomeScroll {
     /// Which way the last movement went, for a scroll released without momentum.
     @ObservationIgnored var isScrollingDown = false
     @ObservationIgnored var phase: ScrollPhase = .idle
+    /// Whether a finger is on the scroll view, as UIKit reports it.
+    @ObservationIgnored var isTouching = false
+    /// The UIKit scroll view behind Home's `ScrollView`.
+    @ObservationIgnored weak var scrollView: UIScrollView?
+
+    /// Whether nothing is moving the scroll, so a settle can't fight a finger
+    /// or momentum. The scroll phase alone can read idle while a finger that
+    /// caught a moving scroll is still down or dragging.
+    var isAtRest: Bool {
+        phase == .idle && !isTouching
+            && !(scrollView?.isDragging ?? false) && !(scrollView?.isDecelerating ?? false)
+    }
 
     /// How far through the collapse a scroll must get, going down, to carry on
     /// to the pill, and how far back, going up, to carry on to the full hero.
@@ -197,6 +205,120 @@ private struct CollapseSnap: ScrollTargetBehavior {
         if let end = scroll.settledOffset(from: target.rect.origin.y,
                                           isScrollingDown: context.velocity.dy > 0) {
             target.rect.origin.y = end
+        }
+    }
+}
+
+/// Follows fingers on the UIKit scroll view behind Home's `ScrollView`.
+/// SwiftUI misses the finger that catches a moving scroll: the scroll phase
+/// turns idle while it is still down, and a `DragGesture` hears of it late or
+/// not at all, so a settle could start under the finger and jump on its next
+/// move. A gesture recognizer on the scroll view sees every touch first.
+private struct ScrollTouchReader: UIViewRepresentable {
+    let scroll: HomeScroll
+    /// Called once the last finger has lifted and the scroll view has taken in
+    /// the release, so it already reports any momentum.
+    let onRelease: () -> Void
+
+    func makeUIView(context: Context) -> Probe {
+        Probe()
+    }
+
+    func updateUIView(_ probe: Probe, context: Context) {
+        let observer = probe.observer
+        observer.onTouchDown = { [scroll] in
+            scroll.isTouching = true
+        }
+        observer.onLift = { [scroll, onRelease] in
+            DispatchQueue.main.async {
+                scroll.isTouching = false
+                onRelease()
+            }
+        }
+        observer.onAttach = { [scroll] scrollView in
+            scroll.scrollView = scrollView
+        }
+    }
+
+    /// Sits inside the scroll content and hands the observer to the nearest
+    /// scroll view above it.
+    final class Probe: UIView {
+        let observer = TouchObserver()
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            observer.view?.removeGestureRecognizer(observer)
+            guard window != nil else { return }
+            var ancestor = superview
+            while let view = ancestor, !(view is UIScrollView) {
+                ancestor = view.superview
+            }
+            guard let scrollView = ancestor as? UIScrollView else { return }
+            scrollView.addGestureRecognizer(observer)
+            observer.onAttach(scrollView)
+        }
+    }
+
+    /// Reports touches without ever recognizing, delaying or blocking them.
+    final class TouchObserver: UIGestureRecognizer {
+        var onTouchDown: () -> Void = {}
+        var onLift: () -> Void = {}
+        var onAttach: (UIScrollView) -> Void = { _ in }
+        private var activeTouches: Set<UITouch> = []
+        private var isDown = false
+
+        init() {
+            super.init(target: nil, action: nil)
+            cancelsTouchesInView = false
+            delaysTouchesEnded = false
+        }
+
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+            activeTouches.formUnion(touches)
+            if !isDown {
+                isDown = true
+                onTouchDown()
+            }
+        }
+
+        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+            endTouches(touches)
+        }
+
+        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+            endTouches(touches)
+        }
+
+        private func endTouches(_ touches: Set<UITouch>) {
+            activeTouches.subtract(touches)
+            // Failing ends this attempt; `reset()` then reports the lift.
+            if activeTouches.isEmpty { state = .failed }
+        }
+
+        override func reset() {
+            super.reset()
+            activeTouches.removeAll()
+            if isDown {
+                isDown = false
+                onLift()
+            }
+        }
+
+        override func canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
+            false
+        }
+
+        override func canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
+            false
         }
     }
 }
