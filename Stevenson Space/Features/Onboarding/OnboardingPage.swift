@@ -15,6 +15,7 @@ struct OnboardingPage<Content: View, Actions: View>: View {
 
     private static var ground: Color { Color(.systemGroupedBackground) }
     private static var endID: String { "end" }
+    private static var fadeHeight: CGFloat { 20 }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -37,7 +38,9 @@ struct OnboardingPage<Content: View, Actions: View>: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, 24)
+            // The pinned actions bring their own fade, which stands in for
+            // most of the space under the last of the content.
+            .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 24 : 24 - Self.fadeHeight)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
             .id(Self.endID)
@@ -47,22 +50,23 @@ struct OnboardingPage<Content: View, Actions: View>: View {
         .background(Self.ground)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: 8) { actions }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
-                    .frame(maxWidth: 560)
-                    .frame(maxWidth: .infinity)
-                    .background(Self.ground)
-                    .overlay(alignment: .top) {
-                        // Content fades out under the actions rather than
-                        // being cut off at a hard edge.
-                        LinearGradient(colors: [Self.ground.opacity(0), Self.ground],
-                                       startPoint: .top, endPoint: .bottom)
-                            .frame(height: 20)
-                            .offset(y: -20)
-                            .allowsHitTesting(false)
-                    }
+                VStack(spacing: 0) {
+                    // Content fades out under the actions rather than being
+                    // cut off at a hard edge. The fade is part of the inset,
+                    // so a field being typed in is kept clear of it.
+                    LinearGradient(colors: [Self.ground.opacity(0), Self.ground],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(height: Self.fadeHeight)
+                        .allowsHitTesting(false)
+
+                    VStack(spacing: 8) { actions }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
+                        .frame(maxWidth: 560)
+                        .frame(maxWidth: .infinity)
+                        .background(Self.ground)
+                }
             }
         }
     }
