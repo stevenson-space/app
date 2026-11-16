@@ -198,10 +198,20 @@ private final class HomeScroll {
     }
 
     /// Where the scroll should move once the collapse range changes under it,
-    /// say when a bell swaps in a taller hero, so a hero resting on either end
-    /// stays there and the list stays under it. Nil when the scroll can stay put,
-    /// including when SwiftUI has already moved it along with the content.
+    /// say when a bell swaps in a taller or shorter hero, so a hero resting on
+    /// either end stays there and the list stays under it. Nil when the scroll
+    /// can stay put, including when SwiftUI has already moved it along with the
+    /// content.
     func offsetKeepingEnd(from old: ClosedRange<CGFloat>, to new: ClosedRange<CGFloat>) -> CGFloat? {
+        // A collapsed hero that shrank leaves the scroll past its new end, so it
+        // is never inside the new range. Aiming at that end, rather than moving
+        // by the change, leaves a scroll SwiftUI has already moved where it is.
+        // A zero-width range is one still being measured, with no end to keep.
+        if old.upperBound - old.lowerBound > Self.tolerance,
+           abs(offset - old.upperBound) <= Self.tolerance,
+           abs(offset - new.upperBound) > Self.tolerance {
+            return new.upperBound
+        }
         guard isInsideCollapse(offset, new) else { return nil }
         if offset >= old.upperBound - Self.tolerance {
             return offset + new.upperBound - old.upperBound
