@@ -82,6 +82,13 @@ struct CountdownDial: View {
     }
 }
 
+/// A moment other than now for `HeroSection` to show, and the offset from
+/// the wall clock that puts its countdown there.
+struct HeroPreview {
+    let state: MomentState
+    let offset: TimeInterval
+}
+
 /// Zone 2 — switches presentation per moment state. Passing gets a visibly
 /// different layout, not just a different color.
 ///
@@ -96,8 +103,15 @@ struct HeroSection: View {
     var collapse: CGFloat = 0
     /// Height of the pill, measured here for whoever drives `collapse`.
     @Binding var pillHeight: CGFloat
+    /// A moment to show in place of the present one. Onboarding uses it to
+    /// preview a school day when school is out.
+    var preview: HeroPreview?
 
     @State private var width: CGFloat = 0
+
+    private var state: MomentState { preview?.state ?? model.currentState }
+    private var clockOffset: TimeInterval { preview?.offset ?? model.displayOffset }
+    private var spanID: String? { preview == nil ? model.currentSpanID : "preview" }
 
     /// When each part leaves or arrives, as fractions of the collapse.
     private enum Phase {
@@ -128,7 +142,7 @@ struct HeroSection: View {
         ZStack(alignment: .top) {
             ZStack {
                 compactContent(pref: pref)
-                    .id(model.currentSpanID)
+                    .id(spanID)
                     .transition(spanTransition)
             }
             .onGeometryChange(for: CGFloat.self) { geometry in
@@ -141,7 +155,7 @@ struct HeroSection: View {
             // On top, so a dial that has shrunk into the pill's ring sits on its plate.
             ZStack {
                 heroContent(pref: pref)
-                    .id(model.currentSpanID)
+                    .id(spanID)
                     .transition(spanTransition)
             }
             .accessibilityHidden(collapse >= 0.5)
@@ -152,12 +166,12 @@ struct HeroSection: View {
         } action: { width in
             self.width = width
         }
-        .animation(heroAnimation, value: model.currentSpanID)
+        .animation(heroAnimation, value: spanID)
     }
 
     @ViewBuilder
     private func heroContent(pref: TimeFormatPref) -> some View {
-        switch model.currentState {
+        switch state {
         case .beforeSchool(let first):
             dialHero(
                 start: first.start.addingTimeInterval(-3600), end: first.start, tint: .blue,
@@ -184,7 +198,7 @@ struct HeroSection: View {
 
         case .passing(_, let to, let kind):
             PassingHero(
-                to: to, kind: kind, offset: model.displayOffset, pref: pref,
+                to: to, kind: kind, offset: clockOffset, pref: pref,
                 squeeze: motion, pillHeight: pillHeight,
                 contentOpacity: 1 - ramp(reduceMotion ? Phase.plainHeroOut : Phase.cardTextOut),
                 plateOpacity: 1 - ramp(reduceMotion ? Phase.plainHeroOut : Phase.cardPlateSwap))
@@ -203,22 +217,22 @@ struct HeroSection: View {
 
     @ViewBuilder
     private func compactContent(pref: TimeFormatPref) -> some View {
-        switch model.currentState {
+        switch state {
         case .beforeSchool(let first):
             dialPill(CountdownPill(
                 target: first.start, label: "until school starts", tint: .blue,
                 start: first.start.addingTimeInterval(-3600), icon: "sunrise.fill",
-                offset: model.displayOffset))
+                offset: clockOffset))
         case .inBlock(let current, _):
             dialPill(CountdownPill(
                 target: current.end, label: heroLabel(for: current, pref: pref),
                 tint: ScheduleStyle.tint(for: current.role), start: current.start,
-                offset: model.displayOffset))
+                offset: clockOffset))
         case .passing(_, let to, let kind):
             passingPill(CountdownPill(
                 target: to.start,
                 label: "\(kind == .intraPeriod ? "Switching halves" : "Passing") · \(to.displayName)\(roomSuffix(to))",
-                tint: .orange, icon: "figure.walk", offset: model.displayOffset))
+                tint: .orange, icon: "figure.walk", offset: clockOffset))
         case .afterSchool:
             Label("Done for today", systemImage: "checkmark.circle.fill")
                 .font(.headline)
@@ -237,7 +251,7 @@ struct HeroSection: View {
 
         return VStack(spacing: 14) {
             CountdownDial(
-                start: start, end: end, tint: tint, offset: model.displayOffset, label: label,
+                start: start, end: end, tint: tint, offset: clockOffset, label: label,
                 ringWidth: morph.ringWidth,
                 digitsOpacity: reduceMotion ? 1 : 1 - ramp(Phase.dialDigitsOut),
                 labelOpacity: reduceMotion ? 1 : 1 - ramp(Phase.dialLabelOut))
