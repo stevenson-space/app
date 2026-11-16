@@ -2,6 +2,7 @@ import SwiftUI
 import ScheduleKit
 
 struct SettingsView: View {
+    @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -29,8 +30,21 @@ struct SettingsView: View {
             } label: {
                 Label("My Schedule", systemImage: "scroll")
             }
+            Button {
+                navigation.replayOnboarding()
+            } label: {
+                Label {
+                    // A concrete color: a Button's label takes the tint.
+                    Text("Guided Setup")
+                        .foregroundStyle(Color.primary)
+                } icon: {
+                    Image(systemName: "checklist")
+                }
+            }
         } header: {
             Text("My Schedule")
+        } footer: {
+            Text("Guided Setup walks through lunch, classes and alerts again.")
         }
     }
 
