@@ -151,8 +151,8 @@ struct HomeView: View {
         }
     }
 
-    /// Holds a resting hero on its end when the hero resizes or moves, which
-    /// nothing else settles because the scroll itself never moved.
+    /// Keeps a resting hero on its end, or the list in place past the collapsed
+    /// end, when the hero resizes or moves without a user scroll.
     private func keepCollapseEnd(from old: ClosedRange<CGFloat>, to new: ClosedRange<CGFloat>) {
         guard scroll.isAtRest,
               let offset = scroll.offsetKeepingEnd(from: old, to: new)
@@ -205,23 +205,18 @@ private final class HomeScroll {
 
     /// Where the scroll should move once the collapse range changes under it,
     /// say when a bell swaps in a taller or shorter hero, so a hero resting on
-    /// either end stays there and the list stays under it. Nil when the scroll
-    /// can stay put, including when SwiftUI has already moved it along with the
-    /// content.
+    /// either end stays there, and a list scrolled past the collapsed end keeps
+    /// its position. Nil when the scroll can stay put.
     func offsetKeepingEnd(from old: ClosedRange<CGFloat>, to new: ClosedRange<CGFloat>) -> CGFloat? {
-        // A collapsed hero that shrank leaves the scroll past its new end, so it
-        // is never inside the new range. Aiming at that end, rather than moving
-        // by the change, leaves a scroll SwiftUI has already moved where it is.
+        // Preserve the distance past the collapsed end as well as the end itself.
+        // A shorter hero moves every card up, even far beyond the collapse range.
         // A zero-width range is one still being measured, with no end to keep.
         if old.upperBound - old.lowerBound > Self.tolerance,
-           abs(offset - old.upperBound) <= Self.tolerance,
-           abs(offset - new.upperBound) > Self.tolerance {
-            return new.upperBound
-        }
-        guard isInsideCollapse(offset, new) else { return nil }
-        if offset >= old.upperBound - Self.tolerance {
+           offset >= old.upperBound - Self.tolerance,
+           abs(new.upperBound - old.upperBound) > Self.tolerance {
             return offset + new.upperBound - old.upperBound
         }
+        guard isInsideCollapse(offset, new) else { return nil }
         if offset <= old.lowerBound + Self.tolerance {
             return offset + new.lowerBound - old.lowerBound
         }
