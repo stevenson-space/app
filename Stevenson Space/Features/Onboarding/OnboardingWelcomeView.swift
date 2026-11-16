@@ -10,8 +10,9 @@ struct OnboardingWelcomeView: View {
     let start: () -> Void
     let skip: () -> Void
 
-    /// When the screen appeared. A previewed moment counts down from here.
-    @State private var appeared = Date()
+    /// When a previewed moment started counting down: when the screen
+    /// appeared, or when the preview last started over.
+    @State private var previewStart = Date()
     @State private var pillHeight: CGFloat = 0
 
     var body: some View {
@@ -50,6 +51,13 @@ struct OnboardingWelcomeView: View {
                 .frame(minHeight: 44)
         }
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: moment.previewEnd) {
+            // A preview left on screen, or in the background, reaches its
+            // bell. Start it over rather than leave the countdown at zero.
+            guard let end = moment.previewEnd else { return }
+            try? await Task.sleep(for: .seconds(max(end.timeIntervalSinceNow, 0)))
+            if !Task.isCancelled { previewStart = Date() }
+        }
     }
 
     // MARK: - The moment on show
@@ -57,13 +65,15 @@ struct OnboardingWelcomeView: View {
     private struct Moment {
         let caption: String
         /// Nil shows the present.
-        let preview: HeroPreview?
+        var preview: HeroPreview?
+        /// When a previewed countdown reaches its bell, on the real clock.
+        var previewEnd: Date?
     }
 
     private var moment: Moment {
         switch model.currentState {
         case .beforeSchool, .inBlock, .passing:
-            return Moment(caption: caption("Right now", on: model.todayTimeline), preview: nil)
+            return Moment(caption: caption("Right now", on: model.todayTimeline))
         default:
             return previewMoment
         }
@@ -76,7 +86,7 @@ struct OnboardingWelcomeView: View {
         let timeline = upcoming ?? regularDay
         let spans = timeline.moments
         guard let span = spans.dropFirst().first ?? spans.first else {
-            return Moment(caption: "", preview: nil)
+            return Moment(caption: "")
         }
         let elapsed = (span.end.timeIntervalSince(span.start) * 0.62).rounded(.down)
         let instant = span.start.addingTimeInterval(elapsed)
@@ -87,7 +97,8 @@ struct OnboardingWelcomeView: View {
         return Moment(
             caption: caption("\(day) at \(time)", on: timeline),
             preview: HeroPreview(state: momentState(at: instant, in: timeline),
-                                 offset: instant.timeIntervalSince(appeared)))
+                                 offset: instant.timeIntervalSince(previewStart)),
+            previewEnd: previewStart.addingTimeInterval(span.end.timeIntervalSince(instant)))
     }
 
     /// A Standard day to preview when no school day is in reach, as in the
