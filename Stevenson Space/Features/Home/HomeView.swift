@@ -133,11 +133,17 @@ struct HomeView: View {
     }
 
     private func settleScroll(at offset: CGFloat) {
-        guard scroll.isAtRest,
-              let end = scroll.settledOffset(from: offset,
-                                             isScrollingDown: scroll.isScrollingDown),
-              end != scroll.settleTarget
-        else { return }
+        guard scroll.isAtRest else { return }
+        guard let end = scroll.settledOffset(from: offset,
+                                             isScrollingDown: scroll.isScrollingDown)
+        else {
+            // Resting on an end or outside the collapse, so any settle is over.
+            // VoiceOver and keyboard scrolls never touch down, so nothing else
+            // would clear it before they next stop part-way.
+            scroll.settleTarget = nil
+            return
+        }
+        guard end != scroll.settleTarget else { return }
         scroll.settleTarget = end
         // A timing curve avoids a spring's lingering movement near the end.
         withAnimation(.easeOut(duration: 0.25)) {
