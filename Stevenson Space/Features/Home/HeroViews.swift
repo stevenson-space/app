@@ -309,21 +309,6 @@ struct HeroSection: View {
         collapse > 0 ? .identity : .opacity
     }
 
-    private var heroTransition: AnyTransition {
-        if reduceMotion {
-            return .opacity
-        }
-
-        return .asymmetric(
-            insertion: .opacity
-                .combined(with: .scale(scale: 0.94))
-                .combined(with: .offset(y: 18)),
-            removal: .opacity
-                .combined(with: .scale(scale: 1.03))
-                .combined(with: .offset(y: -10))
-        )
-    }
-
     private var heroAnimation: Animation {
         reduceMotion
             ? .easeInOut(duration: 0.18)
