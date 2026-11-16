@@ -148,7 +148,10 @@ private final class HomeScroll {
     /// The end of the collapse that a scroll resting at `offset` should settle
     /// on, or nil when it is already at one end or outside the collapse.
     func settledOffset(from offset: CGFloat, isScrollingDown: Bool) -> CGFloat? {
-        guard offset > collapseRange.lowerBound, offset < collapseRange.upperBound else {
+        // Treat subpoint rounding at either endpoint as already settled.
+        let tolerance: CGFloat = 0.5
+        guard offset > collapseRange.lowerBound + tolerance,
+              offset < collapseRange.upperBound - tolerance else {
             return nil
         }
         let progress = (offset - collapseRange.lowerBound)
