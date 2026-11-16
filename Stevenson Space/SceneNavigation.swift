@@ -35,9 +35,41 @@ final class SceneNavigation {
     private(set) var studentIDScannerPresentationID = UUID()
     private(set) var homeTodayRequest = 0
     private(set) var lunchTodayRequest = 0
+    /// Set when Settings asks to see onboarding again.
+    private var isReplayingOnboarding = false
+    /// A widget, a shortcut or Siri asked for a screen while onboarding was
+    /// up. That request wins for this session, and onboarding returns on the
+    /// next launch because it was never finished.
+    private var onboardingGaveWay = false
 
     init(model: AppModel) {
         self.model = model
+    }
+
+    /// Onboarding stands in for the tabs rather than covering them, so a
+    /// request for the ID scanner never has to present over another cover.
+    var isOnboardingPresented: Bool {
+        isReplayingOnboarding || (model.needsOnboarding && !onboardingGaveWay)
+    }
+
+    func replayOnboarding() {
+        isReplayingOnboarding = true
+    }
+
+    /// Ends onboarding, finished or skipped. A first run lands on Home unless
+    /// the student asked for another tab; a replay returns to where it began.
+    func finishOnboarding(opening tab: RootTab? = nil) {
+        let isFirstRun = model.needsOnboarding
+        model.completeOnboarding()
+        isReplayingOnboarding = false
+        if let tab = tab ?? (isFirstRun ? .home : nil) {
+            selectedTab = tab
+        }
+    }
+
+    private func yieldOnboarding() {
+        isReplayingOnboarding = false
+        onboardingGaveWay = true
     }
 
     func openStudentIDScanner() throws -> StudentIDPresentationResult {
@@ -65,6 +97,7 @@ final class SceneNavigation {
             throw StudentIDPresentationError.presentationInProgress
         }
         model.reloadStudentIDIfUnread()
+        yieldOnboarding()
         selectedTab = .id
         isStudentIDScanning = model.studentID != nil
         return isStudentIDScanning ? .opening : .needsImport
@@ -83,6 +116,7 @@ final class SceneNavigation {
     func openTab(_ tab: RootTab) {
         reopenStudentIDAfterDismissal = false
         isStudentIDScanning = false
+        yieldOnboarding()
         switch tab {
         case .home: openWidgetURL(WidgetTimelinePlanner.homeURL)
         case .lunch: openWidgetURL(LunchWidgetTimelinePlanner.lunchURL)
@@ -94,6 +128,7 @@ final class SceneNavigation {
         if url == LunchWidgetTimelinePlanner.lunchURL {
             reopenStudentIDAfterDismissal = false
             isStudentIDScanning = false
+            yieldOnboarding()
             model.prepareForNavigation()
             selectedTab = .lunch
             lunchTodayRequest += 1
@@ -102,6 +137,7 @@ final class SceneNavigation {
         guard WidgetTimelinePlanner.isHomeURL(url) else { return }
         reopenStudentIDAfterDismissal = false
         isStudentIDScanning = false
+        yieldOnboarding()
         model.prepareForNavigation()
         selectedTab = .home
         homeTodayRequest += 1

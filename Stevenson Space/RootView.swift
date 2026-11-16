@@ -12,28 +12,39 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var navigation = navigation
-        TabView(selection: $navigation.selectedTab) {
-            Tab(value: RootTab.home) {
-                HomeView()
-            } label: {
-                TabLabel("Home", systemImage: "clock")
-            }
-            Tab(value: RootTab.lunch) {
-                LunchMenuView()
-            } label: {
-                TabLabel("Lunch", systemImage: "fork.knife")
-            }
-            Tab(value: RootTab.id) {
-                StudentIDView()
-            } label: {
-                TabLabel("ID", systemImage: "person.text.rectangle")
-            }
-            Tab(value: RootTab.settings) {
-                SettingsView()
-            } label: {
-                TabLabel("Settings", systemImage: "gearshape")
+        ZStack {
+            // One or the other, never both: the tabs stay out of the way of
+            // VoiceOver and the keyboard until onboarding is done.
+            if navigation.isOnboardingPresented {
+                OnboardingView()
+                    .transition(.opacity)
+            } else {
+                TabView(selection: $navigation.selectedTab) {
+                    Tab(value: RootTab.home) {
+                        HomeView()
+                    } label: {
+                        TabLabel("Home", systemImage: "clock")
+                    }
+                    Tab(value: RootTab.lunch) {
+                        LunchMenuView()
+                    } label: {
+                        TabLabel("Lunch", systemImage: "fork.knife")
+                    }
+                    Tab(value: RootTab.id) {
+                        StudentIDView()
+                    } label: {
+                        TabLabel("ID", systemImage: "person.text.rectangle")
+                    }
+                    Tab(value: RootTab.settings) {
+                        SettingsView()
+                    } label: {
+                        TabLabel("Settings", systemImage: "gearshape")
+                    }
+                }
+                .transition(.opacity)
             }
         }
+        .animation(.smooth(duration: 0.35), value: navigation.isOnboardingPresented)
         .onOpenURL { navigation.openWidgetURL($0) }
         .background {
             Color.clear
