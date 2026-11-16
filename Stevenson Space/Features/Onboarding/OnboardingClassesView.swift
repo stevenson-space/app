@@ -228,16 +228,19 @@ private struct ClassCard: View {
 
     private var fields: some View {
         // Time and room share a line until the text is too large for both.
+        // Aligned by their tops: the field's frame is a little taller than the
+        // time's, so centring them would lift the room off the time's baseline.
         let details = dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 3))
-            : AnyLayout(HStackLayout(spacing: 6))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 6))
 
         return VStack(alignment: .leading, spacing: 3) {
             // Vertical fields keep the keyboard up when Return moves on to
-            // the next one, and let a long name wrap at large sizes.
+            // the next one, and let a long name wrap. Neither takes a line
+            // limit: with one, the text hops up a couple of points the first
+            // time its field is focused.
             TextField("\(ordinal) period class", text: $name, axis: .vertical)
                 .font(.headline)
-                .lineLimit(1...2)
                 .textInputAutocapitalization(.words)
                 .submitLabel(.next)
                 .focused(focus, equals: .name(period))
@@ -255,7 +258,6 @@ private struct ClassCard: View {
                         .accessibilityHidden(true)
                 }
                 TextField("Room", text: $room, axis: .vertical)
-                    .lineLimit(1)
                     .submitLabel(isLast ? .done : .next)
                     .focused(focus, equals: .room(period))
                     .onReturn(in: $room) { submit(.room(period)) }
