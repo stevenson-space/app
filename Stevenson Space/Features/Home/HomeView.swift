@@ -71,8 +71,8 @@ struct HomeView: View {
             }
             .padding(.bottom, 24)
             .background {
-                // A finger that catches a moving scroll and lifts without
-                // dragging brings no new scroll phase, so settle on the lift too.
+                // The scroll phase can be stale once a finger has caught a
+                // moving scroll, so also settle once UIKit says it has stopped.
                 ScrollTouchReader(scroll: scroll) {
                     settleScroll(at: scroll.offset)
                 }
@@ -92,7 +92,8 @@ struct HomeView: View {
         }
         .scrollTargetBehavior(CollapseSnap(scroll: scroll))
         .onScrollPhaseChange { _, phase, context in
-            scroll.phase = phase
+            if phase == .interacting { scroll.settleTarget = nil }
+            guard phase == .idle else { return }
             settleScroll(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top)
         }
         .background(Color(.systemGroupedBackground))
@@ -133,8 +134,10 @@ struct HomeView: View {
     private func settleScroll(at offset: CGFloat) {
         guard scroll.isAtRest,
               let end = scroll.settledOffset(from: offset,
-                                             isScrollingDown: scroll.isScrollingDown)
+                                             isScrollingDown: scroll.isScrollingDown),
+              end != scroll.settleTarget
         else { return }
+        scroll.settleTarget = end
         // A timing curve avoids a spring's lingering movement near the end.
         withAnimation(.easeOut(duration: 0.25)) {
             scrollPosition.scrollTo(y: end)
@@ -152,18 +155,19 @@ private final class HomeScroll {
     @ObservationIgnored var collapseRange: ClosedRange<CGFloat> = 0...0
     /// Which way the last movement went, for a scroll released without momentum.
     @ObservationIgnored var isScrollingDown = false
-    @ObservationIgnored var phase: ScrollPhase = .idle
+    /// Where the running settle is heading, so a second trigger for the same
+    /// stop doesn't restart it.
+    @ObservationIgnored var settleTarget: CGFloat?
     /// Whether a finger is on the scroll view, as UIKit reports it.
     @ObservationIgnored var isTouching = false
     /// The UIKit scroll view behind Home's `ScrollView`.
     @ObservationIgnored weak var scrollView: UIScrollView?
 
     /// Whether nothing is moving the scroll, so a settle can't fight a finger
-    /// or momentum. The scroll phase alone can read idle while a finger that
-    /// caught a moving scroll is still down or dragging.
+    /// or momentum. This asks UIKit, since the scroll phase can read idle while
+    /// a finger is down, or stay behind once one lifts.
     var isAtRest: Bool {
-        phase == .idle && !isTouching
-            && !(scrollView?.isDragging ?? false) && !(scrollView?.isDecelerating ?? false)
+        !isTouching && !(scrollView?.isDragging ?? false) && !(scrollView?.isDecelerating ?? false)
     }
 
     /// How far through the collapse a scroll must get, going down, to carry on
@@ -216,9 +220,9 @@ private struct CollapseSnap: ScrollTargetBehavior {
 /// move. A gesture recognizer on the scroll view sees every touch first.
 private struct ScrollTouchReader: UIViewRepresentable {
     let scroll: HomeScroll
-    /// Called once the last finger has lifted and the scroll view has taken in
-    /// the release, so it already reports any momentum.
-    let onRelease: () -> Void
+    /// Called once the last finger has lifted and the scroll view has stopped
+    /// dragging and decelerating.
+    let onRest: () -> Void
 
     func makeUIView(context: Context) -> Probe {
         Probe()
@@ -228,13 +232,12 @@ private struct ScrollTouchReader: UIViewRepresentable {
         let observer = probe.observer
         observer.onTouchDown = { [scroll] in
             scroll.isTouching = true
+            scroll.settleTarget = nil
         }
-        observer.onLift = { [scroll, onRelease] in
-            DispatchQueue.main.async {
-                scroll.isTouching = false
-                onRelease()
-            }
+        observer.onLift = { [scroll] in
+            scroll.isTouching = false
         }
+        observer.onRest = onRest
         observer.onAttach = { [scroll] scrollView in
             scroll.scrollView = scrollView
         }
@@ -268,13 +271,16 @@ private struct ScrollTouchReader: UIViewRepresentable {
         }
     }
 
-    /// Reports touches without ever recognizing, delaying or blocking them.
+    /// Reports touches without ever recognizing, delaying or blocking them,
+    /// then watches the scroll view after a lift until it comes to rest.
     final class TouchObserver: UIGestureRecognizer {
         var onTouchDown: () -> Void = {}
         var onLift: () -> Void = {}
+        var onRest: () -> Void = {}
         var onAttach: (UIScrollView) -> Void = { _ in }
         private var activeTouches: Set<UITouch> = []
         private var isDown = false
+        private var restWatch: CADisplayLink?
 
         init() {
             super.init(target: nil, action: nil)
@@ -286,6 +292,7 @@ private struct ScrollTouchReader: UIViewRepresentable {
             activeTouches.formUnion(touches)
             if !isDown {
                 isDown = true
+                stopWatchingForRest()
                 onTouchDown()
             }
         }
@@ -310,7 +317,32 @@ private struct ScrollTouchReader: UIViewRepresentable {
             if isDown {
                 isDown = false
                 onLift()
+                watchForRest()
             }
+        }
+
+        /// Checks once a frame, since UIKit doesn't announce the end of a drag
+        /// or deceleration to anyone but the scroll view's delegate.
+        private func watchForRest() {
+            stopWatchingForRest()
+            let link = CADisplayLink(target: self, selector: #selector(checkForRest))
+            link.add(to: .main, forMode: .common)
+            restWatch = link
+        }
+
+        @objc private func checkForRest() {
+            guard let scrollView = view as? UIScrollView else {
+                stopWatchingForRest()
+                return
+            }
+            guard !scrollView.isDragging, !scrollView.isDecelerating else { return }
+            stopWatchingForRest()
+            onRest()
+        }
+
+        private func stopWatchingForRest() {
+            restWatch?.invalidate()
+            restWatch = nil
         }
 
         override func canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
