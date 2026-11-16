@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var heroPinOffset: CGFloat = 0
     @State private var compactHeaderHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .top)
+    @GestureState private var isTouchingScroll = false
 
     private var today: DayKey { model.todayTimeline.day }
     private var day: DayKey { selectedDay ?? today }
@@ -83,16 +84,20 @@ struct HomeView: View {
             scroll.offset = offset
         }
         .scrollTargetBehavior(CollapseSnap(scroll: scroll))
-        .onScrollPhaseChange { _, phase in
-            guard phase == .idle,
-                  let end = scroll.settledOffset(from: scroll.offset,
-                                                 isScrollingDown: scroll.isScrollingDown)
-            else { return }
-            // A timing curve, not a spring, which would keep creeping for a
-            // while after it looks done.
-            withAnimation(.easeOut(duration: 0.25)) {
-                scrollPosition.scrollTo(y: end)
-            }
+        // Catching a snap can report idle before the finger lifts. Track the
+        // touch too, so we wait for release and settle even without a new phase.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .updating($isTouchingScroll) { _, isTouching, _ in
+                    isTouching = true
+                }
+        )
+        .onChange(of: isTouchingScroll) { _, isTouching in
+            if !isTouching { settleScroll(at: scroll.offset) }
+        }
+        .onScrollPhaseChange { _, phase, context in
+            scroll.phase = phase
+            settleScroll(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top)
         }
         .background(Color(.systemGroupedBackground))
         .overlay(alignment: .top) {
@@ -128,6 +133,17 @@ struct HomeView: View {
     private func selectDay(_ day: DayKey) {
         selectedDay = day == today ? nil : day
     }
+
+    private func settleScroll(at offset: CGFloat) {
+        guard scroll.phase == .idle, !isTouchingScroll,
+              let end = scroll.settledOffset(from: offset,
+                                             isScrollingDown: scroll.isScrollingDown)
+        else { return }
+        // A timing curve avoids a spring's lingering movement near the end.
+        withAnimation(.easeOut(duration: 0.25)) {
+            scrollPosition.scrollTo(y: end)
+        }
+    }
 }
 
 /// Home's scroll offset. It lives outside `HomeView`'s own state so that
@@ -140,6 +156,7 @@ private final class HomeScroll {
     @ObservationIgnored var collapseRange: ClosedRange<CGFloat> = 0...0
     /// Which way the last movement went, for a scroll released without momentum.
     @ObservationIgnored var isScrollingDown = false
+    @ObservationIgnored var phase: ScrollPhase = .idle
 
     /// How far through the collapse a scroll must get, going down, to carry on
     /// to the pill, and how far back, going up, to carry on to the full hero.
