@@ -540,6 +540,20 @@ final class AppModel {
         }
     }
 
+    /// The tour's single ask: request permission once, then turn on every
+    /// chosen alert together. Returns whether permission was granted.
+    func enableNotifications(blockEnd: Bool, morning: Bool) async -> Bool {
+        let granted = await NotificationScheduler.shared.ensureAuthorization()
+        notificationAuthDenied = !granted
+        if granted {
+            updatePrefs {
+                $0.blockEndEnabled = blockEnd
+                $0.morningEnabled = morning
+            }
+        }
+        return granted
+    }
+
     func rescheduleNotifications() {
         let days = (0..<14).map { timeline(for: today.advanced(by: $0)) }
         let prefs = self.prefs
