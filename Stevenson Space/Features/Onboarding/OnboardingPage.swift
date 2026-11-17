@@ -11,6 +11,12 @@ struct OnboardingPage<Content: View, Actions: View>: View {
     /// the screen's height. The content itself must change without an
     /// animation: a scroll asked for while it is still growing does nothing.
     var revealing: AnyHashable?
+    /// Whether a field on the page is being typed in: the only time the page
+    /// makes room for the keyboard. A step that the next one covers can be
+    /// left holding room for a keyboard that isn't there (turn an iPad while
+    /// it is covered, any time after something was typed), and would come
+    /// back with its actions in the middle of the screen.
+    var isTyping = false
     @ViewBuilder var content: Content
     @ViewBuilder var actions: Actions
 
@@ -20,6 +26,7 @@ struct OnboardingPage<Content: View, Actions: View>: View {
     var body: some View {
         ScrollViewReader { proxy in
             page
+                .ignoresSafeArea(isTyping ? [] : .keyboard, edges: .bottom)
                 .onChange(of: revealing) { _, answered in
                     guard let answered else { return }
                     withAnimation(.snappy(duration: 0.3)) {
