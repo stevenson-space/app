@@ -49,7 +49,15 @@ final class SceneNavigation {
     /// Onboarding stands in for the tabs rather than covering them, so a
     /// request for the ID scanner never has to present over another cover.
     var isOnboardingPresented: Bool {
-        isReplayingOnboarding || (model.needsOnboarding && !onboardingGaveWay)
+        isReplayingOnboarding || (model.needsOnboarding == true && !onboardingGaveWay)
+    }
+
+    /// A first launch can't tell a new install from one already in use until
+    /// its saved data can be read, a moment after the first frame. Neither
+    /// the tabs nor onboarding is shown for that moment, so a new install
+    /// never opens on a glimpse of Home.
+    var isAwaitingOnboardingDecision: Bool {
+        model.needsOnboarding == nil && !isReplayingOnboarding && !onboardingGaveWay
     }
 
     func replayOnboarding() {
@@ -59,7 +67,7 @@ final class SceneNavigation {
     /// Ends onboarding, finished or skipped. A first run lands on Home unless
     /// the student asked for another tab; a replay returns to where it began.
     func finishOnboarding(opening tab: RootTab? = nil) {
-        let isFirstRun = model.needsOnboarding
+        let isFirstRun = model.needsOnboarding == true
         model.completeOnboarding()
         isReplayingOnboarding = false
         if let tab = tab ?? (isFirstRun ? .home : nil) {

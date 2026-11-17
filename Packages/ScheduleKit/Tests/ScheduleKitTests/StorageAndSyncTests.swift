@@ -330,6 +330,20 @@ private struct WriteRefusingSecretStore: SecretStore {
         #expect(store.needsOnboarding())
     }
 
+    @Test func noOnboardingAnswerIsOnRecordUntilOneIsDecided() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // Looking for a recorded answer must not decide one.
+        #expect(store.recordedOnboardingNeed == nil)
+        #expect(store.recordedOnboardingNeed == nil)
+
+        #expect(store.needsOnboarding())
+        #expect(store.recordedOnboardingNeed == true)
+        store.completeOnboarding()
+        #expect(store.recordedOnboardingNeed == false)
+    }
+
     @Test func mapURLDefaultsAndReset() {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }

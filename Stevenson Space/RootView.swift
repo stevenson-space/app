@@ -15,7 +15,11 @@ struct RootView: View {
         ZStack {
             // One or the other, never both: the tabs stay out of the way of
             // VoiceOver and the keyboard until onboarding is done.
-            if navigation.isOnboardingPresented {
+            if navigation.isAwaitingOnboardingDecision {
+                // The launch screen's colour, held until it is known which.
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+            } else if navigation.isOnboardingPresented {
                 OnboardingView()
                     .transition(.opacity)
             } else {

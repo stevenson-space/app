@@ -432,12 +432,18 @@ public final class SharedStore: @unchecked Sendable {
     /// Ask only once protected data is available. A launch before first unlock
     /// reads every key as missing, which is exactly what a new install looks like.
     public func needsOnboarding() -> Bool {
-        if let completed = defaults.object(forKey: Keys.onboardingCompleted) as? Bool {
-            return !completed
-        }
+        if let recorded = recordedOnboardingNeed { return recorded }
         let hasBeenUsed = Keys.all.contains { defaults.object(forKey: $0) != nil }
         defaults.set(hasBeenUsed, forKey: Keys.onboardingCompleted)
         return !hasBeenUsed
+    }
+
+    /// The answer `needsOnboarding()` has already stored, or nil while it has
+    /// stored none. Reading it decides nothing, so it is safe at any point in
+    /// a launch: before protected data can be read it finds no answer, never
+    /// a wrong one.
+    public var recordedOnboardingNeed: Bool? {
+        (defaults.object(forKey: Keys.onboardingCompleted) as? Bool).map { !$0 }
     }
 
     public func completeOnboarding() {

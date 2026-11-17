@@ -39,7 +39,8 @@ final class AppModel {
     private(set) var studentIDPhotoHidden: Bool
     /// True from a new install's first launch until the student finishes or
     /// skips onboarding. Installs that were in use before it existed never are.
-    private(set) var needsOnboarding = false
+    /// Nil for the moment a first launch takes to tell which of the two it is.
+    private(set) var needsOnboarding: Bool?
 
     // MARK: Derived
 
@@ -150,6 +151,12 @@ final class AppModel {
             // one that was already in use.
             needsOnboarding = store.needsOnboarding()
             reloadScheduleWidgets()
+        } else {
+            // UIKit rarely reports protected data as available this early, so
+            // the deciding usually waits for the scene to become active. An
+            // answer already on record needs none, and every launch after the
+            // first has one.
+            needsOnboarding = store.recordedOnboardingNeed
         }
 
         dayChangeObserver = NotificationCenter.default.addObserver(
@@ -529,7 +536,7 @@ final class AppModel {
     // MARK: - Onboarding
 
     func completeOnboarding() {
-        guard needsOnboarding else { return }
+        guard needsOnboarding == true else { return }
         store.completeOnboarding()
         needsOnboarding = false
     }
