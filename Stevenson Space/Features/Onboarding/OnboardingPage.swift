@@ -17,8 +17,15 @@ struct OnboardingPage<Content: View, Actions: View>: View {
     /// it is covered, any time after something was typed), and would come
     /// back with its actions in the middle of the screen.
     var isTyping = false
+    /// Puts content shorter than the screen in the middle of the room above
+    /// the actions. For a page with no heading to hold its top: left at the
+    /// top, the welcome sits over a third of an iPad's screen of nothing.
+    var centersContent = false
     @ViewBuilder var content: Content
     @ViewBuilder var actions: Actions
+
+    /// The height the scroll view shows between the bars and the actions.
+    @State private var roomForContent: CGFloat = 0
 
     private static var ground: Color { Color(.systemGroupedBackground) }
     private static var fadeHeight: CGFloat { 20 }
@@ -50,7 +57,15 @@ struct OnboardingPage<Content: View, Actions: View>: View {
             // most of the space under the last of the content.
             .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 24 : 24 - Self.fadeHeight)
             .frame(maxWidth: 560)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: centersContent ? roomForContent : nil)
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            // The visible rect runs under the bars and the actions; the insets
+            // are how far.
+            let insets = geometry.contentInsets
+            return max(geometry.visibleRect.height - insets.top - insets.bottom, 0)
+        } action: { _, room in
+            roomForContent = room
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)

@@ -18,7 +18,7 @@ struct OnboardingWelcomeView: View {
     var body: some View {
         let moment = moment
 
-        OnboardingPage {
+        OnboardingPage(centersContent: true) {
             VStack(spacing: 16) {
                 Label(moment.caption, systemImage: moment.preview == nil ? "clock" : "calendar")
                     .font(.subheadline.weight(.medium))
