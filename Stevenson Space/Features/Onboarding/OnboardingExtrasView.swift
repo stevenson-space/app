@@ -6,6 +6,7 @@ import ScheduleKit
 /// invitation to its own tab, since it needs a screenshot nobody has to hand.
 struct OnboardingExtrasView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Ends onboarding, on the given tab or wherever it normally lands.
     let finish: (RootTab?) -> Void
@@ -93,11 +94,16 @@ struct OnboardingExtrasView: View {
     // MARK: - Student ID
 
     private var studentID: some View {
-        VStack(spacing: 8) {
+        // Beside the card, large text is left a column a word or two wide.
+        let summary = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+
+        return VStack(spacing: 8) {
             OnboardingSectionLabel("Student ID")
 
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .center, spacing: 14) {
+                summary {
                     StudentIDCardView(content: model.studentID.map {
                         .card($0, photo: model.studentIDPhotoHidden ? nil : model.studentIDPhoto)
                     } ?? .placeholder)
