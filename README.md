@@ -48,7 +48,7 @@ Packages/StudentIDKit/         Student ID logic — no UI.
     StudentIDCard.swift        The model; its initializer is internal by design
     StudentIDPhotoStore.swift  The cropped headshot, on disk with complete file protection
   Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
-Stevenson Space/               SwiftUI app target: Home, Lunch, ID, Settings
+Stevenson Space/               SwiftUI app target: onboarding, Home, Lunch, ID, Settings
 ScheduleWidgets/              Schedule widgets and small/large lunch widgets
 ```
 
@@ -63,6 +63,55 @@ momentState(at: now, in: timeline) // instant → what's happening right now
 (never defaults to Standard) → bundled break ranges → weekend → Standard weekday
 (by design, not a guess). All date math in `America/Chicago` via calendar
 components — never `+24h` arithmetic (DST-safe).
+
+## First-run onboarding
+
+A new install opens on one screen with Home's own countdown already running:
+the present moment before and during school, and a moment of the next school
+day when school is out. **Set Up My Schedule** leads to three short steps;
+**Skip for Now** goes straight to Home. The app works with no setup at all (the
+bell tables are bundled), so every step only personalizes and every step can be
+skipped.
+
+1. **Lunch** — which of 4th, 5th or 6th, how much of it, and what the other
+   half is. The answer is one `LunchPlacement` (ScheduleKit), previewed as the
+   cards Home will show and saved on Continue.
+2. **Classes** — a name and a room typed into each card of the standard day.
+   The ⋯ button opens the same editor My Schedule uses.
+3. **Alerts and the student ID** — two notification switches and a pointer to
+   the ID tab.
+
+It never asks for an account, a name, an email, or a location. Notification
+permission is requested only when a student turns an alert on, and the student
+ID is left to its own tab because it needs a screenshot nobody has to hand.
+Settings → **Guided Setup** runs the steps again.
+
+Onboarding stands in for the tabs in `RootView` rather than covering them; the
+screens are in `Stevenson Space/Features/Onboarding/`. Whether it is still owed
+is one flag in the App Group store, `sk.onboardingCompleted`, decided the first
+time `SharedStore.needsOnboarding()` is asked: an install that already holds
+schedule data predates onboarding and is marked complete without seeing it, and
+a new one is marked as waiting before its first sync can make it look used. A
+widget link, a shortcut, or Siri asking for a screen hides onboarding for that
+session without completing it. A student ID survives a reinstall in the
+Keychain; onboarding still runs and says the ID is already saved.
+
+**Testing a fresh install in the Simulator:** deleting the app is not enough.
+The Simulator keeps the App Group container, the Keychain, and the notification
+permission after an uninstall, so the reinstalled app looks like an existing
+install and skips onboarding. Clear them by hand, then install and launch:
+
+```sh
+xcrun simctl uninstall <device> space.stevenson.ios
+xcrun simctl shutdown <device>
+find ~/Library/Developer/CoreSimulator/Devices/<device>/data/Containers/Shared/AppGroup \
+  -name group.space.stevenson.shared.plist -delete
+xcrun simctl boot <device>
+xcrun simctl keychain <device> reset   # skip this to keep a saved student ID
+```
+
+The notification permission is not reset by any of this; use a simulator that
+has never been asked to see the system prompt.
 
 ## The Home tab
 
