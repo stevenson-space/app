@@ -239,7 +239,7 @@ private struct ClassCard: View {
             // the next one, and let a long name wrap. Neither takes a line
             // limit: with one, the text hops up a couple of points the first
             // time its field is focused.
-            TextField("\(ordinal) period class", text: $name, axis: .vertical)
+            TextField(namePrompt, text: $name, axis: .vertical)
                 .font(.headline)
                 .textInputAutocapitalization(.words)
                 .submitLabel(.next)
@@ -266,6 +266,13 @@ private struct ClassCard: View {
             .font(.subheadline)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A prompt stays on one line. At accessibility sizes the full one is cut
+    /// off, and the badge above the field already says which period it is.
+    /// One word, to fit the narrowest phone at the largest size.
+    private var namePrompt: String {
+        dynamicTypeSize.isAccessibilitySize ? "Class" : "\(ordinal) period class"
     }
 
     private var moreButton: some View {
