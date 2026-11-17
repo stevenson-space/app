@@ -5,24 +5,25 @@ import SwiftUI
 /// crowd the content off a small screen.
 struct OnboardingPage<Content: View, Actions: View>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    /// When this changes the page scrolls to its end, for a step whose
-    /// answers add more content below them. The content itself must change
-    /// without an animation: a scroll asked for while it is still growing
-    /// does nothing.
+    /// The `id` of the part of the content just answered, for a step whose
+    /// answers add more content below them. When it changes the page brings
+    /// that part to the top, so what it added follows it on screen whatever
+    /// the screen's height. The content itself must change without an
+    /// animation: a scroll asked for while it is still growing does nothing.
     var revealing: AnyHashable?
     @ViewBuilder var content: Content
     @ViewBuilder var actions: Actions
 
     private static var ground: Color { Color(.systemGroupedBackground) }
-    private static var endID: String { "end" }
     private static var fadeHeight: CGFloat { 20 }
 
     var body: some View {
         ScrollViewReader { proxy in
             page
-                .onChange(of: revealing) { _, _ in
+                .onChange(of: revealing) { _, answered in
+                    guard let answered else { return }
                     withAnimation(.snappy(duration: 0.3)) {
-                        proxy.scrollTo(Self.endID, anchor: .bottom)
+                        proxy.scrollTo(answered, anchor: .top)
                     }
                 }
         }
@@ -43,7 +44,6 @@ struct OnboardingPage<Content: View, Actions: View>: View {
             .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 24 : 24 - Self.fadeHeight)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
-            .id(Self.endID)
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)

@@ -13,12 +13,16 @@ struct OnboardingLunchView: View {
 
     @State private var placement: LunchPlacement?
     @State private var loaded = false
-    /// Counts the student's choices, so the page scrolls to what a choice
-    /// added but not to a placement that was already there on arrival.
-    @State private var choices = 0
+    /// The question the student answered last. Nil on arrival, so the page
+    /// doesn't scroll for a placement that was already there.
+    @State private var answered: Question?
+
+    private enum Question: Hashable {
+        case period, portion, otherHalf
+    }
 
     var body: some View {
-        OnboardingPage(revealing: choices) {
+        OnboardingPage(revealing: answered) {
             OnboardingHeading(
                 title: "When’s your lunch?",
                 message: "It decides where the bells fall in the middle of your day.")
@@ -66,7 +70,7 @@ struct OnboardingLunchView: View {
             ForEach(Array(UserConfig.advisoryPeriods), id: \.self) { period in
                 let isSelected = placement?.period == period
                 Button {
-                    select(startingWith: LunchPlacement(period: period)) { $0.period = period }
+                    select(.period, startingWith: LunchPlacement(period: period)) { $0.period = period }
                 } label: {
                     VStack(spacing: 4) {
                         Text(PeriodID.ordinal(period))
@@ -94,6 +98,7 @@ struct OnboardingLunchView: View {
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
+        .id(Question.period)
     }
 
     // MARK: - How much of it
@@ -103,13 +108,14 @@ struct OnboardingLunchView: View {
             OnboardingSectionLabel("How much of \(PeriodID.ordinal(placement.period)) period?")
             Picker("Lunch length", selection: Binding(
                 get: { placement.portion },
-                set: { portion in select { $0.portion = portion } })) {
+                set: { portion in select(.portion) { $0.portion = portion } })) {
                 Text("All of it").tag(HalfChoice.full)
                 Text("\(placement.period)A").tag(HalfChoice.a)
                 Text("\(placement.period)B").tag(HalfChoice.b)
             }
             .pickerStyle(.segmented)
         }
+        .id(Question.portion)
     }
 
     // MARK: - The other half
@@ -131,6 +137,7 @@ struct OnboardingLunchView: View {
             }
             .onboardingCard(cornerRadius: 16)
         }
+        .id(Question.otherHalf)
     }
 
     private func otherHalfRow(_ option: LunchPlacement.OtherHalf, placement: LunchPlacement,
@@ -138,7 +145,7 @@ struct OnboardingLunchView: View {
         let isSelected = placement.otherHalf == option
         let text = otherHalfText(option, placement: placement, halfName: halfName)
         return Button {
-            select { $0.otherHalf = option }
+            select(.otherHalf) { $0.otherHalf = option }
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -216,9 +223,10 @@ struct OnboardingLunchView: View {
 
     // MARK: - Helpers
 
-    /// Changes the draft, or starts one. A half whose neighbour can't run long
-    /// into it falls back to free rather than keeping a choice that is gone.
-    private func select(startingWith initial: LunchPlacement? = nil,
+    /// Changes the draft, or starts one, as the answer to `question`. A half
+    /// whose neighbour can't run long into it falls back to free rather than
+    /// keeping a choice that is gone.
+    private func select(_ question: Question, startingWith initial: LunchPlacement? = nil,
                         _ change: (inout LunchPlacement) -> Void) {
         var updated: LunchPlacement
         if var current = placement {
@@ -234,7 +242,7 @@ struct OnboardingLunchView: View {
         }
         // No animation: the page can't scroll to content that is still growing.
         placement = updated
-        choices += 1
+        answered = question
     }
 
     /// When lunch runs for a placement, on the Standard schedule.
