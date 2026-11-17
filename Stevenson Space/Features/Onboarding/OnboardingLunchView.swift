@@ -13,6 +13,8 @@ struct OnboardingLunchView: View {
 
     @State private var placement: LunchPlacement?
     @State private var loaded = false
+    /// The saved placement the draft was last loaded from or saved as.
+    @State private var saved: LunchPlacement?
     /// The question the student answered last. Nil on arrival, so the page
     /// doesn't scroll for a placement that was already there.
     @State private var answered: Question?
@@ -39,6 +41,7 @@ struct OnboardingLunchView: View {
         } actions: {
             OnboardingPrimaryButton("Continue") {
                 model.updateConfig { $0.setLunchPlacement(placement) }
+                saved = model.config.lunchPlacement
                 next()
             }
             .disabled(placement == nil)
@@ -52,9 +55,15 @@ struct OnboardingLunchView: View {
         }
         .sensoryFeedback(.selection, trigger: placement)
         .onAppear {
-            guard !loaded else { return }
+            // The classes step's editor can move lunch while this step is
+            // covered. The draft then starts over from what was saved, so
+            // Continue can't put the old lunch back. Otherwise a draft is
+            // kept, saved or not, as after Skip and Back.
+            let current = model.config.lunchPlacement
+            guard !loaded || current != saved else { return }
             loaded = true
-            placement = model.config.lunchPlacement
+            saved = current
+            placement = current
         }
     }
 
