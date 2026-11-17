@@ -69,6 +69,8 @@ struct OnboardingClassesView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // The symbol has no spoken name; the buttons it stands for do.
+                .accessibilityLabel("Leave any blank and fill them in later in Settings. For a free period, a period-and-a-half class or your own emoji, use More options.")
         } actions: {
             OnboardingPrimaryButton("Continue", action: leave)
         }
