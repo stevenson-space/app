@@ -70,19 +70,13 @@ struct OnboardingClassesView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } actions: {
-            OnboardingPrimaryButton("Continue") {
-                save()
-                next()
-            }
+            OnboardingPrimaryButton("Continue", action: leave)
         }
         .navigationTitle("Step 2 of 3")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Skip") {
-                    save()
-                    next()
-                }
+                Button("Skip", action: leave)
             }
         }
         .sheet(item: $editing) { target in
@@ -153,6 +147,15 @@ struct OnboardingClassesView: View {
         focus = nil
         save()
         editing = EditorTarget(block: block)
+    }
+
+    /// Typing ends with the step. A field left focused takes the keyboard
+    /// back when the student returns from the next one, over the actions:
+    /// the page isn't moved clear of a keyboard that arrives that way.
+    private func leave() {
+        focus = nil
+        save()
+        next()
     }
 }
 
