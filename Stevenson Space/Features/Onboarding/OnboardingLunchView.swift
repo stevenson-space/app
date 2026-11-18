@@ -70,41 +70,14 @@ struct OnboardingLunchView: View {
     // MARK: - Which period
 
     private var periodPicker: some View {
-        // Three across leaves too little room for the times at the largest sizes.
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(spacing: 8))
-            : AnyLayout(HStackLayout(spacing: 8))
-
-        return layout {
+        tileRow {
             ForEach(Array(UserConfig.advisoryPeriods), id: \.self) { period in
-                let isSelected = placement?.period == period
-                Button {
-                    select(.period, startingWith: LunchPlacement(period: period)) { $0.period = period }
-                } label: {
-                    VStack(spacing: 4) {
-                        Text(PeriodID.ordinal(period))
-                            .font(.system(.title2, design: .rounded, weight: .bold))
-                        Text(times(LunchPlacement(period: period)))
-                            .font(.caption)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.85))
-                                                        : AnyShapeStyle(.secondary))
-                    }
-                    .foregroundStyle(isSelected ? .white : .primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .padding(.horizontal, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(isSelected ? AnyShapeStyle(StevensonPalette.accent)
-                                             : AnyShapeStyle(Color(.secondarySystemGroupedBackground))))
-                    .contentShape(Rectangle())
+                let option = LunchPlacement(period: period)
+                choiceTile(PeriodID.ordinal(period), times: times(option),
+                           accessibilityName: "\(PeriodID.ordinal(period)) period",
+                           isSelected: placement?.period == period) {
+                    select(.period, startingWith: option) { $0.period = period }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(PeriodID.ordinal(period)) period, \(times(LunchPlacement(period: period)))")
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
         .id(Question.period)
@@ -115,16 +88,61 @@ struct OnboardingLunchView: View {
     private func portionPicker(_ placement: LunchPlacement) -> some View {
         VStack(spacing: 8) {
             OnboardingSectionLabel("How much of \(PeriodID.ordinal(placement.period)) period?")
-            Picker("Lunch length", selection: Binding(
-                get: { placement.portion },
-                set: { portion in select(.portion) { $0.portion = portion } })) {
-                Text("All of it").tag(HalfChoice.full)
-                Text("\(placement.period)A").tag(HalfChoice.a)
-                Text("\(placement.period)B").tag(HalfChoice.b)
+            tileRow {
+                ForEach([HalfChoice.full, .a, .b], id: \.self) { portion in
+                    let name = portion == .full ? "Full" : "\(placement.period)\(portion.rawValue)"
+                    choiceTile(name, times: times(LunchPlacement(period: placement.period, portion: portion)),
+                               accessibilityName: portion == .full ? "Full period" : name,
+                               isSelected: placement.portion == portion, compact: true) {
+                        select(.portion) { $0.portion = portion }
+                    }
+                }
             }
-            .pickerStyle(.segmented)
         }
         .id(Question.portion)
+    }
+
+    // MARK: - Tiles
+
+    /// Three across, or stacked where the largest sizes leave too little room
+    /// for the times.
+    private func tileRow(@ViewBuilder content: () -> some View) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+        return layout { content() }
+    }
+
+    /// One answer, filled with the accent once chosen, with the times lunch
+    /// would run if it were the one.
+    private func choiceTile(_ title: String, times: String, accessibilityName: String,
+                            isSelected: Bool, compact: Bool = false,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: compact ? 2 : 4) {
+                Text(title)
+                    .font(.system(compact ? .headline : .title2, design: .rounded, weight: .bold))
+                Text(times)
+                    .font(.caption)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.85))
+                                                : AnyShapeStyle(.secondary))
+            }
+            .foregroundStyle(isSelected ? .white : .primary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, compact ? 10 : 14)
+            .padding(.horizontal, 4)
+            .background(
+                RoundedRectangle(cornerRadius: compact ? 14 : 18, style: .continuous)
+                    .fill(isSelected ? AnyShapeStyle(StevensonPalette.accent)
+                                     : AnyShapeStyle(Color(.secondarySystemGroupedBackground))))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(accessibilityName), \(times)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - The other half
@@ -168,10 +186,10 @@ struct OnboardingLunchView: View {
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Image(systemName: "checkmark")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(StevensonPalette.accent)
-                    .opacity(isSelected ? 1 : 0)
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(isSelected ? AnyShapeStyle(StevensonPalette.accent)
+                                                : AnyShapeStyle(.tertiary))
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 16)
