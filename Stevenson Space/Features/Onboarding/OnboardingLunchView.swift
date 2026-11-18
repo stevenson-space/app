@@ -29,6 +29,9 @@ struct OnboardingLunchView: View {
         OnboardingPage(revealing: answered) {
             OnboardingHeading(title: "When’s your lunch?")
 
+            LunchDayStrip(blocks: dayWithDraft, pref: model.config.timeFormat,
+                          hasLunch: placement != nil)
+
             periodPicker
 
             if let placement {
@@ -211,6 +214,13 @@ struct OnboardingLunchView: View {
         if let question { answered = question }
     }
 
+    /// The Standard day as it would run with the draft, for the strip.
+    private var dayWithDraft: [ResolvedBlock] {
+        var config = model.config
+        config.setLunchPlacement(placement)
+        return standardTemplate(config: config, catalog: model.catalog)
+    }
+
     /// When lunch runs for a placement, on the Standard schedule.
     private func times(_ placement: LunchPlacement) -> String {
         var config = UserConfig()
@@ -218,5 +228,117 @@ struct OnboardingLunchView: View {
         let lunch = standardTemplate(config: config, catalog: model.catalog)
             .first { $0.role == .lunch }
         return lunch.map { TimeDisplay.range($0.start, $0.end, model.config.timeFormat) } ?? ""
+    }
+}
+
+/// The Standard day as a strip of its blocks, each as wide as it is long, so
+/// a choice shows where lunch falls in the day: the period fills, or splits
+/// into halves with lunch in one. Before a choice the periods lunch can be in
+/// are tinted.
+private struct LunchDayStrip: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption2) private var height = 58.0
+
+    let blocks: [ResolvedBlock]
+    let pref: TimeFormatPref
+    let hasLunch: Bool
+
+    private static let spacing: CGFloat = 3
+
+    private var lunch: ResolvedBlock? {
+        blocks.first { $0.role == .lunch }
+    }
+
+    var body: some View {
+        if let first = blocks.first, let last = blocks.last {
+            VStack(spacing: 8) {
+                GeometryReader { geometry in
+                    let total = blocks.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) }
+                    let room = geometry.size.width - Self.spacing * CGFloat(blocks.count - 1)
+                    HStack(spacing: Self.spacing) {
+                        ForEach(blocks) { block in
+                            segment(block)
+                                .frame(width: max(room * block.end.timeIntervalSince(block.start) / total, 0))
+                        }
+                    }
+                }
+                .frame(height: height)
+                .animation(reduceMotion ? nil : .snappy(duration: 0.32), value: blocks)
+
+                HStack(alignment: .firstTextBaseline) {
+                    Text(TimeDisplay.time(first.start, pref, includesMeridiem: false))
+                    Spacer(minLength: 8)
+                    if let lunch {
+                        Text("Lunch \(TimeDisplay.range(lunch.start, lunch.end, pref))")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(StevensonPalette.accent)
+                            .contentTransition(.numericText())
+                            .animation(reduceMotion ? nil : .snappy, value: lunch)
+                    }
+                    Spacer(minLength: 8)
+                    Text(TimeDisplay.time(last.end, pref, includesMeridiem: false))
+                }
+                .font(.footnote)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(lunch.map {
+                "Your day runs \(TimeDisplay.range(first.start, last.end, pref)), with lunch \(TimeDisplay.range($0.start, $0.end, pref))"
+            } ?? "Your day runs \(TimeDisplay.range(first.start, last.end, pref))")
+        }
+    }
+
+    private func segment(_ block: ResolvedBlock) -> some View {
+        let style = style(for: block)
+        return RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(style.fill)
+            .overlay(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    if block.role == .lunch {
+                        Image(systemName: "fork.knife")
+                            .font(.caption.weight(.semibold))
+                            .padding(.top, 8)
+                        Spacer(minLength: 0)
+                    }
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Text(label(for: block))
+                            .font(.system(.caption2, design: .rounded, weight: .semibold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .padding(.horizontal, 1)
+                    }
+                }
+                .padding(.bottom, 6)
+                .foregroundStyle(style.ink)
+            }
+    }
+
+    private func label(for block: ResolvedBlock) -> String {
+        block.spanLabel ?? block.periodID.periodNumber.map(String.init) ?? ""
+    }
+
+    private func style(for block: ResolvedBlock) -> (fill: AnyShapeStyle, ink: AnyShapeStyle) {
+        switch block.role {
+        case .lunch:
+            return (AnyShapeStyle(StevensonPalette.accent), AnyShapeStyle(.white))
+        case .advisory:
+            let tint = ScheduleStyle.tint(for: .advisory)
+            return (AnyShapeStyle(tint.opacity(0.2)), AnyShapeStyle(tint))
+        case .free:
+            return (AnyShapeStyle(Color.primary.opacity(0.05)), AnyShapeStyle(.secondary))
+        default:
+            let period = block.periodID.periodNumber
+            if !hasLunch, let period, UserConfig.advisoryPeriods.contains(period) {
+                return (AnyShapeStyle(StevensonPalette.accent.opacity(0.16)),
+                        AnyShapeStyle(StevensonPalette.accent))
+            }
+            // The plate the tiles and cards sit on, so a class reads as one.
+            return (AnyShapeStyle(Color(.secondarySystemGroupedBackground)), AnyShapeStyle(.secondary))
+        }
     }
 }
