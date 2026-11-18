@@ -108,6 +108,9 @@ struct HeroSection: View {
     var preview: HeroPreview?
     /// Whether the dial has the line under it naming what comes next.
     var showsNextLine = true
+    /// A colour for the countdown in place of the moment's own. Onboarding's
+    /// welcome draws it in the school's gold.
+    var tint: Color?
 
     @State private var width: CGFloat = 0
 
@@ -176,7 +179,7 @@ struct HeroSection: View {
         switch state {
         case .beforeSchool(let first):
             dialHero(
-                start: first.start.addingTimeInterval(-3600), end: first.start, tint: .blue,
+                start: first.start.addingTimeInterval(-3600), end: first.start, tint: tint ?? .blue,
                 label: "until school starts", pillIcon: "sunrise.fill"
             ) {
                 nextLine(icon: "sunrise", text:
@@ -185,7 +188,8 @@ struct HeroSection: View {
 
         case .inBlock(let current, let next):
             dialHero(
-                start: current.start, end: current.end, tint: ScheduleStyle.tint(for: current.role),
+                start: current.start, end: current.end,
+                tint: tint ?? ScheduleStyle.tint(for: current.role),
                 label: heroLabel(for: current, pref: pref), pillIcon: "clock.fill"
             ) {
                 if let next {
@@ -200,7 +204,7 @@ struct HeroSection: View {
 
         case .passing(_, let to, let kind):
             PassingHero(
-                to: to, kind: kind, offset: clockOffset, pref: pref,
+                to: to, kind: kind, offset: clockOffset, pref: pref, tint: tint ?? .orange,
                 squeeze: motion, pillHeight: pillHeight,
                 contentOpacity: 1 - ramp(reduceMotion ? Phase.plainHeroOut : Phase.cardTextOut),
                 plateOpacity: 1 - ramp(reduceMotion ? Phase.plainHeroOut : Phase.cardPlateSwap))
@@ -507,6 +511,7 @@ struct PassingHero: View {
     let kind: PassingKind
     let offset: TimeInterval
     let pref: TimeFormatPref
+    var tint: Color = .orange
     /// Toward 1 the plate closes down to `pillHeight`, at full width, with the
     /// content shrinking inside it.
     var squeeze: CGFloat = 0
@@ -519,10 +524,10 @@ struct PassingHero: View {
             Label(kind == .intraPeriod ? "Switching Halves" : "Passing Period",
                   systemImage: "figure.walk")
                 .font(.headline)
-                .foregroundStyle(.orange)
+                .foregroundStyle(tint)
                 .textCase(.uppercase)
 
-            TickingCountdown(target: to.start, offset: offset, size: 46, tint: .orange)
+            TickingCountdown(target: to.start, offset: offset, size: 46, tint: tint)
 
             Text("\(to.displayName)\(to.room.map { " · Rm \($0)" } ?? "") starts at \(TimeDisplay.time(to.start, pref))")
                 .font(.callout)
@@ -535,8 +540,8 @@ struct PassingHero: View {
         .background {
             GeometryReader { geometry in
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.orange.opacity(0.12))
-                    .strokeBorder(Color.orange.opacity(0.35), lineWidth: 1.5)
+                    .fill(tint.opacity(0.12))
+                    .strokeBorder(tint.opacity(0.35), lineWidth: 1.5)
                     .frame(height: geometry.size.height + (pillHeight - geometry.size.height) * squeeze)
             }
             .opacity(plateOpacity)

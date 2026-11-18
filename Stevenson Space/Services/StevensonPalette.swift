@@ -13,6 +13,11 @@ enum StevensonPalette {
     /// appearances, so its text must not invert with the system.
     static let cardInk = Color(red: 0.086, green: 0.086, blue: 0.098)
 
+    /// The app icon's green field, top and bottom, for onboarding's welcome.
+    /// It keeps these values in both appearances, as the icon does.
+    static let fieldTop = Color(.displayP3, red: 0.190, green: 0.358, blue: 0.234)
+    static let fieldBottom = Color(.displayP3, red: 0.106, green: 0.199, blue: 0.129)
+
     /// The interactive green used for selection and controls, which does have to
     /// adapt: the light value is dark enough to carry white text, the dark value
     /// light enough to read against a dark background.

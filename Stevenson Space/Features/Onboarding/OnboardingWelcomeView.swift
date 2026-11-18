@@ -18,8 +18,20 @@ struct OnboardingWelcomeView: View {
     var body: some View {
         let moment = moment
 
-        OnboardingPage(centersContent: true) {
-            HeroSection(pillHeight: $pillHeight, preview: moment.preview, showsNextLine: false)
+        // The app icon's green, with the countdown in the school's gold: the
+        // one screen that is all Stevenson before the steps settle into the
+        // app's own grey.
+        OnboardingPage(
+            centersContent: true,
+            ground: StevensonPalette.fieldBottom,
+            backdrop: AnyShapeStyle(LinearGradient(
+                stops: [.init(color: StevensonPalette.fieldTop, location: 0),
+                        .init(color: StevensonPalette.fieldBottom, location: 0.75)],
+                startPoint: .top, endPoint: .bottom))
+        ) {
+            HeroSection(pillHeight: $pillHeight, preview: moment.preview, showsNextLine: false,
+                        tint: StevensonPalette.gold)
+                .background { BellRings().accessibilityHidden(true) }
                 .padding(.top, 12)
 
             VStack(spacing: 10) {
@@ -28,17 +40,21 @@ struct OnboardingWelcomeView: View {
                     .accessibilityAddTraits(.isHeader)
                 Text("Adding your classes takes about a minute.")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.75))
             }
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 8)
         } actions: {
-            OnboardingPrimaryButton("Set Up My Schedule", action: start)
+            OnboardingPrimaryButton("Set Up My Schedule", tint: StevensonPalette.gold,
+                                    ink: StevensonPalette.cardInk, action: start)
             Button("Skip for Now", action: skip)
                 .font(.subheadline.weight(.medium))
+                .foregroundStyle(.white.opacity(0.85))
                 .frame(minHeight: 44)
         }
+        // The field is dark in either appearance, so the text on it is light.
+        .environment(\.colorScheme, .dark)
         .toolbar(.hidden, for: .navigationBar)
         .task(id: moment.previewEnd) {
             // A preview left on screen, or in the background, reaches its
@@ -91,5 +107,25 @@ struct OnboardingWelcomeView: View {
         let standard = DayOverride(day: day, type: .bell(family: .standard, rotation: nil))
         return resolveDay(day, inputs: ResolverInputs(
             overrides: [day: standard], config: model.config, catalog: model.catalog))
+    }
+}
+
+/// Faint rings spreading out from the dial, like a bell's ring carrying. Drawn
+/// at the dial's centre, larger than the screen, so the outer ones run off it.
+private struct BellRings: View {
+    /// Diameters, as multiples of the dial's 270 pt.
+    private static let scales: [CGFloat] = [1.3, 1.72, 2.18, 2.7]
+
+    var body: some View {
+        ZStack {
+            ForEach(Self.scales, id: \.self) { scale in
+                Circle()
+                    .stroke(.white.opacity(0.07), lineWidth: 1)
+                    .frame(width: 270 * scale, height: 270 * scale)
+            }
+        }
+        // Centred on the hero without widening it.
+        .frame(width: 0, height: 0)
+        .allowsHitTesting(false)
     }
 }

@@ -21,13 +21,17 @@ struct OnboardingPage<Content: View, Actions: View>: View {
     /// the actions. For a page with no heading to hold its top: left at the
     /// top, the welcome sits over a third of an iPad's screen of nothing.
     var centersContent = false
+    /// The colour under the actions, which the content fades into.
+    var ground = Color(.systemGroupedBackground)
+    /// What the content scrolls over, when it isn't plain `ground`. It should
+    /// end in `ground` where the actions sit.
+    var backdrop: AnyShapeStyle?
     @ViewBuilder var content: Content
     @ViewBuilder var actions: Actions
 
     /// The height the scroll view shows between the bars and the actions.
     @State private var roomForContent: CGFloat = 0
 
-    private static var ground: Color { Color(.systemGroupedBackground) }
     private static var fadeHeight: CGFloat { 20 }
 
     var body: some View {
@@ -69,14 +73,14 @@ struct OnboardingPage<Content: View, Actions: View>: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
-        .background(Self.ground)
+        .background(backdrop ?? AnyShapeStyle(ground))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !dynamicTypeSize.isAccessibilitySize {
                 VStack(spacing: 0) {
                     // Content fades out under the actions rather than being
                     // cut off at a hard edge. The fade is part of the inset,
                     // so a field being typed in is kept clear of it.
-                    LinearGradient(colors: [Self.ground.opacity(0), Self.ground],
+                    LinearGradient(colors: [ground.opacity(0), ground],
                                    startPoint: .top, endPoint: .bottom)
                         .frame(height: Self.fadeHeight)
                         .allowsHitTesting(false)
@@ -87,7 +91,7 @@ struct OnboardingPage<Content: View, Actions: View>: View {
                         .padding(.bottom, 12)
                         .frame(maxWidth: 560)
                         .frame(maxWidth: .infinity)
-                        .background(Self.ground)
+                        .background(ground)
                 }
             }
         }
@@ -135,22 +139,35 @@ struct OnboardingSectionLabel: View {
 /// The app's full-width prominent button, as on the ID tab.
 struct OnboardingPrimaryButton: View {
     let title: LocalizedStringKey
+    var tint = StevensonPalette.accent
+    /// The title's colour, for a tint too light to carry white.
+    var ink: Color?
     let action: () -> Void
 
-    init(_ title: LocalizedStringKey, action: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, tint: Color = StevensonPalette.accent, ink: Color? = nil,
+         action: @escaping () -> Void) {
         self.title = title
+        self.tint = tint
+        self.ink = ink
         self.action = action
     }
 
     var body: some View {
+        let label = Text(title)
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
         Button(action: action) {
-            Text(title)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+            // Only a set ink overrides the style's own, which also dims the
+            // title of a disabled button.
+            if let ink {
+                label.foregroundStyle(ink)
+            } else {
+                label
+            }
         }
         .buttonStyle(.borderedProminent)
-        .tint(StevensonPalette.accent)
+        .tint(tint)
     }
 }
 
