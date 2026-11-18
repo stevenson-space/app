@@ -3,8 +3,10 @@ import ScheduleKit
 
 /// Where lunch sits is the one part of a Stevenson schedule that moves the
 /// bells: a half-period lunch puts one in the middle of 4th, 5th or 6th. This
-/// step asks for it in three taps and shows the result as the cards Home will.
-/// Nothing is saved until Continue.
+/// step asks only that, as times: tap the period, then whole or which half.
+/// Freshmen add Advisory with one switch. A class running into the other half
+/// is left to the classes step, which shows the whole day and can make any
+/// class a period and a half. Nothing is saved until Continue.
 struct OnboardingLunchView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -20,7 +22,7 @@ struct OnboardingLunchView: View {
     @State private var answered: Question?
 
     private enum Question: Hashable {
-        case period, portion, otherHalf
+        case period, portion
     }
 
     var body: some View {
@@ -32,9 +34,8 @@ struct OnboardingLunchView: View {
             if let placement {
                 portionPicker(placement)
                 if let remaining = placement.remainingHalf {
-                    otherHalfPicker(placement, remaining: remaining)
+                    advisorySwitch(placement, remaining: remaining)
                 }
-                preview(placement)
             }
         } actions: {
             OnboardingPrimaryButton("Continue") {
@@ -51,7 +52,8 @@ struct OnboardingLunchView: View {
                 Button("Skip", action: next)
             }
         }
-        .sensoryFeedback(.selection, trigger: placement)
+        .sensoryFeedback(.selection, trigger: placement?.period)
+        .sensoryFeedback(.selection, trigger: placement?.portion)
         .onAppear {
             // The classes step's editor can move lunch while this step is
             // covered. The draft then starts over from what was saved, so
@@ -67,59 +69,32 @@ struct OnboardingLunchView: View {
 
     // MARK: - Which period
 
+    /// Three across, or stacked where the largest sizes leave too little room
+    /// for the times.
     private var periodPicker: some View {
-        tileRow {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+        return layout {
             ForEach(Array(UserConfig.advisoryPeriods), id: \.self) { period in
-                let option = LunchPlacement(period: period)
-                choiceTile(PeriodID.ordinal(period), times: times(option),
-                           accessibilityName: "\(PeriodID.ordinal(period)) period",
-                           isSelected: placement?.period == period) {
-                    select(.period, startingWith: option) { $0.period = period }
+                periodTile(period, isSelected: placement?.period == period) {
+                    select(.period, startingWith: LunchPlacement(period: period)) {
+                        $0.period = period
+                    }
                 }
             }
         }
         .id(Question.period)
     }
 
-    // MARK: - How much of it
-
-    private func portionPicker(_ placement: LunchPlacement) -> some View {
-        VStack(spacing: 8) {
-            OnboardingSectionLabel("How much of \(PeriodID.ordinal(placement.period)) period?")
-            tileRow {
-                ForEach([HalfChoice.full, .a, .b], id: \.self) { portion in
-                    let name = portion == .full ? "Full" : "\(placement.period)\(portion.rawValue)"
-                    choiceTile(name, times: times(LunchPlacement(period: placement.period, portion: portion)),
-                               accessibilityName: portion == .full ? "Full period" : name,
-                               isSelected: placement.portion == portion, compact: true) {
-                        select(.portion) { $0.portion = portion }
-                    }
-                }
-            }
-        }
-        .id(Question.portion)
-    }
-
-    // MARK: - Tiles
-
-    /// Three across, or stacked where the largest sizes leave too little room
-    /// for the times.
-    private func tileRow(@ViewBuilder content: () -> some View) -> some View {
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(spacing: 8))
-            : AnyLayout(HStackLayout(spacing: 8))
-        return layout { content() }
-    }
-
-    /// One answer, filled with the accent once chosen, with the times lunch
-    /// would run if it were the one.
-    private func choiceTile(_ title: String, times: String, accessibilityName: String,
-                            isSelected: Bool, compact: Bool = false,
+    /// A period, filled with the accent once chosen, with its bells.
+    private func periodTile(_ period: Int, isSelected: Bool,
                             action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: compact ? 2 : 4) {
-                Text(title)
-                    .font(.system(compact ? .headline : .title2, design: .rounded, weight: .bold))
+        let times = times(LunchPlacement(period: period))
+        return Button(action: action) {
+            VStack(spacing: 4) {
+                Text(PeriodID.ordinal(period))
+                    .font(.system(.title2, design: .rounded, weight: .bold))
                 Text(times)
                     .font(.caption)
                     .monospacedDigit()
@@ -130,55 +105,65 @@ struct OnboardingLunchView: View {
             }
             .foregroundStyle(isSelected ? .white : .primary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, compact ? 10 : 14)
+            .padding(.vertical, 14)
             .padding(.horizontal, 4)
             .background(
-                RoundedRectangle(cornerRadius: compact ? 14 : 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(isSelected ? AnyShapeStyle(StevensonPalette.accent)
                                      : AnyShapeStyle(Color(.secondarySystemGroupedBackground))))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(accessibilityName), \(times)")
+        .accessibilityLabel("\(PeriodID.ordinal(period)) period, \(times)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    // MARK: - The other half
+    // MARK: - Whole period or a half
 
-    private func otherHalfPicker(_ placement: LunchPlacement, remaining: Half) -> some View {
-        let halfName = "\(placement.period)\(remaining.rawValue)"
-        var options: [LunchPlacement.OtherHalf] = [.free, .advisory]
-        if model.config.neighborClassCanFill(placement) { options.append(.neighborClass) }
-
-        return VStack(spacing: 8) {
-            OnboardingSectionLabel("What do you have during \(halfName)?")
-            VStack(spacing: 0) {
-                ForEach(options, id: \.self) { option in
-                    if option != options.first {
-                        Divider().padding(.leading, 16)
-                    }
-                    otherHalfRow(option, placement: placement, halfName: halfName)
+    /// The whole period or either half, each with the times lunch would run,
+    /// so a student who knows when they eat can find it without the A/B names.
+    private func portionPicker(_ placement: LunchPlacement) -> some View {
+        let portions: [HalfChoice] = [.full, .a, .b]
+        return VStack(spacing: 0) {
+            ForEach(portions, id: \.self) { portion in
+                if portion != portions.first {
+                    Divider().padding(.leading, 16)
                 }
+                portionRow(portion, of: placement)
             }
-            .onboardingCard(cornerRadius: 16)
         }
-        .id(Question.otherHalf)
+        .onboardingCard(cornerRadius: 16)
+        .id(Question.portion)
     }
 
-    private func otherHalfRow(_ option: LunchPlacement.OtherHalf, placement: LunchPlacement,
-                              halfName: String) -> some View {
-        let isSelected = placement.otherHalf == option
-        let text = otherHalfText(option, placement: placement, halfName: halfName)
+    private func portionRow(_ portion: HalfChoice, of placement: LunchPlacement) -> some View {
+        let isSelected = placement.portion == portion
+        let times = times(LunchPlacement(period: placement.period, portion: portion))
+        let title: String
+        let detail: String
+        switch portion {
+        case .full:
+            title = "Whole period"
+            detail = times
+        case .a:
+            title = "First half"
+            detail = "\(placement.period)A · \(times)"
+        case .b:
+            title = "Second half"
+            detail = "\(placement.period)B · \(times)"
+        }
+
         return Button {
-            select(.otherHalf) { $0.otherHalf = option }
+            select(.portion) { $0.portion = portion }
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(text.title)
+                    Text(title)
                         .font(.body)
                         .foregroundStyle(.primary)
-                    Text(text.detail)
-                        .font(.footnote)
+                    Text(detail)
+                        .font(.subheadline)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
                 .multilineTextAlignment(.leading)
@@ -199,51 +184,44 @@ struct OnboardingLunchView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private func otherHalfText(_ option: LunchPlacement.OtherHalf, placement: LunchPlacement,
-                               halfName: String) -> (title: String, detail: String) {
-        switch option {
-        case .free:
-            return ("Free Period", "Nothing scheduled in \(halfName).")
-        case .advisory:
-            return ("Advisory", "Freshmen only.")
-        case .neighborClass:
-            let neighbor = placement.neighborPeriod ?? placement.period
-            let name = model.config.customization(for: .period(neighbor))?.name?.nilIfBlank
-                ?? "\(PeriodID.ordinal(neighbor)) period class"
-            let detail = placement.portion == .b
-                ? "It runs a period and a half, through \(halfName)."
-                : "It runs a period and a half, starting in \(halfName)."
-            return ("My \(name)", detail)
-        }
-    }
+    // MARK: - Advisory
 
-    // MARK: - The result
+    /// Freshman advisory always takes the half lunch leaves. Everyone else
+    /// leaves the switch off: that half is free, and a class that runs into
+    /// it is set on the next step.
+    private func advisorySwitch(_ placement: LunchPlacement, remaining: Half) -> some View {
+        let halfName = "\(placement.period)\(remaining.rawValue)"
+        let isOn = Binding(
+            get: { placement.otherHalf == .advisory },
+            set: { on in
+                // Turning it off leaves the half free, whatever the saved
+                // placement had there before.
+                select(nil) { $0.otherHalf = on ? .advisory : .free }
+            })
 
-    /// The three periods a placement can touch, as Home will show them.
-    private func preview(_ placement: LunchPlacement) -> some View {
-        var config = model.config
-        config.setLunchPlacement(placement)
-        let pref = config.timeFormat
-        let blocks = standardTemplate(config: config, catalog: model.catalog).filter { block in
-            guard let number = block.periodID.periodNumber else { return false }
-            return abs(number - placement.period) <= 1
-        }
+        return VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: isOn) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("I have Advisory in \(halfName)")
+                        .font(.body)
+                    Text("Freshmen only")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(StevensonPalette.accent)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .onboardingCard(cornerRadius: 16)
 
-        return VStack(spacing: 8) {
-            OnboardingSectionLabel("Your midday")
-            ForEach(blocks) { block in
-                ScheduleCardRow(
-                    emoji: ScheduleStyle.emoji(for: block, config: config),
-                    title: block.displayName,
-                    subtitle: TimeDisplay.range(block.start, block.end, pref),
-                    periodLabel: block.periodID.periodNumber.map { block.spanLabel ?? String($0) },
-                    showsPeriodBadge: true,
-                    highlightTint: block.role == .lunch ? ScheduleStyle.tint(for: .lunch) : nil
-                ) { }
-                .accessibilityElement(children: .combine)
+            if placement.otherHalf != .advisory {
+                Text("If a class runs into \(halfName), you can set that on the next step.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
             }
         }
-        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Helpers
@@ -251,7 +229,7 @@ struct OnboardingLunchView: View {
     /// Changes the draft, or starts one, as the answer to `question`. A half
     /// whose neighbour can't run long into it falls back to free rather than
     /// keeping a choice that is gone.
-    private func select(_ question: Question, startingWith initial: LunchPlacement? = nil,
+    private func select(_ question: Question?, startingWith initial: LunchPlacement? = nil,
                         _ change: (inout LunchPlacement) -> Void) {
         var updated: LunchPlacement
         if var current = placement {
@@ -267,7 +245,7 @@ struct OnboardingLunchView: View {
         }
         // No animation: the page can't scroll to content that is still growing.
         placement = updated
-        answered = question
+        if let question { answered = question }
     }
 
     /// When lunch runs for a placement, on the Standard schedule.
