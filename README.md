@@ -78,8 +78,9 @@ skipped.
    cards Home will show and saved on Continue.
 2. **Classes** — a name and a room typed into each card of the standard day.
    The ⋯ button opens the same editor My Schedule uses.
-3. **Alerts and the student ID** — two notification switches and a pointer to
-   the ID tab.
+3. **Alerts, the student ID and widgets** — two notification switches with
+   their times, a pointer to the ID tab, and a picture of the widgets with
+   where to add them.
 
 It never asks for an account, a name, an email, or a location. Notification
 permission is requested only when a student turns an alert on, and the student
