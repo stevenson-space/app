@@ -79,13 +79,14 @@ skipped.
 2. **Classes** — a name and a room typed into each card of the standard day.
    The ⋯ button opens the same editor My Schedule uses.
 3. **Alerts, the student ID and widgets** — two notification switches with
-   their times, a pointer to the ID tab, and a picture of the widgets with
-   where to add them.
+   their times, a pointer to the ID tab, and a screenshot of the real School
+   Schedule widget (`WidgetPreview` in the asset catalog) with the steps to add
+   it from the Home Screen or Lock Screen.
 
 It never asks for an account, a name, an email, or a location. Notification
 permission is requested only when a student turns an alert on, and the student
 ID is left to its own tab because it needs a screenshot nobody has to hand.
-Settings → **Guided Setup** runs the steps again.
+Settings → About → **Guided Setup** runs the steps again.
 
 Onboarding stands in for the tabs in `RootView` rather than covering them; the
 screens are in `Stevenson Space/Features/Onboarding/`. Whether it is still owed
