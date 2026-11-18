@@ -31,9 +31,7 @@ struct OnboardingClassesView: View {
         let classes = blocks.compactMap { $0.role == .classPeriod ? $0.customizationID.periodNumber : nil }
 
         OnboardingPage(isTyping: focus != nil) {
-            OnboardingHeading(
-                title: "Add your classes",
-                message: "Names and rooms show up in the countdown, your widgets and Siri.")
+            OnboardingHeading(title: "Add your classes")
 
             VStack(spacing: 8) {
                 ForEach(blocks) { block in

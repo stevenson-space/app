@@ -97,16 +97,18 @@ struct OnboardingPage<Content: View, Actions: View>: View {
 /// The heading a setup step opens with.
 struct OnboardingHeading: View {
     let title: LocalizedStringKey
-    let message: LocalizedStringKey
+    var message: LocalizedStringKey?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
-            Text(message)
-                .font(.body)
-                .foregroundStyle(.secondary)
+            if let message {
+                Text(message)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
         }
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
