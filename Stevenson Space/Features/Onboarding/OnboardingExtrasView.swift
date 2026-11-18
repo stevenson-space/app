@@ -1,9 +1,10 @@
 import SwiftUI
 import ScheduleKit
 
-/// The last step: the two things worth knowing about before Home. Alerts ask
-/// for permission only when one is switched on, and the student ID is an
-/// invitation to its own tab, since it needs a screenshot nobody has to hand.
+/// The last step: alerts, the student ID and widgets. Alerts ask for
+/// permission only when one is switched on. The student ID is an invitation to
+/// its own tab, since it needs a screenshot nobody has to hand, and widgets are
+/// only shown, since they are added from the Home Screen and Lock Screen.
 struct OnboardingExtrasView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -14,17 +15,12 @@ struct OnboardingExtrasView: View {
     var body: some View {
         OnboardingPage {
             OnboardingHeading(
-                title: "Two extras",
-                message: "Both are optional, and both are in the app whenever you want them.")
+                title: "Finishing touches",
+                message: "All optional. Set them up now or anytime later.")
 
             alerts
             studentID
-
-            Label("Widgets for your Home Screen and Lock Screen are ready to add too.",
-                  systemImage: "square.grid.2x2")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            OnboardingWidgetsPreview()
         } actions: {
             OnboardingPrimaryButton("Show My Schedule") { finish(nil) }
         }
@@ -39,10 +35,18 @@ struct OnboardingExtrasView: View {
             OnboardingSectionLabel("Bell alerts")
 
             VStack(spacing: 0) {
-                alertToggle("End-of-period heads-up", detail: headsUpDetail, feature: \.blockEndEnabled)
+                alertToggle("End-of-period heads-up", detail: "Before each class ends, with what’s next.",
+                            feature: \.blockEndEnabled)
+                if model.prefs.blockEndEnabled {
+                    alertSetting { HeadsUpLeadTimeStepper() }
+                }
                 Divider().padding(.leading, 16)
-                alertToggle("Morning alert on special days", detail: morningDetail,
+                alertToggle("Morning alert on special days",
+                            detail: "On Late Arrival, assembly and finals days.",
                             feature: \.morningEnabled)
+                if model.prefs.morningEnabled {
+                    alertSetting { MorningAlertTimePicker() }
+                }
             }
             .onboardingCard(cornerRadius: 16)
 
@@ -78,17 +82,14 @@ struct OnboardingExtrasView: View {
         .padding(.vertical, 11)
     }
 
-    private var headsUpDetail: String {
-        let minutes = model.prefs.blockEndLeadMinutes
-        return minutes == 0
-            ? "When each class ends, with what’s next."
-            : "\(minutes) minutes before each class ends, with what’s next."
-    }
-
-    private var morningDetail: String {
-        let time = model.today.date(at: model.prefs.morningTime)
-            .map { TimeDisplay.time($0, model.config.timeFormat) } ?? "7:00 AM"
-        return "At \(time) on Late Arrival, assembly and finals days."
+    /// When an alert that is on arrives, under its switch.
+    private func alertSetting(@ViewBuilder control: () -> some View) -> some View {
+        VStack(spacing: 0) {
+            Divider().padding(.leading, 16)
+            control()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+        }
     }
 
     // MARK: - Student ID
