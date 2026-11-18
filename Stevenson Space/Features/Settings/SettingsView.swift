@@ -25,17 +25,6 @@ struct SettingsView: View {
 
     private var myScheduleSection: some View {
         Section {
-            Button {
-                navigation.replayOnboarding()
-            } label: {
-                Label {
-                    // A concrete color: a Button's label takes the tint.
-                    Text("Guided Setup")
-                        .foregroundStyle(Color.primary)
-                } icon: {
-                    Image(systemName: "checklist")
-                }
-            }
             NavigationLink {
                 PeriodEditorListView()
             } label: {
@@ -43,8 +32,6 @@ struct SettingsView: View {
             }
         } header: {
             Text("My Schedule")
-        } footer: {
-            Text("Guided Setup walks through lunch, classes and alerts again.")
         }
     }
 
@@ -140,6 +127,17 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
+            Button {
+                navigation.replayOnboarding()
+            } label: {
+                Label {
+                    // A concrete color: a Button's label takes the tint.
+                    Text("Guided Setup")
+                        .foregroundStyle(Color.primary)
+                } icon: {
+                    Image(systemName: "checklist")
+                }
+            }
             aboutLink("Support", systemImage: "questionmark.circle",
                       destination: URL(string: "https://stevenson.space/app/support")!)
             aboutLink("Privacy Policy", systemImage: "hand.raised",
