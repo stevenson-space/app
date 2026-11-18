@@ -171,6 +171,77 @@ struct OnboardingPrimaryButton: View {
     }
 }
 
+/// Where a step falls in setup, drawn as the countdown's ring with one arc a
+/// step. The step's own arc fills once the page has arrived, so moving on
+/// reads as the ring moving on.
+struct OnboardingProgress: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .headline) private var ringSize = 20.0
+
+    let step: Int
+    static let stepCount = 3
+
+    /// Arcs drawn full. Starts short of `step`, so the step's arc can fill.
+    @State private var filled: Int
+
+    init(step: Int) {
+        self.step = step
+        _filled = State(initialValue: step - 1)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                ForEach(0..<Self.stepCount, id: \.self) { index in
+                    StepArc(index: index, count: Self.stepCount)
+                        .stroke(StevensonPalette.accent.opacity(0.28), lineWidth: 3)
+                    StepArc(index: index, count: Self.stepCount)
+                        .trim(from: 0, to: index < filled ? 1 : 0)
+                        .stroke(StevensonPalette.accent,
+                                style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                }
+            }
+            .frame(width: ringSize, height: ringSize)
+
+            Text("Step \(step) of \(Self.stepCount)")
+                .font(.headline)
+                .lineLimit(1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Step \(step) of \(Self.stepCount)")
+        .task {
+            guard filled < step else { return }
+            if reduceMotion {
+                filled = step
+                return
+            }
+            // After the push has landed, so the fill is seen.
+            try? await Task.sleep(for: .milliseconds(300))
+            withAnimation(.smooth(duration: 0.6)) { filled = step }
+        }
+    }
+}
+
+/// One step's share of the progress ring, clockwise from the top, with a gap
+/// either side for the round caps.
+private struct StepArc: Shape {
+    let index: Int
+    let count: Int
+
+    func path(in rect: CGRect) -> Path {
+        let share = 360.0 / Double(count)
+        let gap = 34.0
+        let start = -90 + share * Double(index) + gap / 2
+        var path = Path()
+        path.addArc(center: CGPoint(x: rect.midX, y: rect.midY),
+                    // Inside the frame by half the 3 pt stroke.
+                    radius: min(rect.width, rect.height) / 2 - 1.5,
+                    startAngle: .degrees(start), endAngle: .degrees(start + share - gap),
+                    clockwise: false)
+        return path
+    }
+}
+
 extension View {
     /// The rounded plate the app's cards sit on.
     func onboardingCard(cornerRadius: CGFloat = 18) -> some View {

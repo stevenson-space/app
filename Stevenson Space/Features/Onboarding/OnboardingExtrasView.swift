@@ -26,6 +26,9 @@ struct OnboardingExtrasView: View {
         }
         .navigationTitle("Step 3 of 3")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) { OnboardingProgress(step: 3) }
+        }
     }
 
     // MARK: - Alerts

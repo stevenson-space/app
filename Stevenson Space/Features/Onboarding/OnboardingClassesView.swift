@@ -75,6 +75,7 @@ struct OnboardingClassesView: View {
         .navigationTitle("Step 2 of 3")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) { OnboardingProgress(step: 2) }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Skip", action: leave)
             }

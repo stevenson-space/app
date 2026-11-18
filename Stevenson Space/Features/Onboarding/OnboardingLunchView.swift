@@ -48,6 +48,7 @@ struct OnboardingLunchView: View {
         .navigationTitle("Step 1 of 3")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) { OnboardingProgress(step: 1) }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Skip", action: next)
             }
