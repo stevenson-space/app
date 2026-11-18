@@ -207,18 +207,24 @@ private struct ClassCard: View {
     }
 
     private var identity: some View {
-        HStack(spacing: 8) {
+        // A named class takes the colour Home gives classes, so the list
+        // shows how far the typing has got.
+        let tint = name.nilIfBlank == nil ? Color.primary : ScheduleStyle.tint(for: .classPeriod)
+
+        return HStack(spacing: 8) {
             Circle()
-                .fill(Color.primary.opacity(0.12))
+                .fill(tint.opacity(0.12))
                 .frame(width: badgeSize, height: badgeSize)
                 .overlay {
                     Text(badge)
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .monospacedDigit()
+                        .foregroundStyle(tint)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                         .padding(4)
                 }
+                .animation(.smooth(duration: 0.25), value: name.nilIfBlank == nil)
                 .accessibilityHidden(true)
 
             Text(emoji)
