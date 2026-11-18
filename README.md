@@ -80,8 +80,8 @@ skipped.
    The ⋯ button opens the same editor My Schedule uses.
 3. **Alerts, the student ID and widgets** — two notification switches with
    their times, a pointer to the ID tab, and a screenshot of the real School
-   Schedule widget (`WidgetPreview` in the asset catalog) with the steps to add
-   it from the Home Screen or Lock Screen.
+   Schedule widget (`WidgetPreview` in the asset catalog) over numbered steps
+   to add it from the Home Screen or Lock Screen, folded away until opened.
 
 It never asks for an account, a name, an email, or a location. Notification
 permission is requested only when a student turns an alert on, and the student
