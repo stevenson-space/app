@@ -106,6 +106,8 @@ struct HeroSection: View {
     /// A moment to show in place of the present one. Onboarding uses it to
     /// preview a school day when school is out.
     var preview: HeroPreview?
+    /// Whether the dial has the line under it naming what comes next.
+    var showsNextLine = true
 
     @State private var width: CGFloat = 0
 
@@ -266,8 +268,10 @@ struct HeroSection: View {
                 }
                 .scaleEffect(morph.scale, anchor: .top)
                 .offset(morph.offset)
-            nextLine()
-                .opacity(reduceMotion ? 1 : 1 - ramp(Phase.nextLineOut))
+            if showsNextLine {
+                nextLine()
+                    .opacity(reduceMotion ? 1 : 1 - ramp(Phase.nextLineOut))
+            }
         }
         .opacity(reduceMotion ? 1 - ramp(Phase.plainHeroOut) : 1)
     }

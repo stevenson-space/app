@@ -20,26 +20,24 @@ struct OnboardingWelcomeView: View {
 
         OnboardingPage(centersContent: true) {
             VStack(spacing: 16) {
-                Label(moment.caption, systemImage: moment.preview == nil ? "clock" : "calendar")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                if let caption = moment.caption {
+                    Label(caption, systemImage: moment.preview == nil ? "clock" : "calendar")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
 
-                HeroSection(pillHeight: $pillHeight, preview: moment.preview)
+                HeroSection(pillHeight: $pillHeight, preview: moment.preview, showsNextLine: false)
             }
             .padding(.top, 12)
 
             VStack(spacing: 10) {
-                Text("Every bell, counted down.")
+                Text("Stevenson Space, now an app.")
                     .font(.largeTitle.bold())
                     .accessibilityAddTraits(.isHeader)
-                Text("Stevenson’s schedule to the second, Late Arrival, assemblies and finals included.")
+                Text("Adding your classes takes about a minute. No account needed.")
                     .font(.body)
                     .foregroundStyle(.secondary)
-                Text("Adding your classes takes about a minute. No account needed.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 2)
             }
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -63,7 +61,8 @@ struct OnboardingWelcomeView: View {
     // MARK: - The moment on show
 
     private struct Moment {
-        let caption: String
+        /// Names the moment on show; nil for the present on a Standard day.
+        var caption: String?
         /// Nil shows the present.
         var preview: HeroPreview?
         /// When a previewed countdown reaches its bell, on the real clock.
@@ -73,7 +72,9 @@ struct OnboardingWelcomeView: View {
     private var moment: Moment {
         switch model.currentState {
         case .beforeSchool, .inBlock, .passing:
-            return Moment(caption: caption("Right now", on: model.todayTimeline))
+            // Quiet on a Standard day, like Home; any other schedule is named.
+            let today = model.todayTimeline
+            return Moment(caption: today.isStandardSchedule ? nil : today.scheduleLabel)
         default:
             return previewMoment
         }
@@ -86,7 +87,7 @@ struct OnboardingWelcomeView: View {
         let timeline = upcoming ?? regularDay
         let spans = timeline.moments
         guard let span = spans.dropFirst().first ?? spans.first else {
-            return Moment(caption: "")
+            return Moment()
         }
         let elapsed = (span.end.timeIntervalSince(span.start) * 0.62).rounded(.down)
         let instant = span.start.addingTimeInterval(elapsed)
