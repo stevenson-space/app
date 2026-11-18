@@ -37,6 +37,12 @@ struct OnboardingExtrasView: View {
         VStack(spacing: 8) {
             OnboardingSectionLabel("Bell alerts")
 
+            if let sample = headsUpSample {
+                AlertPreview(title: sample.title, message: sample.message,
+                             isOn: model.prefs.blockEndEnabled)
+                    .padding(.bottom, 4)
+            }
+
             VStack(spacing: 0) {
                 alertToggle("End-of-period heads-up", detail: "Before each class ends, with what’s next.",
                             feature: \.blockEndEnabled)
@@ -83,6 +89,21 @@ struct OnboardingExtrasView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 11)
+    }
+
+    /// A heads-up the student's day would bring, worded as the alert itself
+    /// is: for the first class they named, or else for the day's second block.
+    private var headsUpSample: (title: String, message: String)? {
+        let config = model.config
+        let upcoming = standardTemplate(config: config, catalog: model.catalog)
+            .dropFirst()
+            .filter { $0.role.isAttended }
+        let named = upcoming.first {
+            $0.role == .classPeriod && config.customization(for: $0.customizationID)?.name?.nilIfBlank != nil
+        }
+        guard let next = named ?? upcoming.first else { return nil }
+        let starts = "Starts at \(TimeDisplay.time(next.start, model.config.timeFormat))"
+        return ("Next: \(next.displayName)", next.room.map { "Room \($0) · \(starts)" } ?? starts)
     }
 
     /// When an alert that is on arrives, under its switch.
@@ -143,5 +164,59 @@ struct OnboardingExtrasView: View {
             .padding(16)
             .onboardingCard(cornerRadius: 16)
         }
+    }
+}
+
+/// A heads-up as it lands on the Lock Screen. Faded while its switch is off,
+/// so turning the switch on is seen to turn the alert on.
+private struct AlertPreview: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .subheadline) private var iconSize = 38.0
+
+    let title: String
+    let message: String
+    let isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: iconSize * 0.24, style: .continuous)
+                .fill(LinearGradient(colors: [StevensonPalette.fieldTop, StevensonPalette.fieldBottom],
+                                     startPoint: .top, endPoint: .bottom))
+                .frame(width: iconSize, height: iconSize)
+                .overlay {
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: iconSize * 0.45, weight: .semibold))
+                        .foregroundStyle(StevensonPalette.gold)
+                        .symbolEffect(.bounce, value: isOn)
+                }
+
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer(minLength: 8)
+                    Text("now")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Text(message)
+                    .font(.subheadline)
+                    .monospacedDigit()
+            }
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(isOn ? 0.1 : 0), radius: 12, y: 4))
+        .saturation(isOn ? 1 : 0)
+        .opacity(isOn ? 1 : 0.55)
+        .scaleEffect(isOn || reduceMotion ? 1 : 0.97)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.35), value: isOn)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Example heads-up: \(title). \(message)")
     }
 }
