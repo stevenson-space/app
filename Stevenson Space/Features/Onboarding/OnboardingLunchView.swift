@@ -153,7 +153,16 @@ struct OnboardingLunchView: View {
         if model.config.neighborClassCanFill(placement) { options.append(.neighborClass) }
 
         return VStack(spacing: 8) {
-            OnboardingSectionLabel("And \(halfName)?")
+            HStack(alignment: .firstTextBaseline) {
+                OnboardingSectionLabel("What do you have during \(halfName)?")
+                if let span = halfTimes(placement, half: remaining) {
+                    Text(span)
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
+            }
             VStack(spacing: 0) {
                 ForEach(options, id: \.self) { option in
                     if option != options.first {
@@ -205,7 +214,7 @@ struct OnboardingLunchView: View {
                                halfName: String) -> (title: String, detail: String) {
         switch option {
         case .free:
-            return ("Free", "Nothing scheduled.")
+            return ("Free", "Nothing scheduled in \(halfName).")
         case .advisory:
             return ("Advisory", "Freshmen only.")
         case .neighborClass:
@@ -270,6 +279,19 @@ struct OnboardingLunchView: View {
         // No animation: the page can't scroll to content that is still growing.
         placement = updated
         answered = question
+    }
+
+    /// When the half of the lunch period that isn't lunch runs, on the
+    /// Standard schedule.
+    private func halfTimes(_ placement: LunchPlacement, half: Half) -> String? {
+        var free = placement
+        free.otherHalf = .free
+        var config = UserConfig()
+        config.setLunchPlacement(free)
+        let block = standardTemplate(config: config, catalog: model.catalog).first {
+            $0.periodID.periodNumber == placement.period && $0.half == half
+        }
+        return block.map { TimeDisplay.range($0.start, $0.end, model.config.timeFormat) }
     }
 
     /// When lunch runs for a placement, on the Standard schedule.
