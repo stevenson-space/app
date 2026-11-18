@@ -19,23 +19,14 @@ struct OnboardingWelcomeView: View {
         let moment = moment
 
         OnboardingPage(centersContent: true) {
-            VStack(spacing: 16) {
-                if let caption = moment.caption {
-                    Label(caption, systemImage: moment.preview == nil ? "clock" : "calendar")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                HeroSection(pillHeight: $pillHeight, preview: moment.preview, showsNextLine: false)
-            }
-            .padding(.top, 12)
+            HeroSection(pillHeight: $pillHeight, preview: moment.preview, showsNextLine: false)
+                .padding(.top, 12)
 
             VStack(spacing: 10) {
                 Text("Stevenson Space, now an app.")
                     .font(.largeTitle.bold())
                     .accessibilityAddTraits(.isHeader)
-                Text("Adding your classes takes about a minute. No account needed.")
+                Text("Adding your classes takes about a minute.")
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
@@ -61,8 +52,6 @@ struct OnboardingWelcomeView: View {
     // MARK: - The moment on show
 
     private struct Moment {
-        /// Names the moment on show; nil for the present on a Standard day.
-        var caption: String?
         /// Nil shows the present.
         var preview: HeroPreview?
         /// When a previewed countdown reaches its bell, on the real clock.
@@ -72,9 +61,7 @@ struct OnboardingWelcomeView: View {
     private var moment: Moment {
         switch model.currentState {
         case .beforeSchool, .inBlock, .passing:
-            // Quiet on a Standard day, like Home; any other schedule is named.
-            let today = model.todayTimeline
-            return Moment(caption: today.isStandardSchedule ? nil : today.scheduleLabel)
+            return Moment()
         default:
             return previewMoment
         }
@@ -91,12 +78,7 @@ struct OnboardingWelcomeView: View {
         }
         let elapsed = (span.end.timeIntervalSince(span.start) * 0.62).rounded(.down)
         let instant = span.start.addingTimeInterval(elapsed)
-        let day = upcoming == nil
-            ? "A regular school day"
-            : TimeDisplay.dayLabel(timeline.day, relativeTo: model.today)
-        let time = TimeDisplay.time(instant, model.config.timeFormat)
         return Moment(
-            caption: caption("\(day) at \(time)", on: timeline),
             preview: HeroPreview(state: momentState(at: instant, in: timeline),
                                  offset: instant.timeIntervalSince(previewStart)),
             previewEnd: previewStart.addingTimeInterval(span.end.timeIntervalSince(instant)))
@@ -109,10 +91,5 @@ struct OnboardingWelcomeView: View {
         let standard = DayOverride(day: day, type: .bell(family: .standard, rotation: nil))
         return resolveDay(day, inputs: ResolverInputs(
             overrides: [day: standard], config: model.config, catalog: model.catalog))
-    }
-
-    /// Quiet on a Standard day, like Home; any other schedule is named.
-    private func caption(_ moment: String, on timeline: DayTimeline) -> String {
-        timeline.isStandardSchedule ? moment : "\(moment) · \(timeline.scheduleLabel)"
     }
 }
