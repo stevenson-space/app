@@ -3,7 +3,7 @@ import ScheduleKit
 
 /// Where lunch sits is the one part of a Stevenson schedule that moves the
 /// bells: a half-period lunch puts one in the middle of 4th, 5th or 6th. This
-/// step asks only that, as times: tap the period, then whole or which half.
+/// step asks only that, as times: tap the period, then full or which half.
 /// Freshmen add Advisory with one switch. A class running into the other half
 /// is left to the classes step, which shows the whole day and can make any
 /// class a period and a half. Nothing is saved until Continue.
@@ -69,32 +69,60 @@ struct OnboardingLunchView: View {
 
     // MARK: - Which period
 
-    /// Three across, or stacked where the largest sizes leave too little room
-    /// for the times.
     private var periodPicker: some View {
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(spacing: 8))
-            : AnyLayout(HStackLayout(spacing: 8))
-        return layout {
+        tileRow {
             ForEach(Array(UserConfig.advisoryPeriods), id: \.self) { period in
-                periodTile(period, isSelected: placement?.period == period) {
-                    select(.period, startingWith: LunchPlacement(period: period)) {
-                        $0.period = period
-                    }
+                let option = LunchPlacement(period: period)
+                choiceTile(PeriodID.ordinal(period), times: times(option),
+                           accessibilityName: "\(PeriodID.ordinal(period)) period",
+                           isSelected: placement?.period == period) {
+                    select(.period, startingWith: option) { $0.period = period }
                 }
             }
         }
         .id(Question.period)
     }
 
-    /// A period, filled with the accent once chosen, with its bells.
-    private func periodTile(_ period: Int, isSelected: Bool,
+    // MARK: - How much of it
+
+    /// The whole period or either half, each with the times lunch would run.
+    private func portionPicker(_ placement: LunchPlacement) -> some View {
+        VStack(spacing: 8) {
+            OnboardingSectionLabel("How much of \(PeriodID.ordinal(placement.period)) period?")
+            tileRow {
+                ForEach([HalfChoice.full, .a, .b], id: \.self) { portion in
+                    let name = portion == .full ? "Full" : "\(placement.period)\(portion.rawValue)"
+                    choiceTile(name, times: times(LunchPlacement(period: placement.period, portion: portion)),
+                               accessibilityName: portion == .full ? "Full period" : name,
+                               isSelected: placement.portion == portion, compact: true) {
+                        select(.portion) { $0.portion = portion }
+                    }
+                }
+            }
+        }
+        .id(Question.portion)
+    }
+
+    // MARK: - Tiles
+
+    /// Three across, or stacked where the largest sizes leave too little room
+    /// for the times.
+    private func tileRow(@ViewBuilder content: () -> some View) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+        return layout { content() }
+    }
+
+    /// One answer, filled with the accent once chosen, with the times lunch
+    /// would run if it were the one.
+    private func choiceTile(_ title: String, times: String, accessibilityName: String,
+                            isSelected: Bool, compact: Bool = false,
                             action: @escaping () -> Void) -> some View {
-        let times = times(LunchPlacement(period: period))
-        return Button(action: action) {
-            VStack(spacing: 4) {
-                Text(PeriodID.ordinal(period))
-                    .font(.system(.title2, design: .rounded, weight: .bold))
+        Button(action: action) {
+            VStack(spacing: compact ? 2 : 4) {
+                Text(title)
+                    .font(.system(compact ? .headline : .title2, design: .rounded, weight: .bold))
                 Text(times)
                     .font(.caption)
                     .monospacedDigit()
@@ -105,82 +133,16 @@ struct OnboardingLunchView: View {
             }
             .foregroundStyle(isSelected ? .white : .primary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, compact ? 10 : 14)
             .padding(.horizontal, 4)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: compact ? 14 : 18, style: .continuous)
                     .fill(isSelected ? AnyShapeStyle(StevensonPalette.accent)
                                      : AnyShapeStyle(Color(.secondarySystemGroupedBackground))))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(PeriodID.ordinal(period)) period, \(times)")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    // MARK: - Whole period or a half
-
-    /// The whole period or either half, each with the times lunch would run,
-    /// so a student who knows when they eat can find it without the A/B names.
-    private func portionPicker(_ placement: LunchPlacement) -> some View {
-        let portions: [HalfChoice] = [.full, .a, .b]
-        return VStack(spacing: 0) {
-            ForEach(portions, id: \.self) { portion in
-                if portion != portions.first {
-                    Divider().padding(.leading, 16)
-                }
-                portionRow(portion, of: placement)
-            }
-        }
-        .onboardingCard(cornerRadius: 16)
-        .id(Question.portion)
-    }
-
-    private func portionRow(_ portion: HalfChoice, of placement: LunchPlacement) -> some View {
-        let isSelected = placement.portion == portion
-        let times = times(LunchPlacement(period: placement.period, portion: portion))
-        let title: String
-        let detail: String
-        switch portion {
-        case .full:
-            title = "Whole period"
-            detail = times
-        case .a:
-            title = "First half"
-            detail = "\(placement.period)A · \(times)"
-        case .b:
-            title = "Second half"
-            detail = "\(placement.period)B · \(times)"
-        }
-
-        return Button {
-            select(.portion) { $0.portion = portion }
-        } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                    Text(detail)
-                        .font(.subheadline)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .foregroundStyle(isSelected ? AnyShapeStyle(StevensonPalette.accent)
-                                                : AnyShapeStyle(.tertiary))
-                    .accessibilityHidden(true)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(accessibilityName), \(times)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
