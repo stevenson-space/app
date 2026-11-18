@@ -25,11 +25,6 @@ struct SettingsView: View {
 
     private var myScheduleSection: some View {
         Section {
-            NavigationLink {
-                PeriodEditorListView()
-            } label: {
-                Label("My Schedule", systemImage: "scroll")
-            }
             Button {
                 navigation.replayOnboarding()
             } label: {
@@ -40,6 +35,11 @@ struct SettingsView: View {
                 } icon: {
                     Image(systemName: "checklist")
                 }
+            }
+            NavigationLink {
+                PeriodEditorListView()
+            } label: {
+                Label("My Schedule", systemImage: "scroll")
             }
         } header: {
             Text("My Schedule")
