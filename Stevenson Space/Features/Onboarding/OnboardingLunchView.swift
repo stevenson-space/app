@@ -3,10 +3,9 @@ import ScheduleKit
 
 /// Where lunch sits is the one part of a Stevenson schedule that moves the
 /// bells: a half-period lunch puts one in the middle of 4th, 5th or 6th. This
-/// step asks only that, as times: tap the period, then full or which half.
-/// Freshmen add Advisory with one switch. A class running into the other half
-/// is left to the classes step, which shows the whole day and can make any
-/// class a period and a half. Nothing is saved until Continue.
+/// step asks only that, as times: tap the period, then full or which half,
+/// then what fills the half lunch leaves: free, Advisory, or the class next
+/// door running a period and a half. Nothing is saved until Continue.
 struct OnboardingLunchView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -37,7 +36,7 @@ struct OnboardingLunchView: View {
             if let placement {
                 portionPicker(placement)
                 if let remaining = placement.remainingHalf {
-                    advisorySwitch(placement, remaining: remaining)
+                    otherHalfPicker(placement, remaining: remaining)
                 }
             }
         } actions: {
@@ -58,6 +57,7 @@ struct OnboardingLunchView: View {
         }
         .sensoryFeedback(.selection, trigger: placement?.period)
         .sensoryFeedback(.selection, trigger: placement?.portion)
+        .sensoryFeedback(.selection, trigger: placement?.otherHalf)
         .onAppear {
             // The classes step's editor can move lunch while this step is
             // covered. The draft then starts over from what was saved, so
@@ -77,7 +77,7 @@ struct OnboardingLunchView: View {
         tileRow {
             ForEach(Array(UserConfig.advisoryPeriods), id: \.self) { period in
                 let option = LunchPlacement(period: period)
-                choiceTile(PeriodID.ordinal(period), times: times(option),
+                choiceTile(PeriodID.ordinal(period), detail: times(option),
                            accessibilityName: "\(PeriodID.ordinal(period)) period",
                            isSelected: placement?.period == period) {
                     select(.period, startingWith: option) { $0.period = period }
@@ -96,7 +96,7 @@ struct OnboardingLunchView: View {
             tileRow {
                 ForEach([HalfChoice.full, .a, .b], id: \.self) { portion in
                     let name = portion == .full ? "Full" : "\(placement.period)\(portion.rawValue)"
-                    choiceTile(name, times: times(LunchPlacement(period: placement.period, portion: portion)),
+                    choiceTile(name, detail: times(LunchPlacement(period: placement.period, portion: portion)),
                                accessibilityName: portion == .full ? "Full period" : name,
                                isSelected: placement.portion == portion, compact: true) {
                         select(.portion) { $0.portion = portion }
@@ -118,16 +118,18 @@ struct OnboardingLunchView: View {
         return layout { content() }
     }
 
-    /// One answer, filled with the accent once chosen, with the times lunch
-    /// would run if it were the one.
-    private func choiceTile(_ title: String, times: String, accessibilityName: String,
+    /// One answer, filled with the accent once chosen, over a line saying what
+    /// it means: for lunch, the times it would run.
+    private func choiceTile(_ title: String, detail: String, accessibilityName: String,
                             isSelected: Bool, compact: Bool = false,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: compact ? 2 : 4) {
                 Text(title)
                     .font(.system(compact ? .headline : .title2, design: .rounded, weight: .bold))
-                Text(times)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(detail)
                     .font(.caption)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -146,47 +148,75 @@ struct OnboardingLunchView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(accessibilityName), \(times)")
+        .accessibilityLabel("\(accessibilityName), \(detail)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    // MARK: - Advisory
+    // MARK: - The other half
 
-    /// Freshman advisory always takes the half lunch leaves. Everyone else
-    /// leaves the switch off: that half is free, and a class that runs into
-    /// it is set on the next step.
-    private func advisorySwitch(_ placement: LunchPlacement, remaining: Half) -> some View {
+    /// What fills the half lunch leaves, as a third row of tiles under the
+    /// first two, with a line spelling the choice out with its times. The
+    /// class next door is offered only while it is there to run long.
+    private func otherHalfPicker(_ placement: LunchPlacement, remaining: Half) -> some View {
         let halfName = "\(placement.period)\(remaining.rawValue)"
-        let isOn = Binding(
-            get: { placement.otherHalf == .advisory },
-            set: { on in
-                // Turning it off leaves the half free, whatever the saved
-                // placement had there before.
-                select(nil) { $0.otherHalf = on ? .advisory : .free }
-            })
+        var options: [LunchPlacement.OtherHalf] = [.free, .advisory]
+        if model.config.neighborClassCanFill(placement) { options.append(.neighborClass) }
 
-        return VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: isOn) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("I have Advisory in \(halfName)")
-                        .font(.body)
-                    Text("Freshmen only")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        return VStack(spacing: 8) {
+            OnboardingSectionLabel("What do you have in \(halfName)?")
+            tileRow {
+                ForEach(options, id: \.self) { option in
+                    let tile = otherHalfTile(option, placement: placement)
+                    choiceTile(tile.title, detail: tile.detail, accessibilityName: tile.title,
+                               isSelected: placement.otherHalf == option, compact: true) {
+                        select(nil) { $0.otherHalf = option }
+                    }
                 }
             }
-            .tint(StevensonPalette.accent)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-            .onboardingCard(cornerRadius: 16)
+            Text(otherHalfSummary(placement, halfName: halfName))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
 
-            if placement.otherHalf != .advisory {
-                Text("If a class runs into \(halfName), you can set that on the next step.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
+    private func otherHalfTile(_ option: LunchPlacement.OtherHalf,
+                               placement: LunchPlacement) -> (title: String, detail: String) {
+        switch option {
+        case .free:
+            return ("Free", "No class")
+        case .advisory:
+            return ("Advisory", "Freshmen")
+        case .neighborClass:
+            let neighbor = placement.neighborPeriod ?? placement.period
+            return ("\(PeriodID.ordinal(neighbor)) period",
+                    placement.portion == .b ? "Runs long" : "Starts early")
+        }
+    }
+
+    /// The choice in a sentence, with when the half runs.
+    private func otherHalfSummary(_ placement: LunchPlacement, halfName: String) -> String {
+        let half = remainingHalfTimes(placement)
+        let pref = model.config.timeFormat
+        switch placement.otherHalf {
+        case .free:
+            return half.map { "\(halfName) is a free period, \(TimeDisplay.range($0.start, $0.end, pref))." }
+                ?? "\(halfName) is a free period."
+        case .advisory:
+            return half.map { "Freshmen have Advisory in \(halfName), \(TimeDisplay.range($0.start, $0.end, pref))." }
+                ?? "Freshmen have Advisory in \(halfName)."
+        case .neighborClass:
+            let neighbor = placement.neighborPeriod ?? placement.period
+            let ordinal = PeriodID.ordinal(neighbor)
+            let name = model.config.customization(for: .period(neighbor))?.name?.nilIfBlank
+                .map { "\($0) (\(ordinal) period)" } ?? "\(ordinal) period class"
+            guard let half else {
+                return "Your \(name) runs a period and a half, through \(halfName)."
             }
+            return placement.portion == .b
+                ? "Your \(name) runs on through \(halfName), until \(TimeDisplay.time(half.end, pref, includesMeridiem: false))."
+                : "Your \(name) starts early, in \(halfName), at \(TimeDisplay.time(half.start, pref, includesMeridiem: false))."
         }
     }
 
@@ -219,6 +249,17 @@ struct OnboardingLunchView: View {
         var config = model.config
         config.setLunchPlacement(placement)
         return standardTemplate(config: config, catalog: model.catalog)
+    }
+
+    /// When the half lunch leaves runs, on the Standard schedule.
+    private func remainingHalfTimes(_ placement: LunchPlacement) -> (start: Date, end: Date)? {
+        guard let remaining = placement.remainingHalf else { return nil }
+        var config = UserConfig()
+        config.setLunchPlacement(LunchPlacement(period: placement.period, portion: placement.portion))
+        let half = standardTemplate(config: config, catalog: model.catalog).first {
+            $0.periodID == .period(placement.period) && $0.half == remaining
+        }
+        return half.map { ($0.start, $0.end) }
     }
 
     /// When lunch runs for a placement, on the Standard schedule.
