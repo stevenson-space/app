@@ -345,26 +345,36 @@ private struct LunchDayStrip: View {
         let style = style(for: block)
         return RoundedRectangle(cornerRadius: 8, style: .continuous)
             .fill(style.fill)
-            .overlay(alignment: .bottom) {
-                VStack(spacing: 0) {
+            .overlay {
+                Group {
                     if block.role == .lunch {
-                        Image(systemName: "fork.knife")
-                            .font(.caption.weight(.semibold))
-                            .padding(.top, 8)
-                        Spacer(minLength: 0)
-                    }
-                    if !dynamicTypeSize.isAccessibilitySize {
-                        Text(label(for: block))
-                            .font(.system(.caption2, design: .rounded, weight: .semibold))
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .padding(.horizontal, 1)
+                        // Lunch is marked by the fork and knife, with its
+                        // number small beneath.
+                        VStack(spacing: 0) {
+                            Image(systemName: "fork.knife")
+                                .font(.caption.weight(.semibold))
+                                .padding(.top, 8)
+                            Spacer(minLength: 0)
+                            if !dynamicTypeSize.isAccessibilitySize {
+                                blockLabel(block, font: .caption2)
+                                    .padding(.bottom, 6)
+                            }
+                        }
+                    } else if !dynamicTypeSize.isAccessibilitySize {
+                        blockLabel(block, font: .title2)
                     }
                 }
-                .padding(.bottom, 6)
                 .foregroundStyle(style.ink)
             }
+    }
+
+    private func blockLabel(_ block: ResolvedBlock, font: Font.TextStyle) -> some View {
+        Text(label(for: block))
+            .font(.system(font, design: .rounded, weight: .semibold))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .padding(.horizontal, 2)
     }
 
     private func label(for block: ResolvedBlock) -> String {
