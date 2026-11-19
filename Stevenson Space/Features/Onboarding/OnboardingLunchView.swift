@@ -28,8 +28,8 @@ struct OnboardingLunchView: View {
         OnboardingPage(revealing: answered) {
             OnboardingHeading(title: "When’s your lunch?")
 
-            LunchDayStrip(blocks: dayWithDraft, pref: model.config.timeFormat,
-                          hasLunch: placement != nil)
+            LunchDayStrip(blocks: dayWithDraft, borrowed: borrowedHalf,
+                          pref: model.config.timeFormat, hasLunch: placement != nil)
 
             periodPicker
 
@@ -245,18 +245,27 @@ struct OnboardingLunchView: View {
     }
 
     /// 4th through 6th period of the Standard day as they would run with the
-    /// draft, for the strip. Lunch can only fall there, so the rest of the day
-    /// is left out to give these periods the room.
+    /// draft, for the strip, along with a class next door running long into
+    /// one of them. Lunch can only fall there, so the rest of the day is left
+    /// out to give these periods the room.
     private var dayWithDraft: [ResolvedBlock] {
         var config = model.config
         config.setLunchPlacement(placement)
         let day = standardTemplate(config: config, catalog: model.catalog)
-        let lunchPeriods = day.filter {
+        let lunchPeriods = standardTemplate(config: UserConfig(), catalog: model.catalog).filter {
             $0.periodID.periodNumber.map(UserConfig.advisoryPeriods.contains) ?? false
         }
         guard let start = lunchPeriods.map(\.start).min(),
               let end = lunchPeriods.map(\.end).max() else { return day }
-        return day.filter { $0.start >= start && $0.end <= end }
+        return day.filter { $0.end > start && $0.start < end }
+    }
+
+    /// The half a class next door takes over in the draft by running long.
+    private var borrowedHalf: Range<Date>? {
+        guard let placement, placement.otherHalf == .neighborClass,
+              model.config.neighborClassCanFill(placement),
+              let half = remainingHalfTimes(placement) else { return nil }
+        return half.start..<half.end
     }
 
     /// When the half lunch leaves runs, on the Standard schedule.
@@ -282,14 +291,17 @@ struct OnboardingLunchView: View {
 
 /// The lunch periods of the Standard day as a strip of their blocks, each as
 /// wide as it is long, so a choice shows where lunch falls: the period fills,
-/// or splits into halves with lunch in one. Before a choice the periods are
-/// tinted.
+/// or splits into halves with lunch in one. A class next door that runs long
+/// into the other half slides in and stretches over it. Before a choice the
+/// periods are tinted.
 private struct LunchDayStrip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .caption2) private var height = 58.0
 
     let blocks: [ResolvedBlock]
+    /// The half a class next door takes over by running long, if one does.
+    let borrowed: Range<Date>?
     let pref: TimeFormatPref
     let hasLunch: Bool
 
@@ -306,13 +318,21 @@ private struct LunchDayStrip: View {
                     let total = blocks.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) }
                     let room = geometry.size.width - Self.spacing * CGFloat(blocks.count - 1)
                     HStack(spacing: Self.spacing) {
-                        ForEach(blocks) { block in
-                            segment(block)
-                                .frame(width: max(room * block.end.timeIntervalSince(block.start) / total, 0))
+                        // A class keeps its place as it grows into 1½ periods.
+                        ForEach(blocks, id: \.stripID) { block in
+                            let ownPart = ownPart(of: block)
+                            LunchStripSegment(
+                                label: label(for: block), isLunch: block.role == .lunch,
+                                style: style(for: block), ownPart: ownPart,
+                                showsLabel: !dynamicTypeSize.isAccessibilitySize)
+                            .frame(width: max(room * block.end.timeIntervalSince(block.start) / total, 0))
+                            .transition(ownPart.map { .move(edge: $0.edge == .leading ? .leading : .trailing) }
+                                        ?? .opacity)
                         }
                     }
                 }
                 .frame(height: height)
+                .clipped()
                 .animation(reduceMotion ? nil : .snappy(duration: 0.32), value: blocks)
 
                 HStack(alignment: .firstTextBaseline) {
@@ -335,41 +355,145 @@ private struct LunchDayStrip: View {
                 .minimumScaleFactor(0.8)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(lunch.map {
-                "4th to 6th period run \(TimeDisplay.range(first.start, last.end, pref)), with lunch \(TimeDisplay.range($0.start, $0.end, pref))"
-            } ?? "4th to 6th period run \(TimeDisplay.range(first.start, last.end, pref))")
+            .accessibilityLabel(accessibilityLabel(first: first, last: last))
         }
     }
 
-    private func segment(_ block: ResolvedBlock) -> some View {
-        let style = style(for: block)
-        return RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(style.fill)
-            .overlay {
-                Group {
-                    if block.role == .lunch {
-                        // Lunch is marked by the fork and knife, with its
-                        // number small beneath.
-                        VStack(spacing: 0) {
-                            Image(systemName: "fork.knife")
-                                .font(.caption.weight(.semibold))
-                                .padding(.top, 8)
-                            Spacer(minLength: 0)
-                            if !dynamicTypeSize.isAccessibilitySize {
-                                blockLabel(block, font: .caption2)
-                                    .padding(.bottom, 6)
-                            }
-                        }
-                    } else if !dynamicTypeSize.isAccessibilitySize {
-                        blockLabel(block, font: .title2)
-                    }
-                }
-                .foregroundStyle(style.ink)
-            }
+    private func accessibilityLabel(first: ResolvedBlock, last: ResolvedBlock) -> String {
+        let periods = [first, last].compactMap(\.periodID.periodNumber).map(PeriodID.ordinal)
+        let span = periods.count == 2 ? "\(periods[0]) to \(periods[1]) period" : "The middle of the day"
+        let times = TimeDisplay.range(first.start, last.end, pref)
+        guard let lunch else { return "\(span) run \(times)" }
+        return "\(span) run \(times), with lunch \(TimeDisplay.range(lunch.start, lunch.end, pref))"
     }
 
-    private func blockLabel(_ block: ResolvedBlock, font: Font.TextStyle) -> some View {
-        Text(label(for: block))
+    /// For the class that runs long into the borrowed half: how much of the
+    /// block is its own period, and which end that is on.
+    private func ownPart(of block: ResolvedBlock) -> LunchStripSegment.OwnPart? {
+        guard let borrowed, block.role == .classPeriod,
+              block.start <= borrowed.lowerBound, block.end >= borrowed.upperBound else { return nil }
+        let length = block.end.timeIntervalSince(block.start)
+        guard length > 0 else { return nil }
+        if block.start < borrowed.lowerBound {
+            return .init(share: borrowed.lowerBound.timeIntervalSince(block.start) / length, edge: .leading)
+        }
+        if block.end > borrowed.upperBound {
+            return .init(share: block.end.timeIntervalSince(borrowed.upperBound) / length, edge: .trailing)
+        }
+        return nil
+    }
+
+    private func label(for block: ResolvedBlock) -> String {
+        block.spanLabel ?? block.periodID.periodNumber.map(String.init) ?? ""
+    }
+
+    private func style(for block: ResolvedBlock) -> LunchStripSegment.Style {
+        switch block.role {
+        case .lunch:
+            return .init(fill: AnyShapeStyle(StevensonPalette.accent), ink: AnyShapeStyle(.white))
+        case .advisory:
+            let tint = ScheduleStyle.tint(for: .advisory)
+            return .init(fill: AnyShapeStyle(tint.opacity(0.2)), ink: AnyShapeStyle(tint))
+        case .free:
+            return .init(fill: AnyShapeStyle(Color.primary.opacity(0.05)), ink: AnyShapeStyle(.secondary))
+        default:
+            let period = block.periodID.periodNumber
+            if !hasLunch, let period, UserConfig.advisoryPeriods.contains(period) {
+                return .init(fill: AnyShapeStyle(StevensonPalette.accent.opacity(0.16)),
+                             ink: AnyShapeStyle(StevensonPalette.accent))
+            }
+            // The plate the tiles and cards sit on, so a class reads as one.
+            return .init(fill: AnyShapeStyle(Color(.secondarySystemGroupedBackground)),
+                         ink: AnyShapeStyle(.secondary))
+        }
+    }
+}
+
+/// One block of the lunch strip. Lunch is marked by the fork and knife with
+/// its number small beneath; any other block shows its number large. A class
+/// running long into the borrowed half arrives at its own period's length
+/// and then stretches over the half, with a dashed seam where its own period
+/// ends, so it reads as 1½ periods.
+private struct LunchStripSegment: View {
+    struct Style {
+        var fill: AnyShapeStyle
+        var ink: AnyShapeStyle
+    }
+
+    struct OwnPart {
+        /// The share of the block that is the class's own period.
+        var share: Double
+        /// The end of the block the class's own period is on.
+        var edge: HorizontalEdge
+    }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let label: String
+    let isLunch: Bool
+    let style: Style
+    let ownPart: OwnPart?
+    let showsLabel: Bool
+
+    /// Whether a class that arrived running long has stretched over the half
+    /// it borrows. One that was already in the strip simply grows with it.
+    @State private var stretched = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let ownShare = ownPart?.share ?? 1
+            let alignment: Alignment = ownPart?.edge == .trailing ? .trailing : .leading
+            ZStack(alignment: alignment) {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(style.fill)
+                    .frame(width: width * (stretched ? 1 : ownShare))
+                // The number stays over the class's own period, clear of the seam.
+                content
+                    .frame(width: width * ownShare)
+                    .frame(maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+            .overlay {
+                if let ownPart, stretched {
+                    seam(at: ownPart.edge == .leading ? width * ownPart.share
+                                                      : width * (1 - ownPart.share),
+                         height: geometry.size.height)
+                }
+            }
+        }
+        .onAppear {
+            guard !stretched else { return }
+            guard ownPart != nil, !reduceMotion else {
+                stretched = true
+                return
+            }
+            withAnimation(.snappy(duration: 0.5).delay(0.3)) { stretched = true }
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        Group {
+            if isLunch {
+                VStack(spacing: 0) {
+                    Image(systemName: "fork.knife")
+                        .font(.caption.weight(.semibold))
+                        .padding(.top, 8)
+                    Spacer(minLength: 0)
+                    if showsLabel {
+                        labelText(.caption2)
+                            .padding(.bottom, 6)
+                    }
+                }
+            } else if showsLabel {
+                labelText(.title2)
+            }
+        }
+        .foregroundStyle(style.ink)
+    }
+
+    private func labelText(_ font: Font.TextStyle) -> some View {
+        Text(label)
             .font(.system(font, design: .rounded, weight: .semibold))
             .monospacedDigit()
             .lineLimit(1)
@@ -377,27 +501,22 @@ private struct LunchDayStrip: View {
             .padding(.horizontal, 2)
     }
 
-    private func label(for block: ResolvedBlock) -> String {
-        block.spanLabel ?? block.periodID.periodNumber.map(String.init) ?? ""
-    }
-
-    private func style(for block: ResolvedBlock) -> (fill: AnyShapeStyle, ink: AnyShapeStyle) {
-        switch block.role {
-        case .lunch:
-            return (AnyShapeStyle(StevensonPalette.accent), AnyShapeStyle(.white))
-        case .advisory:
-            let tint = ScheduleStyle.tint(for: .advisory)
-            return (AnyShapeStyle(tint.opacity(0.2)), AnyShapeStyle(tint))
-        case .free:
-            return (AnyShapeStyle(Color.primary.opacity(0.05)), AnyShapeStyle(.secondary))
-        default:
-            let period = block.periodID.periodNumber
-            if !hasLunch, let period, UserConfig.advisoryPeriods.contains(period) {
-                return (AnyShapeStyle(StevensonPalette.accent.opacity(0.16)),
-                        AnyShapeStyle(StevensonPalette.accent))
-            }
-            // The plate the tiles and cards sit on, so a class reads as one.
-            return (AnyShapeStyle(Color(.secondarySystemGroupedBackground)), AnyShapeStyle(.secondary))
+    /// Where the class's own period ends and the borrowed half begins.
+    private func seam(at x: CGFloat, height: CGFloat) -> some View {
+        Path { path in
+            path.move(to: CGPoint(x: x, y: 8))
+            path.addLine(to: CGPoint(x: x, y: height - 8))
         }
+        .stroke(style.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 4]))
+        .opacity(0.5)
+        .transition(.opacity)
+    }
+}
+
+private extension ResolvedBlock {
+    /// A class is keyed by its period, so it keeps its place in the strip
+    /// as it grows into a 1½-period block. Anything else by its own id.
+    var stripID: String {
+        role == .classPeriod ? periodID.storageKey : id
     }
 }
