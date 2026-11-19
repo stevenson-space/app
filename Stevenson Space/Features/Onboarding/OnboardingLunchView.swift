@@ -244,11 +244,19 @@ struct OnboardingLunchView: View {
         if let question { answered = question }
     }
 
-    /// The Standard day as it would run with the draft, for the strip.
+    /// 4th through 6th period of the Standard day as they would run with the
+    /// draft, for the strip. Lunch can only fall there, so the rest of the day
+    /// is left out to give these periods the room.
     private var dayWithDraft: [ResolvedBlock] {
         var config = model.config
         config.setLunchPlacement(placement)
-        return standardTemplate(config: config, catalog: model.catalog)
+        let day = standardTemplate(config: config, catalog: model.catalog)
+        let lunchPeriods = day.filter {
+            $0.periodID.periodNumber.map(UserConfig.advisoryPeriods.contains) ?? false
+        }
+        guard let start = lunchPeriods.map(\.start).min(),
+              let end = lunchPeriods.map(\.end).max() else { return day }
+        return day.filter { $0.start >= start && $0.end <= end }
     }
 
     /// When the half lunch leaves runs, on the Standard schedule.
@@ -272,10 +280,10 @@ struct OnboardingLunchView: View {
     }
 }
 
-/// The Standard day as a strip of its blocks, each as wide as it is long, so
-/// a choice shows where lunch falls in the day: the period fills, or splits
-/// into halves with lunch in one. Before a choice the periods lunch can be in
-/// are tinted.
+/// The lunch periods of the Standard day as a strip of their blocks, each as
+/// wide as it is long, so a choice shows where lunch falls: the period fills,
+/// or splits into halves with lunch in one. Before a choice the periods are
+/// tinted.
 private struct LunchDayStrip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -328,8 +336,8 @@ private struct LunchDayStrip: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(lunch.map {
-                "Your day runs \(TimeDisplay.range(first.start, last.end, pref)), with lunch \(TimeDisplay.range($0.start, $0.end, pref))"
-            } ?? "Your day runs \(TimeDisplay.range(first.start, last.end, pref))")
+                "4th to 6th period run \(TimeDisplay.range(first.start, last.end, pref)), with lunch \(TimeDisplay.range($0.start, $0.end, pref))"
+            } ?? "4th to 6th period run \(TimeDisplay.range(first.start, last.end, pref))")
         }
     }
 
