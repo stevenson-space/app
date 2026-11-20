@@ -13,6 +13,7 @@ struct StudentIDView: View {
     @State private var pickedItem: PhotosPickerItem?
     @State private var stage: StudentIDImportStage?
     @State private var importID: UUID?
+    @State private var confirmingRemoval = false
     @State private var removeFailed = false
     /// Set when the student asks for a different screenshot: the picker can only
     /// be presented once the import sheet has actually gone away.
@@ -21,7 +22,6 @@ struct StudentIDView: View {
     @State private var scanRequests = 0
     @State private var photoToggles = 0
     @State private var saves = 0
-    @State private var removals = 0
 
     var body: some View {
         NavigationStack {
@@ -59,12 +59,7 @@ struct StudentIDView: View {
                                 Label("Replace Screenshot", systemImage: "photo.badge.arrow.down")
                             }
                             Button(role: .destructive) {
-                                do {
-                                    try model.removeStudentID()
-                                    removals += 1
-                                } catch {
-                                    removeFailed = true
-                                }
+                                confirmingRemoval = true
                             } label: {
                                 Label("Remove ID", systemImage: "trash")
                             }
@@ -88,10 +83,19 @@ struct StudentIDView: View {
         // Here, not in the import sheet: a quick failure can land while the
         // photo picker is still closing, before the sheet exists to notice it.
         .sensoryFeedback(.error, trigger: importFailed) { _, failed in failed }
-        // Removing deletes the card and photo outright, so it gets the
-        // sharper warning pattern instead of the everyday taps.
-        .sensoryFeedback(.warning, trigger: removals)
+        // The warning plays while the student can still cancel; the card
+        // disappearing is the cue that removal happened.
+        .sensoryFeedback(.warning, trigger: confirmingRemoval) { _, isAsking in isAsking }
         .sensoryFeedback(.error, trigger: removeFailed) { _, failed in failed }
+        .alert("Remove your ID?", isPresented: $confirmingRemoval) {
+            Button("Remove", role: .destructive) {
+                do { try model.removeStudentID() }
+                catch { removeFailed = true }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This deletes your ID card and photo from this phone. You can import your Student Profile screenshot again later.")
+        }
         .alert("Could not remove your ID", isPresented: $removeFailed) {
             Button("OK", role: .cancel) { }
         } message: {

@@ -15,7 +15,6 @@ struct OverrideEditorView: View {
     @State private var rotation: EDRotation = .rotation1
     @State private var initialized = false
     @State private var saves = 0
-    @State private var removals = 0
 
     enum Choice: String, CaseIterable, Identifiable {
         case standard, lateArrival, odyssey, activityPeriod, pmAssembly
@@ -115,7 +114,6 @@ struct OverrideEditorView: View {
                 if model.overrides.contains(where: { $0.day == selectedDay }) {
                     Button("Remove Override for This Date", role: .destructive) {
                         model.removeOverride(day: selectedDay)
-                        removals += 1
                         dismiss()
                     }
                 }
@@ -123,7 +121,6 @@ struct OverrideEditorView: View {
         }
         .navigationTitle("Schedule Override")
         .sensoryFeedback(.success, trigger: saves)
-        .sensoryFeedback(.warning, trigger: removals)
         .onAppear {
             guard !initialized else { return }
             initialized = true

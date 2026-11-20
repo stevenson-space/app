@@ -8,7 +8,6 @@ struct PeriodEditorListView: View {
     @Environment(AppModel.self) private var model
     @State private var editing: EditorTarget?
     @State private var confirmingReset = false
-    @State private var resets = 0
 
     var body: some View {
         let config = model.config
@@ -42,9 +41,9 @@ struct PeriodEditorListView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("My Schedule")
-        // Resetting wipes the whole schedule, so it gets the sharper warning
-        // pattern instead of the everyday taps.
-        .sensoryFeedback(.warning, trigger: resets)
+        // Resetting wipes the whole schedule, so the prompt plays a warning
+        // while the student can still cancel.
+        .sensoryFeedback(.warning, trigger: confirmingReset) { _, isAsking in isAsking }
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
                 .id(target.id)
@@ -53,7 +52,6 @@ struct PeriodEditorListView: View {
         .alert("Reset your schedule?", isPresented: $confirmingReset) {
             Button("Reset", role: .destructive) {
                 model.updateConfig { $0.resetSchedule() }
-                resets += 1
             }
             Button("Cancel", role: .cancel) { }
         } message: {
