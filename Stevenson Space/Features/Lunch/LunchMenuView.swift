@@ -5,6 +5,9 @@ struct LunchMenuView: View {
     @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
     @State private var selectedDay: DayKey?
+    /// Bumped only when a tap here moves the day, so the midnight rollover and
+    /// the Lunch tab's return to today stay silent.
+    @State private var dayChanges = 0
 
     /// Observed, unlike `model.today` (a clock read), so the week strip and
     /// the preferred day roll over at midnight while the tab stays open.
@@ -41,7 +44,7 @@ struct LunchMenuView: View {
                             selectedDay: day,
                             today: today,
                             hasMenu: { model.lunchMenu(for: $0) != nil },
-                            select: { selectedDay = $0 },
+                            select: { choose($0) },
                             moveWeek: moveWeek)
                     }
 
@@ -52,6 +55,7 @@ struct LunchMenuView: View {
                 .padding(.bottom, 28)
             }
             .background(Color(.systemGroupedBackground))
+            .sensoryFeedback(.selection, trigger: dayChanges)
             .navigationTitle("Lunch")
             .onChange(of: navigation.lunchTodayRequest, initial: true) {
                 guard navigation.lunchTodayRequest > 0 else { return }
@@ -64,7 +68,7 @@ struct LunchMenuView: View {
                 if day != preferredDay {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(preferredDay == today ? "Today" : "Next Lunch") {
-                            selectedDay = nil
+                            choose(nil)
                         }
                     }
                 }
@@ -117,7 +121,14 @@ struct LunchMenuView: View {
     private func moveWeek(_ offset: Int) {
         let targetWeek = weekStart.advanced(by: offset * 7)
         let preferredWeekday = min(max((day.weekday() ?? 2) - 2, 0), 4)
-        selectedDay = targetWeek.advanced(by: preferredWeekday)
+        choose(targetWeek.advanced(by: preferredWeekday))
+    }
+
+    /// `nil` goes back to the preferred day.
+    private func choose(_ newDay: DayKey?) {
+        let oldDay = day
+        selectedDay = newDay
+        if day != oldDay { dayChanges += 1 }
     }
 }
 
