@@ -8,6 +8,7 @@ struct PeriodEditorListView: View {
     @Environment(AppModel.self) private var model
     @State private var editing: EditorTarget?
     @State private var confirmingReset = false
+    @State private var resets = 0
 
     var body: some View {
         let config = model.config
@@ -41,6 +42,9 @@ struct PeriodEditorListView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("My Schedule")
+        // Resetting wipes the whole schedule, so it gets the sharper warning
+        // pattern instead of the everyday taps.
+        .sensoryFeedback(.warning, trigger: resets)
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
                 .id(target.id)
@@ -49,6 +53,7 @@ struct PeriodEditorListView: View {
         .alert("Reset your schedule?", isPresented: $confirmingReset) {
             Button("Reset", role: .destructive) {
                 model.updateConfig { $0.resetSchedule() }
+                resets += 1
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -134,6 +139,7 @@ struct BlockEditSheet: View {
     @State private var emoji = ""
     @State private var showingEmojiPicker = false
     @State private var loaded = false
+    @State private var kindChanges = 0
     @FocusState private var nameFocused: Bool
 
     private var number: Int { target.period }
@@ -228,12 +234,14 @@ struct BlockEditSheet: View {
                             config.setPlan(PeriodPlan(a: .free, b: .free), for: number)
                         }
                     }
+                    kindChanges += 1
                 })) {
                 Text("Class").tag(CardKind.classwork)
                 Text("Lunch").tag(CardKind.lunch)
                 Text("Free").tag(CardKind.free)
             }
             .pickerStyle(.segmented)
+            .sensoryFeedback(.selection, trigger: kindChanges)
         }
     }
 
