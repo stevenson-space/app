@@ -58,7 +58,7 @@ struct HomeDayPicker: View {
         }
         .tint(StevensonPalette.accent)
         .sensoryFeedback(.selection, trigger: dayChanges)
-        .sensoryFeedback(.impact(weight: .light), trigger: showsCalendar) { _, isShowing in isShowing }
+        .sensoryFeedback(.impact(weight: .medium), trigger: showsCalendar) { _, isShowing in isShowing }
         .sheet(isPresented: $showsCalendar) {
             NavigationStack {
                 ScrollView {

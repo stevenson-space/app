@@ -82,7 +82,7 @@ struct StudentIDView: View {
                                  onSave: save,
                                  onChooseAnother: chooseAnother)
         }
-        .sensoryFeedback(.impact(weight: .medium), trigger: scanRequests)
+        .sensoryFeedback(.impact(weight: .heavy), trigger: scanRequests)
         .sensoryFeedback(.selection, trigger: photoToggles)
         .sensoryFeedback(.success, trigger: saves)
         // Removing deletes the card and photo outright, so it gets the
