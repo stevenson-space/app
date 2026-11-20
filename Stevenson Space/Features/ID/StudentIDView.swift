@@ -17,6 +17,11 @@ struct StudentIDView: View {
     /// Set when the student asks for a different screenshot: the picker can only
     /// be presented once the import sheet has actually gone away.
     @State private var picksAgainOnDismiss = false
+    /// Haptic triggers, bumped only by the student's own taps and saves.
+    @State private var scanRequests = 0
+    @State private var photoToggles = 0
+    @State private var saves = 0
+    @State private var removals = 0
 
     var body: some View {
         NavigationStack {
@@ -41,7 +46,10 @@ struct StudentIDView: View {
                             if model.studentIDPhoto != nil {
                                 Toggle(isOn: Binding(
                                     get: { model.studentIDPhotoHidden },
-                                    set: { model.setStudentIDPhotoHidden($0) })) {
+                                    set: {
+                                        model.setStudentIDPhotoHidden($0)
+                                        photoToggles += 1
+                                    })) {
                                     Label("Hide ID Photo", systemImage: "eye.slash")
                                 }
                             }
@@ -51,8 +59,12 @@ struct StudentIDView: View {
                                 Label("Replace Screenshot", systemImage: "photo.badge.arrow.down")
                             }
                             Button(role: .destructive) {
-                                do { try model.removeStudentID() }
-                                catch { removeFailed = true }
+                                do {
+                                    try model.removeStudentID()
+                                    removals += 1
+                                } catch {
+                                    removeFailed = true
+                                }
                             } label: {
                                 Label("Remove ID", systemImage: "trash")
                             }
@@ -70,6 +82,13 @@ struct StudentIDView: View {
                                  onSave: save,
                                  onChooseAnother: chooseAnother)
         }
+        .sensoryFeedback(.impact(weight: .medium), trigger: scanRequests)
+        .sensoryFeedback(.selection, trigger: photoToggles)
+        .sensoryFeedback(.success, trigger: saves)
+        // Removing deletes the card and photo outright, so it gets the
+        // sharper warning pattern instead of the everyday taps.
+        .sensoryFeedback(.warning, trigger: removals)
+        .sensoryFeedback(.error, trigger: removeFailed) { _, failed in failed }
         .alert("Could not remove your ID", isPresented: $removeFailed) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -82,13 +101,11 @@ struct StudentIDView: View {
     private func savedCard(_ card: StudentIDCard) -> some View {
         VStack(spacing: 18) {
             StudentIDCardView(content: .card(card, photo: model.studentIDPhotoHidden ? nil : model.studentIDPhoto))
-                .onTapGesture { navigation.isStudentIDScanning = true }
+                .onTapGesture(perform: showForScanning)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Opens the barcode full screen for scanning")
 
-            Button {
-                navigation.isStudentIDScanning = true
-            } label: {
+            Button(action: showForScanning) {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -107,6 +124,11 @@ struct StudentIDView: View {
                     .frame(maxWidth: .infinity)
             }
         }
+    }
+
+    private func showForScanning() {
+        navigation.isStudentIDScanning = true
+        scanRequests += 1
     }
 
     // MARK: - Empty
@@ -223,6 +245,7 @@ struct StudentIDView: View {
 
     private func save(_ extraction: StudentIDExtraction) throws {
         try model.saveStudentID(extraction)
+        saves += 1
         dismissImport()
     }
 

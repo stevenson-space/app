@@ -50,12 +50,19 @@ struct StudentIDImportSheet: View {
                     }
                 }
             }
+            .sensoryFeedback(.error, trigger: isFailed) { _, failed in failed }
+            .sensoryFeedback(.error, trigger: saveFailed) { _, failed in failed }
             .alert("Could not save your ID", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text("Your ID could not be stored on this phone. Check the available storage and try saving again.")
             }
         }
+    }
+
+    private var isFailed: Bool {
+        if case .failed = stage { return true }
+        return false
     }
 
     // MARK: - Stages
