@@ -41,6 +41,7 @@ public final class SharedStore: @unchecked Sendable {
         static let privateSuiteMigrated = "sk.privateSuiteMigrated"
         static let migrated = "sk.migratedToAppGroup"
         static let mapURLRetired = "sk.mapURLRetired"
+        static let onboardingCompleted = "sk.onboardingCompleted"
         static let all = [userConfig, overrides, mapData, fetchMetadata,
                           notificationPrefs, mapURL, lunchMenuData,
                           lunchFetchMetadata, studentIDPhotoHidden]
@@ -415,6 +416,38 @@ public final class SharedStore: @unchecked Sendable {
 
     public func resetMapURL() {
         defaults.removeObject(forKey: Keys.mapURL)
+    }
+
+    // MARK: - First-run onboarding
+
+    /// Whether this install still owes the student its first-run onboarding.
+    ///
+    /// Decided the first time it is asked, and stored either way. An install
+    /// that already holds anything an earlier launch wrote belongs to someone
+    /// who used the app before onboarding existed, and never sees it: every
+    /// launch records at least a sync attempt. A new install is marked as
+    /// waiting at once, so the sync that follows its first launch can't make it
+    /// look like an old one on the next.
+    ///
+    /// Ask only once protected data is available. A launch before first unlock
+    /// reads every key as missing, which is exactly what a new install looks like.
+    public func needsOnboarding() -> Bool {
+        if let recorded = recordedOnboardingNeed { return recorded }
+        let hasBeenUsed = Keys.all.contains { defaults.object(forKey: $0) != nil }
+        defaults.set(hasBeenUsed, forKey: Keys.onboardingCompleted)
+        return !hasBeenUsed
+    }
+
+    /// The answer `needsOnboarding()` has already stored, or nil while it has
+    /// stored none. Reading it decides nothing, so it is safe at any point in
+    /// a launch: before protected data can be read it finds no answer, never
+    /// a wrong one.
+    public var recordedOnboardingNeed: Bool? {
+        (defaults.object(forKey: Keys.onboardingCompleted) as? Bool).map { !$0 }
+    }
+
+    public func completeOnboarding() {
+        defaults.set(true, forKey: Keys.onboardingCompleted)
     }
 
     // MARK: - Codable plumbing
