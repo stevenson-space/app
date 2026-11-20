@@ -85,6 +85,9 @@ struct StudentIDView: View {
         .sensoryFeedback(.impact(weight: .heavy), trigger: scanRequests)
         .sensoryFeedback(.selection, trigger: photoToggles)
         .sensoryFeedback(.success, trigger: saves)
+        // Here, not in the import sheet: a quick failure can land while the
+        // photo picker is still closing, before the sheet exists to notice it.
+        .sensoryFeedback(.error, trigger: importFailed) { _, failed in failed }
         // Removing deletes the card and photo outright, so it gets the
         // sharper warning pattern instead of the everyday taps.
         .sensoryFeedback(.warning, trigger: removals)
@@ -197,6 +200,11 @@ struct StudentIDView: View {
 
     private var isImporting: Binding<Bool> {
         Binding(get: { stage != nil }, set: { if !$0 { dismissImport() } })
+    }
+
+    private var importFailed: Bool {
+        if case .failed = stage { return true }
+        return false
     }
 
     private func beginImport() -> UUID {
