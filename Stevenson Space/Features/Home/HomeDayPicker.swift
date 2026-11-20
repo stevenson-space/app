@@ -6,6 +6,9 @@ struct HomeDayPicker: View {
     let today: DayKey
     let select: (DayKey) -> Void
     @State private var showsCalendar = false
+    /// Bumped only when a tap here moves the day, so the midnight rollover and
+    /// the Home tab's return to today stay silent.
+    @State private var dayChanges = 0
 
     private var dateRange: ClosedRange<Date> {
         let start = SchoolYearCatalog.years.first?.firstDay.date() ?? Date()
@@ -46,7 +49,7 @@ struct HomeDayPicker: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Today") { select(today) }
+                    Button("Today") { choose(today) }
                         .font(.subheadline.weight(.semibold))
                         .frame(minHeight: 44)
                         .accessibilityLabel("Return to today's schedule")
@@ -54,6 +57,8 @@ struct HomeDayPicker: View {
             }
         }
         .tint(StevensonPalette.accent)
+        .sensoryFeedback(.selection, trigger: dayChanges)
+        .sensoryFeedback(.impact(weight: .light), trigger: showsCalendar) { _, isShowing in isShowing }
         .sheet(isPresented: $showsCalendar) {
             NavigationStack {
                 ScrollView {
@@ -62,7 +67,7 @@ struct HomeDayPicker: View {
                             let date = day.date() ?? today.date() ?? Date()
                             return min(max(date, dateRange.lowerBound), dateRange.upperBound)
                         },
-                        set: { select(DayKey(date: $0)) }),
+                        set: { choose(DayKey(date: $0)) }),
                                in: dateRange, displayedComponents: .date)
                         .datePickerStyle(.graphical)
                         .padding()
@@ -102,9 +107,14 @@ struct HomeDayPicker: View {
         return date.formatted(format)
     }
 
+    private func choose(_ newDay: DayKey) {
+        if newDay != day { dayChanges += 1 }
+        select(newDay)
+    }
+
     private func navigationButton(_ title: String, icon: String, offset: Int) -> some View {
         Button {
-            select(day.advanced(by: offset))
+            choose(day.advanced(by: offset))
         } label: {
             Image(systemName: icon)
                 .font(.headline)
