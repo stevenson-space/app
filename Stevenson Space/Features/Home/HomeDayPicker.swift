@@ -4,6 +4,12 @@ import ScheduleKit
 /// Home's day picker, as native toolbar items: the date (tap for a calendar of
 /// any day the catalog knows), a way back to today, and previous and next.
 struct HomeDayToolbar: ToolbarContent {
+    /// The widest title, Today and both arrows only just fit a 375-pt phone at
+    /// the default text size; any larger and the system folds the arrows into
+    /// a "More" menu. So these stop growing there, like standard bar buttons,
+    /// and larger sizes read them through the Large Content Viewer.
+    private static let largestTextSize = DynamicTypeSize.large
+
     let day: DayKey
     let today: DayKey
     let select: (DayKey) -> Void
@@ -22,6 +28,7 @@ struct HomeDayToolbar: ToolbarContent {
                         .opacity(0.7)
                 }
                 .fixedSize()
+                .dynamicTypeSize(...Self.largestTextSize)
             }
             .accessibilityLabel("Choose schedule date, \(HomeDayPicker.dateLabel(for: day))")
             .accessibilityHint("Opens the calendar")
@@ -30,12 +37,8 @@ struct HomeDayToolbar: ToolbarContent {
         if day != today {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Today") { select(today) }
+                    .dynamicTypeSize(...Self.largestTextSize)
                     .accessibilityLabel("Return to today's schedule")
-            }
-            // Its own glass, so the arrows' capsule doesn't stretch and slide
-            // whenever Today comes and goes.
-            if #available(iOS 26, *) {
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
         }
 
