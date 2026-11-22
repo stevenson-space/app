@@ -16,6 +16,9 @@ struct HomeView: View {
     @State private var compactHeaderHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .top)
     @State private var showsCalendar = false
+    /// Bumped only when a tap moves the day, so the midnight rollover and
+    /// the Home tab's return to today stay silent.
+    @State private var dayChanges = 0
 
     private var today: DayKey { model.todayTimeline.day }
     private var day: DayKey { selectedDay ?? today }
@@ -124,6 +127,7 @@ struct HomeView: View {
                 // The bell: a live change between the field and the gold side.
                 isToday && old != .lining && new != .lining
             }
+            .sensoryFeedback(.selection, trigger: dayChanges)
             .toolbar {
                 HomeDayToolbar(day: day, today: today, select: selectDay, showsCalendar: $showsCalendar)
             }
@@ -154,8 +158,10 @@ struct HomeView: View {
         }
     }
 
-    private func selectDay(_ day: DayKey) {
-        selectedDay = day == today ? nil : day
+    /// The day toolbar and the calendar sheet both land here.
+    private func selectDay(_ newDay: DayKey) {
+        if newDay != day { dayChanges += 1 }
+        selectedDay = newDay == today ? nil : newDay
     }
 
     private func settleScroll(at offset: CGFloat) {

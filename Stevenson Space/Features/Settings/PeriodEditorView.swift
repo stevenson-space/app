@@ -55,6 +55,9 @@ struct PeriodEditorListView: View {
         .background(Jacket.lining)
         .environment(\.jacketGround, .lining)
         .navigationTitle("My Schedule")
+        // Resetting wipes the whole schedule, so the prompt plays a warning
+        // while the student can still cancel.
+        .sensoryFeedback(.warning, trigger: confirmingReset) { _, isAsking in isAsking }
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
                 .id(target.id)
@@ -143,6 +146,7 @@ struct BlockEditSheet: View {
     @State private var emoji = ""
     @State private var showingEmojiPicker = false
     @State private var loaded = false
+    @State private var kindChanges = 0
     @FocusState private var nameFocused: Bool
 
     private var number: Int { target.period }
@@ -241,12 +245,14 @@ struct BlockEditSheet: View {
                             config.setPlan(PeriodPlan(a: .free, b: .free), for: number)
                         }
                     }
+                    kindChanges += 1
                 })) {
                 Text("Class").tag(CardKind.classwork)
                 Text("Lunch").tag(CardKind.lunch)
                 Text("Free").tag(CardKind.free)
             }
             .pickerStyle(.segmented)
+            .sensoryFeedback(.selection, trigger: kindChanges)
         }
     }
 

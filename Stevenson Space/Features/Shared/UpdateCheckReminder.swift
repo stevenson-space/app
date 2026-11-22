@@ -37,6 +37,8 @@ struct UpdateCheckSection<Content: View>: View {
                 }
             }
         }
+        // Only the student's own check sets this, so automatic syncs stay silent.
+        .sensoryFeedback(.error, trigger: didManualCheckFail) { _, failed in failed }
         .task(id: OverdueTimerID(metadata: metadata, clockChanges: clockChanges)) {
             // Task.sleep doesn't follow wall-clock changes, so an early wakeup
             // re-checks and sleeps again until the deadline is reached.

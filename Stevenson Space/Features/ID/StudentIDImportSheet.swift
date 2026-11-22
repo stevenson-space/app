@@ -52,6 +52,7 @@ struct StudentIDImportSheet: View {
                     }
                 }
             }
+            .sensoryFeedback(.error, trigger: saveFailed) { _, failed in failed }
             .alert("Could not save your ID", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
