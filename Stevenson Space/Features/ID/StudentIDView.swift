@@ -13,10 +13,15 @@ struct StudentIDView: View {
     @State private var pickedItem: PhotosPickerItem?
     @State private var stage: StudentIDImportStage?
     @State private var importID: UUID?
+    @State private var confirmingRemoval = false
     @State private var removeFailed = false
     /// Set when the student asks for a different screenshot: the picker can only
     /// be presented once the import sheet has actually gone away.
     @State private var picksAgainOnDismiss = false
+    /// Haptic triggers, bumped only by the student's own taps and saves.
+    @State private var scanRequests = 0
+    @State private var photoToggles = 0
+    @State private var saves = 0
 
     var body: some View {
         NavigationStack {
@@ -41,7 +46,10 @@ struct StudentIDView: View {
                             if model.studentIDPhoto != nil {
                                 Toggle(isOn: Binding(
                                     get: { model.studentIDPhotoHidden },
-                                    set: { model.setStudentIDPhotoHidden($0) })) {
+                                    set: {
+                                        model.setStudentIDPhotoHidden($0)
+                                        photoToggles += 1
+                                    })) {
                                     Label("Hide ID Photo", systemImage: "eye.slash")
                                 }
                             }
@@ -51,8 +59,7 @@ struct StudentIDView: View {
                                 Label("Replace Screenshot", systemImage: "photo.badge.arrow.down")
                             }
                             Button(role: .destructive) {
-                                do { try model.removeStudentID() }
-                                catch { removeFailed = true }
+                                confirmingRemoval = true
                             } label: {
                                 Label("Remove ID", systemImage: "trash")
                             }
@@ -70,6 +77,25 @@ struct StudentIDView: View {
                                  onSave: save,
                                  onChooseAnother: chooseAnother)
         }
+        .sensoryFeedback(.impact(weight: .heavy), trigger: scanRequests)
+        .sensoryFeedback(.selection, trigger: photoToggles)
+        .sensoryFeedback(.success, trigger: saves)
+        // Here, not in the import sheet: a quick failure can land while the
+        // photo picker is still closing, before the sheet exists to notice it.
+        .sensoryFeedback(.error, trigger: importFailed) { _, failed in failed }
+        // The warning plays while the student can still cancel; the card
+        // disappearing is the cue that removal happened.
+        .sensoryFeedback(.warning, trigger: confirmingRemoval) { _, isAsking in isAsking }
+        .sensoryFeedback(.error, trigger: removeFailed) { _, failed in failed }
+        .alert("Remove your ID?", isPresented: $confirmingRemoval) {
+            Button("Remove", role: .destructive) {
+                do { try model.removeStudentID() }
+                catch { removeFailed = true }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This deletes your ID card and photo from this phone. You can import your Student Profile screenshot again later.")
+        }
         .alert("Could not remove your ID", isPresented: $removeFailed) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -82,13 +108,11 @@ struct StudentIDView: View {
     private func savedCard(_ card: StudentIDCard) -> some View {
         VStack(spacing: 18) {
             StudentIDCardView(content: .card(card, photo: model.studentIDPhotoHidden ? nil : model.studentIDPhoto))
-                .onTapGesture { navigation.isStudentIDScanning = true }
+                .onTapGesture(perform: showForScanning)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Opens the barcode full screen for scanning")
 
-            Button {
-                navigation.isStudentIDScanning = true
-            } label: {
+            Button(action: showForScanning) {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -107,6 +131,11 @@ struct StudentIDView: View {
                     .frame(maxWidth: .infinity)
             }
         }
+    }
+
+    private func showForScanning() {
+        navigation.isStudentIDScanning = true
+        scanRequests += 1
     }
 
     // MARK: - Empty
@@ -177,6 +206,11 @@ struct StudentIDView: View {
         Binding(get: { stage != nil }, set: { if !$0 { dismissImport() } })
     }
 
+    private var importFailed: Bool {
+        if case .failed = stage { return true }
+        return false
+    }
+
     private func beginImport() -> UUID {
         let id = UUID()
         importID = id
@@ -223,6 +257,7 @@ struct StudentIDView: View {
 
     private func save(_ extraction: StudentIDExtraction) throws {
         try model.saveStudentID(extraction)
+        saves += 1
         dismissImport()
     }
 
