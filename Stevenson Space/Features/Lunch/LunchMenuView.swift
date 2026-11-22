@@ -8,6 +8,8 @@ struct LunchMenuView: View {
     /// Bumped only when a tap here moves the day, so the midnight rollover and
     /// the Lunch tab's return to today stay silent.
     @State private var dayChanges = 0
+    /// Set only by the Try Again button, so automatic syncs stay silent.
+    @State private var didRetryFail = false
 
     /// Observed, unlike `model.today` (a clock read), so the week strip and
     /// the preferred day roll over at midnight while the tab stays open.
@@ -56,6 +58,9 @@ struct LunchMenuView: View {
             }
             .background(Color(.systemGroupedBackground))
             .sensoryFeedback(.selection, trigger: dayChanges)
+            // Here, not on the empty state: it gives way to a spinner while
+            // the retry runs, so it can't be the view that notices the result.
+            .sensoryFeedback(.error, trigger: didRetryFail) { _, failed in failed }
             .navigationTitle("Lunch")
             .onChange(of: navigation.lunchTodayRequest, initial: true) {
                 guard navigation.lunchTodayRequest > 0 else { return }
@@ -104,7 +109,12 @@ struct LunchMenuView: View {
                     Text("The lunch menu could not be downloaded. Check your connection and try again.")
                 } actions: {
                     Button("Try Again") {
-                        Task { await model.syncLunch(force: true) }
+                        didRetryFail = false
+                        Task {
+                            await model.syncLunch(force: true)
+                            // Still no menu means the student is back on this screen.
+                            didRetryFail = model.lunchMenu == nil
+                        }
                     }
                 }
                 .frame(minHeight: 320)
