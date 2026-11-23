@@ -15,10 +15,7 @@ enum StevensonPalette {
 
     /// The interactive green used for selection and controls, which does have to
     /// adapt: the light value is dark enough to carry white text, the dark value
-    /// light enough to read against a dark background.
-    static let accent = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.24, green: 0.59, blue: 0.33, alpha: 1)
-            : UIColor(red: 0.09, green: 0.48, blue: 0.21, alpha: 1)
-    })
+    /// light enough to read against a dark background. Both live in the
+    /// AccentColor asset, which also tints the app's native controls.
+    static let accent = Color.accentColor
 }

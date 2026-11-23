@@ -117,7 +117,6 @@ struct HomeView: View {
             }
             #endif
         }
-        .tint(StevensonPalette.accent)
         .sensoryFeedback(.selection, trigger: dayChanges)
         .onChange(of: navigation.homeTodayRequest) { _, _ in
             selectedDay = nil

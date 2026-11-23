@@ -89,7 +89,6 @@ struct HomeDayPicker: View {
         }
         .environment(\.calendar, SchoolTime.calendar)
         .environment(\.timeZone, SchoolTime.timeZone)
-        .tint(StevensonPalette.accent)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

@@ -134,7 +134,6 @@ struct UpdateCheckReminder: View {
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: 12))
-            .tint(StevensonPalette.accent)
             .disabled(isChecking)
         }
         .padding(16)

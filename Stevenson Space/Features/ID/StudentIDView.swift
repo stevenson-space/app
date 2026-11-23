@@ -119,7 +119,6 @@ struct StudentIDView: View {
                     .padding(.vertical, 6)
             }
             .buttonStyle(.borderedProminent)
-            .tint(StevensonPalette.accent)
 
             if model.studentIDIsFromAnEarlierSchoolYear, let year = card.schoolYearLabel {
                 Label("This ID was imported for the \(year) school year. "
@@ -175,7 +174,6 @@ struct StudentIDView: View {
                     .padding(.vertical, 6)
             }
             .buttonStyle(.borderedProminent)
-            .tint(StevensonPalette.accent)
 
             Text("Your ID is processed on this device and isn’t uploaded to us.")
                 .font(.caption)
