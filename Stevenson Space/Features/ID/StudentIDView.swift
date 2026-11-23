@@ -115,6 +115,7 @@ struct StudentIDView: View {
             Button(action: showForScanning) {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
                     .font(.headline)
+                    .foregroundStyle(StevensonPalette.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
             }
@@ -170,6 +171,7 @@ struct StudentIDView: View {
             } label: {
                 Label("Choose Screenshot", systemImage: "photo.on.rectangle")
                     .font(.headline)
+                    .foregroundStyle(StevensonPalette.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
             }
@@ -187,7 +189,7 @@ struct StudentIDView: View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(StevensonPalette.onAccent)
                 .frame(width: 24, height: 24)
                 .background(Circle().fill(StevensonPalette.accent))
             Text(text)

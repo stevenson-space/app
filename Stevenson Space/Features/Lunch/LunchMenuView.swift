@@ -288,7 +288,7 @@ private struct WeekdayButton: View {
 
                     Text("\(day.day)")
                         .font(.title3.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(isSelected ? .white : .primary)
+                        .foregroundStyle(isSelected ? StevensonPalette.onAccent : .primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .padding(4)

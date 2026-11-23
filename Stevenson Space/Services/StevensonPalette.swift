@@ -18,4 +18,13 @@ enum StevensonPalette {
     /// light enough to read against a dark background. Both live in the
     /// AccentColor asset, which also tints the app's native controls.
     static let accent = Color.accentColor
+
+    /// Text and symbols on an `accent` fill. White, except in dark mode with
+    /// Increase Contrast, where iOS lightens the accent to a pale mint that only
+    /// dark text can be read on. Not tied to the tint, so iOS leaves it alone.
+    static let onAccent = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark && traits.accessibilityContrast == .high
+            ? .black
+            : .white
+    })
 }
