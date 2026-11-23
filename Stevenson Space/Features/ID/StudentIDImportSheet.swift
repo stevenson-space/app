@@ -137,6 +137,7 @@ struct StudentIDImportSheet: View {
                 .multilineTextAlignment(.center)
             Button(action: onChooseAnother) {
                 Text("Try Another Screenshot")
+                    .font(.headline)
                     .foregroundStyle(StevensonPalette.onAccent)
             }
             .buttonStyle(.borderedProminent)
