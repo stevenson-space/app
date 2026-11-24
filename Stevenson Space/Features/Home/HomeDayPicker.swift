@@ -70,7 +70,7 @@ struct HomeDayBar: View {
                         .frame(minHeight: 44)
                         .contentShape(.rect)
                 }
-                .accessibilityLabel("Return to today's schedule")
+                .accessibilityHint("Returns to today's schedule")
             }
             navigationButton("Previous day", systemImage: "chevron.left", offset: -1)
             navigationButton("Next day", systemImage: "chevron.right", offset: 1)
