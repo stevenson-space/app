@@ -593,8 +593,11 @@ private struct ClassEmojiPicker: View {
                                             .frame(maxWidth: .infinity, minHeight: 44)
                                             .background {
                                                 if selection == emoji {
+                                                    // The outline carries the state; the light fill alone is under 3:1.
                                                     RoundedRectangle(cornerRadius: 10)
-                                                        .fill(Color.accentColor.opacity(0.16))
+                                                        .strokeBorder(Color.accentColor, lineWidth: 2)
+                                                        .background(Color.accentColor.opacity(0.16),
+                                                                    in: RoundedRectangle(cornerRadius: 10))
                                                 }
                                             }
                                             .contentShape(Rectangle())
