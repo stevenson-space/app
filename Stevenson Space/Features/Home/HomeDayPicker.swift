@@ -1,58 +1,103 @@
 import SwiftUI
 import ScheduleKit
 
-/// Home's day picker, as native toolbar items: the date (tap for a calendar of
-/// any day the catalog knows), a way back to today, and previous and next.
-struct HomeDayToolbar: ToolbarContent {
-    /// The widest title, Today and both arrows only just fit a 375-pt phone at
-    /// the default text size; any larger and the system folds the arrows into
-    /// a "More" menu. So these stop growing there, like standard bar buttons,
-    /// and larger sizes read them through the Large Content Viewer.
-    private static let largestTextSize = DynamicTypeSize.large
-
+/// Home's day picker, the first row of the list, so it scrolls away with it:
+/// the date (tap for a calendar of any day the catalog knows), and a capsule
+/// with a way back to today and previous and next.
+struct HomeDayBar: View {
     let day: DayKey
     let today: DayKey
     let select: (DayKey) -> Void
-    @Binding var showsCalendar: Bool
+    let showCalendar: () -> Void
 
-    var body: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                showsCalendar = true
-            } label: {
-                HStack(spacing: 5) {
-                    Text(HomeDayPicker.title(for: day, today: today))
-                        .font(.headline)
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.bold))
-                        .opacity(0.7)
+    var body: some View {
+        // At larger text sizes the capsules no longer fit side by side. Side by
+        // side, each keeps its full width, or the stack would wrap "Today" to
+        // leave room for the spacer.
+        let row = ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                dateButton.fixedSize()
+                Spacer(minLength: 0)
+                controls.fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                dateButton
+                controls
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+
+        if #available(iOS 26, *) {
+            // Zero spacing keeps the two capsules from blending into one.
+            GlassEffectContainer(spacing: 0) { row }
+        } else {
+            row
+        }
+    }
+
+    private var dateButton: some View {
+        Button(action: showCalendar) {
+            HStack(spacing: 5) {
+                Text(HomeDayPicker.title(for: day, today: today))
+                    .font(.headline)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .imageScale(.large)
+                    .opacity(0.7)
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .contentShape(.capsule)
+        }
+        .dayBarCapsule()
+        .accessibilityLabel("Choose schedule date, \(HomeDayPicker.dateLabel(for: day))")
+        .accessibilityHint("Opens the calendar")
+    }
+
+    private var controls: some View {
+        HStack(spacing: 0) {
+            if day != today {
+                Button { select(today) } label: {
+                    Text("Today")
+                        .font(.body.weight(.medium))
+                        .padding(.leading, 14)
+                        .padding(.trailing, 8)
+                        .frame(minHeight: 44)
+                        .contentShape(.rect)
                 }
-                .fixedSize()
-                .dynamicTypeSize(...Self.largestTextSize)
+                .accessibilityLabel("Return to today's schedule")
             }
-            .accessibilityLabel("Choose schedule date, \(HomeDayPicker.dateLabel(for: day))")
-            .accessibilityHint("Opens the calendar")
-        }
-
-        if day != today {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Today") { select(today) }
-                    .dynamicTypeSize(...Self.largestTextSize)
-                    .accessibilityLabel("Return to today's schedule")
-            }
-        }
-
-        ToolbarItemGroup(placement: .topBarTrailing) {
             navigationButton("Previous day", systemImage: "chevron.left", offset: -1)
             navigationButton("Next day", systemImage: "chevron.right", offset: 1)
         }
+        .dayBarCapsule()
     }
 
     private func navigationButton(_ title: LocalizedStringKey, systemImage: String, offset: Int) -> some View {
         let target = day.advanced(by: offset)
-        return Button(title, systemImage: systemImage) { select(target) }
-            .labelStyle(.iconOnly)
-            .disabled(!HomeDayPicker.dateRange(today: today).contains(target.date() ?? .distantPast))
+        return Button { select(target) } label: {
+            Image(systemName: systemImage)
+                .font(.body.weight(.medium))
+                .imageScale(.large)
+                .frame(minWidth: 48, minHeight: 44)
+                .contentShape(.rect)
+        }
+        .disabled(!HomeDayPicker.dateRange(today: today).contains(target.date() ?? .distantPast))
+        .accessibilityLabel(title)
+    }
+}
+
+private extension View {
+    /// Liquid Glass on iOS 26, like the bar buttons this row stands in for;
+    /// a card-coloured capsule before it.
+    @ViewBuilder
+    func dayBarCapsule() -> some View {
+        if #available(iOS 26, *) {
+            glassEffect(.regular.interactive(), in: .capsule)
+        } else {
+            background(Color(.secondarySystemGroupedBackground), in: .capsule)
+        }
     }
 }
 
