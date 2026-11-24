@@ -593,8 +593,9 @@ private struct ClassEmojiPicker: View {
                                             .frame(maxWidth: .infinity, minHeight: 44)
                                             .background {
                                                 if selection == emoji {
+                                                    // A solid fill: a light tint is under 3:1 against the sheet.
                                                     RoundedRectangle(cornerRadius: 10)
-                                                        .fill(Color.accentColor.opacity(0.16))
+                                                        .fill(Color.accentColor)
                                                 }
                                             }
                                             .contentShape(Rectangle())

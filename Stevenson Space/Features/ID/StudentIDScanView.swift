@@ -47,6 +47,9 @@ struct StudentIDScanView: View {
 
                 Button("Done") { dismiss() }
                     .font(.body.weight(.semibold))
+                    // A fixed colour, like the ink above: the page stays white
+                    // in dark mode, where the adaptive accent turns pale.
+                    .tint(StevensonPalette.green)
                     .padding(.bottom, 24)
             }
             .frame(maxWidth: .infinity)

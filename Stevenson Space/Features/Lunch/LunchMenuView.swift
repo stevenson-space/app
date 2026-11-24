@@ -288,27 +288,34 @@ private struct WeekdayButton: View {
 
                     Text("\(day.day)")
                         .font(.title3.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(isSelected ? .white : .primary)
+                        .foregroundStyle(isSelected ? StevensonPalette.onAccent : .primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .padding(4)
                 }
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: circleSize)
+                .opacity(dayOpacity)
 
                 Circle()
                     .fill(indicatorColor)
                     .frame(width: 4, height: 4)
+                    .opacity(dayOpacity)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 2)
             .contentShape(Rectangle())
-            .opacity(hasMenu || isSelected ? 1 : 0.42)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(accessibilityValue)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// Fades a day without a menu. The weekday letter stays unfaded: it's
+    /// already secondary gray, and faded it drops below 3:1.
+    private var dayOpacity: Double {
+        hasMenu || isSelected ? 1 : 0.42
     }
 
     private var indicatorColor: Color {

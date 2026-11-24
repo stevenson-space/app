@@ -134,6 +134,8 @@ struct UpdateCheckReminder: View {
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: 12))
+            // Without its own tint a bordered button gets a gray fill; this
+            // keeps the light green fill that matches the icon tile above.
             .tint(StevensonPalette.accent)
             .disabled(isChecking)
         }

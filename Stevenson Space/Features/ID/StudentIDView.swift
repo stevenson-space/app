@@ -114,12 +114,12 @@ struct StudentIDView: View {
 
             Button(action: showForScanning) {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
-                    .font(.headline)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(StevensonPalette.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
             }
             .buttonStyle(.borderedProminent)
-            .tint(StevensonPalette.accent)
 
             if model.studentIDIsFromAnEarlierSchoolYear, let year = card.schoolYearLabel {
                 Label("This ID was imported for the \(year) school year. "
@@ -170,12 +170,12 @@ struct StudentIDView: View {
                 isPickerPresented = true
             } label: {
                 Label("Choose Screenshot", systemImage: "photo.on.rectangle")
-                    .font(.headline)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(StevensonPalette.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
             }
             .buttonStyle(.borderedProminent)
-            .tint(StevensonPalette.accent)
 
             Text("Your ID is processed on this device and isn’t uploaded to us.")
                 .font(.caption)
@@ -189,7 +189,7 @@ struct StudentIDView: View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(StevensonPalette.onAccent)
                 .frame(width: 24, height: 24)
                 .background(Circle().fill(StevensonPalette.accent))
             Text(text)

@@ -135,9 +135,12 @@ struct StudentIDImportSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button("Try Another Screenshot", action: onChooseAnother)
-                .buttonStyle(.borderedProminent)
-                .tint(StevensonPalette.accent)
+            Button(action: onChooseAnother) {
+                Text("Try Another Screenshot")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(StevensonPalette.onAccent)
+            }
+            .buttonStyle(.borderedProminent)
                 .padding(.top, 4)
         }
         .padding(.horizontal, 32)
