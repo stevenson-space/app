@@ -134,10 +134,10 @@ struct OnboardingLunchView: View {
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                    .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.85))
+                    .foregroundStyle(isSelected ? AnyShapeStyle(StevensonPalette.onAccent.opacity(0.85))
                                                 : AnyShapeStyle(.secondary))
             }
-            .foregroundStyle(isSelected ? .white : .primary)
+            .foregroundStyle(isSelected ? StevensonPalette.onAccent : .primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, compact ? 10 : 14)
             .padding(.horizontal, 4)
@@ -390,7 +390,7 @@ private struct LunchDayStrip: View {
     private func style(for block: ResolvedBlock) -> LunchStripSegment.Style {
         switch block.role {
         case .lunch:
-            return .init(fill: AnyShapeStyle(StevensonPalette.accent), ink: AnyShapeStyle(.white))
+            return .init(fill: AnyShapeStyle(StevensonPalette.accent), ink: AnyShapeStyle(StevensonPalette.onAccent))
         case .advisory:
             let tint = ScheduleStyle.tint(for: .advisory)
             return .init(fill: AnyShapeStyle(tint.opacity(0.2)), ink: AnyShapeStyle(tint))

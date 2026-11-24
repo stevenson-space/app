@@ -140,11 +140,13 @@ struct OnboardingSectionLabel: View {
 struct OnboardingPrimaryButton: View {
     let title: LocalizedStringKey
     var tint = StevensonPalette.accent
-    /// The title's colour, for a tint too light to carry white.
-    var ink: Color?
+    /// The title's colour, which must read on the tint.
+    var ink: Color
     let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
 
-    init(_ title: LocalizedStringKey, tint: Color = StevensonPalette.accent, ink: Color? = nil,
+    init(_ title: LocalizedStringKey, tint: Color = StevensonPalette.accent,
+         ink: Color = StevensonPalette.onAccent,
          action: @escaping () -> Void) {
         self.title = title
         self.tint = tint
@@ -154,13 +156,12 @@ struct OnboardingPrimaryButton: View {
 
     var body: some View {
         let label = Text(title)
-            .font(.headline)
+            .font(.headline.weight(.bold))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
         Button(action: action) {
-            // Only a set ink overrides the style's own, which also dims the
-            // title of a disabled button.
-            if let ink {
+            // A disabled button keeps the style's own dimmed title.
+            if isEnabled {
                 label.foregroundStyle(ink)
             } else {
                 label
