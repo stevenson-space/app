@@ -13,7 +13,15 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var navigation = navigation
-        TabView(selection: $navigation.selectedTab) {
+        TabView(selection: Binding(
+            get: { navigation.selectedTab },
+            set: { tab in
+                // Tapping Home while it's showing takes it back to today.
+                if tab == .home, navigation.selectedTab == .home {
+                    navigation.returnHomeToToday()
+                }
+                navigation.selectedTab = tab
+            })) {
             Tab(value: RootTab.home) {
                 HomeView()
                     .environment(\.colorScheme, homeColorScheme)

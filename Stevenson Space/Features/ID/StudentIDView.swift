@@ -116,7 +116,8 @@ struct StudentIDView: View {
 
             Button(action: showForScanning) {
                 Label("Show for Scanning", systemImage: "barcode.viewfinder")
-                    .font(.headline)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(Jacket.onAccent)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
@@ -207,7 +208,8 @@ struct StudentIDView: View {
                 isPickerPresented = true
             } label: {
                 Label("Choose Screenshot", systemImage: "photo.on.rectangle")
-                    .font(.headline)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(Jacket.onAccent)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)

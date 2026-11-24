@@ -607,8 +607,9 @@ private struct ClassEmojiPicker: View {
                                             .frame(maxWidth: .infinity, minHeight: 44)
                                             .background {
                                                 if selection == emoji {
+                                                    // A solid fill: a light tint is under 3:1 against the sheet.
                                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                        .fill(Jacket.accent.opacity(0.16))
+                                                        .fill(Jacket.accent)
                                                 }
                                             }
                                             .contentShape(Rectangle())

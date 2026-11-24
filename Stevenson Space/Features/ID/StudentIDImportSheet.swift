@@ -135,11 +135,15 @@ struct StudentIDImportSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(Jacket.ink2)
                 .multilineTextAlignment(.center)
-            Button("Try Another Screenshot", action: onChooseAnother)
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-                .tint(Jacket.accent)
-                .padding(.top, 4)
+            Button(action: onChooseAnother) {
+                Text("Try Another Screenshot")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(Jacket.onAccent)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            .tint(Jacket.accent)
+            .padding(.top, 4)
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
