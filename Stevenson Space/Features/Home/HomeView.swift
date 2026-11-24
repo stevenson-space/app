@@ -130,7 +130,7 @@ struct HomeView: View {
         .sensoryFeedback(.selection, trigger: dayChanges)
         .onChange(of: navigation.homeTodayRequest) { _, _ in
             // Today glides back to the top, even when it replaces another day.
-            glidesToTop = selectedDay != nil
+            glidesToTop = day != today
             selectedDay = nil
             withAnimation {
                 scrollPosition.scrollTo(edge: .top)
