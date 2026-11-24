@@ -16,6 +16,9 @@ struct HomeView: View {
     @State private var showsCalendar = false
     /// Bumped by `selectDay` only, to play one selection haptic per change.
     @State private var dayChanges = 0
+    /// Set while the Home tab takes another day back to today, so the new
+    /// timeline keeps the animated scroll instead of jumping to the top.
+    @State private var glidesToTop = false
 
     private var today: DayKey { model.todayTimeline.day }
     private var day: DayKey { selectedDay ?? today }
@@ -97,6 +100,7 @@ struct HomeView: View {
         }
         .scrollTargetBehavior(CollapseSnap(scroll: scroll))
         .onScrollPhaseChange { _, phase, context in
+            scroll.isAnimating = phase == .animating
             if phase == .interacting { scroll.settleTarget = nil }
             guard phase == .idle else { return }
             settleScroll(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top)
@@ -125,13 +129,21 @@ struct HomeView: View {
         #endif
         .sensoryFeedback(.selection, trigger: dayChanges)
         .onChange(of: navigation.homeTodayRequest) { _, _ in
+            // Today glides back to the top, even when it replaces another day.
+            glidesToTop = selectedDay != nil
             selectedDay = nil
-            scrollPosition.scrollTo(edge: .top)
+            withAnimation {
+                scrollPosition.scrollTo(edge: .top)
+            }
         }
         .onChange(of: today) { _, _ in
             selectedDay = nil
         }
         .onChange(of: timeline) { _, _ in
+            guard !glidesToTop else {
+                glidesToTop = false
+                return
+            }
             scrollPosition.scrollTo(edge: .top)
         }
     }
@@ -190,12 +202,17 @@ private final class HomeScroll {
     @ObservationIgnored var isTouching = false
     /// The UIKit scroll view behind Home's `ScrollView`.
     @ObservationIgnored weak var scrollView: UIScrollView?
+    /// Whether an animated scroll is running, such as a settle or the Home
+    /// tab's return to the top, as the scroll phase reports it.
+    @ObservationIgnored var isAnimating = false
 
-    /// Whether nothing is moving the scroll, so a settle can't fight a finger
-    /// or momentum. This asks UIKit, since the scroll phase can read idle while
-    /// a finger is down, or stay behind once one lifts.
+    /// Whether nothing is moving the scroll, so a settle can't fight a finger,
+    /// momentum or an animated scroll. Fingers and momentum come from UIKit,
+    /// since the scroll phase can read idle while a finger is down, or stay
+    /// behind once one lifts.
     var isAtRest: Bool {
-        !isTouching && !(scrollView?.isDragging ?? false) && !(scrollView?.isDecelerating ?? false)
+        !isTouching && !isAnimating
+            && !(scrollView?.isDragging ?? false) && !(scrollView?.isDecelerating ?? false)
     }
 
     /// How far through the collapse a scroll must get, going down, to carry on
