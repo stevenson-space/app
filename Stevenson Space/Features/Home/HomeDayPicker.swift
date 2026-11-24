@@ -37,9 +37,10 @@ struct HomeDayBar: View {
     }
 
     private var dateButton: some View {
-        Button(action: showCalendar) {
+        let title = HomeDayPicker.title(for: day, today: today)
+        return Button(action: showCalendar) {
             HStack(spacing: 5) {
-                Text(HomeDayPicker.title(for: day, today: today))
+                Text(title)
                     .font(.headline)
                 Image(systemName: "chevron.down")
                     .font(.caption.weight(.bold))
@@ -51,7 +52,10 @@ struct HomeDayBar: View {
             .contentShape(.capsule)
         }
         .dayBarCapsule()
-        .accessibilityLabel("Choose schedule date, \(HomeDayPicker.dateLabel(for: day))")
+        // Named by what it shows, so Voice Control finds it. "Yesterday" and
+        // "Tomorrow" show no date, so VoiceOver reads it after them.
+        .accessibilityLabel(title)
+        .accessibilityValue(title == TimeDisplay.shortDayLabel(day) ? "" : HomeDayPicker.dateLabel(for: day))
         .accessibilityHint("Opens the calendar")
     }
 
@@ -105,7 +109,7 @@ private extension View {
 }
 
 /// The calendar sheet behind the date button, and the dates and labels the
-/// toolbar shares with it.
+/// day bar shares with it.
 struct HomeDayPicker: View {
     let day: DayKey
     let today: DayKey
