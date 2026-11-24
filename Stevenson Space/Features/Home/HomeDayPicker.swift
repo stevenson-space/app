@@ -82,6 +82,9 @@ struct HomeDayBar: View {
                 .imageScale(.large)
                 .frame(minWidth: 48, minHeight: 44)
                 .contentShape(.rect)
+                // The tapped arrow's release animation would also carry its
+                // move when Today comes or goes, sliding it across the other.
+                .animation(nil, value: day)
         }
         .disabled(!HomeDayPicker.dateRange(today: today).contains(target.date() ?? .distantPast))
         .accessibilityLabel(title)
