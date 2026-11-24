@@ -242,7 +242,7 @@ struct HeroSection: View {
         case .afterSchool:
             Label("Done for today", systemImage: "checkmark.circle.fill")
                 .font(.headline)
-                .foregroundStyle(.green)
+                .foregroundStyle(StevensonPalette.accent)
                 .opacity(pillOpacity)
         default:
             EmptyView()
@@ -560,7 +560,7 @@ struct AfterSchoolHero: View {
         VStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(.green)
+                .foregroundStyle(StevensonPalette.accent)
             Text("Done for today")
                 .font(.title2.bold())
             if let next {

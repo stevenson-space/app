@@ -132,6 +132,11 @@ final class SceneNavigation {
         }
     }
 
+    /// Home drops any other day it shows and scrolls back to the top.
+    func returnHomeToToday() {
+        homeTodayRequest += 1
+    }
+
     func openWidgetURL(_ url: URL) {
         if url == LunchWidgetTimelinePlanner.lunchURL {
             reopenStudentIDAfterDismissal = false
