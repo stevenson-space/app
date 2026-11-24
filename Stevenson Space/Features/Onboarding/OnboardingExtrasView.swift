@@ -12,15 +12,19 @@ struct OnboardingExtrasView: View {
     /// Ends onboarding, on the given tab or wherever it normally lands.
     let finish: (RootTab?) -> Void
 
+    @State private var showsWidgetSteps = false
+
     var body: some View {
-        OnboardingPage {
+        // Opened at the bottom of the page, the widget steps would otherwise
+        // start under the button.
+        OnboardingPage(revealing: showsWidgetSteps ? OnboardingWidgetsPreview.cardID : nil) {
             OnboardingHeading(
                 title: "Finishing touches",
                 message: "All optional. Set them up now or anytime later.")
 
             alerts
             studentID
-            OnboardingWidgetsPreview()
+            OnboardingWidgetsPreview(showsSteps: $showsWidgetSteps)
         } actions: {
             OnboardingPrimaryButton("Show My Schedule") { finish(nil) }
         }

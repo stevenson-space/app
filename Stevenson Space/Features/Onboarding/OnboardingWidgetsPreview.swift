@@ -5,56 +5,52 @@ import SwiftUI
 /// Lock Screen, not from here, so the steps fold away until asked for.
 struct OnboardingWidgetsPreview: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var showsSteps = false
+    /// Whether the steps are open. The step showing the card owns it, so its
+    /// page can bring the opened steps on screen.
+    @Binding var showsSteps: Bool
 
-    private static let stepsID = "widgetSteps"
+    /// The card's `id`, for scrolling to it.
+    static let cardID = "widgetSteps"
 
     var body: some View {
-        ScrollViewReader { proxy in
-            VStack(spacing: 8) {
-                OnboardingSectionLabel("Widgets")
+        VStack(spacing: 8) {
+            OnboardingSectionLabel("Widgets")
 
-                VStack(alignment: .leading, spacing: 0) {
-                    Button {
-                        withAnimation(.snappy(duration: 0.35)) {
-                            showsSteps.toggle()
-                            if showsSteps {
-                                // Opened at the bottom of the page, the steps
-                                // would otherwise start below the screen.
-                                proxy.scrollTo(Self.stepsID, anchor: .bottom)
-                            }
-                        }
-                    } label: {
-                        summary
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.snappy(duration: 0.35)) {
+                        showsSteps.toggle()
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityValue(showsSteps ? "Steps shown" : "Steps hidden")
-                    .accessibilityHint(showsSteps ? "Hides the steps." : "Shows how to add the widget.")
-
-                    if showsSteps {
-                        VStack(alignment: .leading, spacing: 18) {
-                            Divider()
-                            StepList(title: "Home Screen", steps: [
-                                "Touch and hold an empty spot until the apps jiggle.",
-                                "Tap Edit, then Add Widget.",
-                                "Search for SHS Space.",
-                                "Pick a size and tap Add Widget.",
-                            ])
-                            StepList(title: "Lock Screen", steps: [
-                                "Touch and hold the Lock Screen, then tap Customize.",
-                                "Tap Lock Screen.",
-                                "Tap the space under the time.",
-                                "Pick SHS Space, then a widget.",
-                            ])
-                        }
-                        .padding(.top, 16)
-                        .transition(.opacity)
-                    }
+                } label: {
+                    summary
                 }
-                .padding(16)
-                .onboardingCard(cornerRadius: 16)
-                .id(Self.stepsID)
+                .buttonStyle(.plain)
+                .accessibilityValue(showsSteps ? "Steps shown" : "Steps hidden")
+                .accessibilityHint(showsSteps ? "Hides the steps." : "Shows how to add the widget.")
+
+                if showsSteps {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Divider()
+                        StepList(title: "Home Screen", steps: [
+                            "Touch and hold an empty spot until the apps jiggle.",
+                            "Tap Edit, then Add Widget.",
+                            "Search for SHS Space.",
+                            "Pick a size and tap Add Widget.",
+                        ])
+                        StepList(title: "Lock Screen", steps: [
+                            "Touch and hold the Lock Screen, then tap Customize.",
+                            "Tap Lock Screen.",
+                            "Tap the space under the time.",
+                            "Pick SHS Space, then a widget.",
+                        ])
+                    }
+                    .padding(.top, 16)
+                    .transition(.opacity)
+                }
             }
+            .padding(16)
+            .onboardingCard(cornerRadius: 16)
+            .id(Self.cardID)
         }
     }
 
