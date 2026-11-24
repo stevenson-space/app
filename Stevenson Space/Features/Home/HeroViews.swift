@@ -537,7 +537,7 @@ struct AfterSchoolHero: View {
         VStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(.green)
+                .foregroundStyle(StevensonPalette.accent)
             Text("Done for today")
                 .font(.title2.bold())
             if let next {
