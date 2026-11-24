@@ -222,7 +222,7 @@ struct HeroSection: View {
         case .afterSchool:
             Label("Done for today", systemImage: "checkmark.circle.fill")
                 .font(.headline)
-                .foregroundStyle(.green)
+                .foregroundStyle(StevensonPalette.accent)
                 .opacity(pillOpacity)
         default:
             EmptyView()
