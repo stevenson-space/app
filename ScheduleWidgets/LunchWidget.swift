@@ -112,5 +112,7 @@ struct StevensonWidgetBundle: WidgetBundle {
         ScheduleWidget()
         LunchMenuWidget()
         StudentIDControl()
+        ScheduleControl()
+        LunchMenuControl()
     }
 }

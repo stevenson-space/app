@@ -3,11 +3,11 @@ import AppIntents
 /// A screen that a control in Control Center, on the Lock Screen, or on the
 /// Action button opens.
 enum ControlScreen: String, AppEnum {
-    case studentID
+    case studentID, schedule, lunch
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Screen"
     static let caseDisplayRepresentations: [ControlScreen: DisplayRepresentation] = [
-        .studentID: "Student ID",
+        .studentID: "Student ID", .schedule: "Schedule", .lunch: "Lunch Menu",
     ]
 }
 
@@ -36,6 +36,8 @@ struct OpenControlScreenIntent: OpenIntent {
         #if !WIDGET_EXTENSION
         switch target {
         case .studentID: _ = try model.navigation.openStudentIDScanner(model: model)
+        case .schedule: model.navigation.openTab(.home)
+        case .lunch: model.navigation.openTab(.lunch)
         }
         #endif
         return .result()

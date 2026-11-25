@@ -20,3 +20,37 @@ struct StudentIDControl: ControlWidget {
         .description("Show your ID barcode full screen for scanning.")
     }
 }
+
+/// Opens Home at today's schedule.
+struct ScheduleControl: ControlWidget {
+    static let kind = "ScheduleControl"
+
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: Self.kind) {
+            ControlWidgetButton(action: OpenControlScreenIntent(.schedule)) {
+                Label("Schedule", systemImage: "calendar")
+                    .controlWidgetActionHint("Show Schedule")
+            }
+            .tint(.accentColor)
+        }
+        .displayName("Schedule")
+        .description("See today's classes and the time until the bell.")
+    }
+}
+
+/// Opens Lunch at today's menu.
+struct LunchMenuControl: ControlWidget {
+    static let kind = "LunchMenuControl"
+
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: Self.kind) {
+            ControlWidgetButton(action: OpenControlScreenIntent(.lunch)) {
+                Label("Lunch Menu", systemImage: "fork.knife")
+                    .controlWidgetActionHint("Show Lunch Menu")
+            }
+            .tint(.accentColor)
+        }
+        .displayName("Lunch Menu")
+        .description("See what's for lunch today.")
+    }
+}
