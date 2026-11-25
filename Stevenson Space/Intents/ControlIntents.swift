@@ -18,6 +18,8 @@ struct OpenControlScreenIntent: OpenIntent {
     static let title: LocalizedStringResource = "Open Screen"
     // Shortcuts and Siri already offer Show Student ID and Open Tab.
     static let isDiscoverable = false
+    // Matches Show Student ID: the ID never opens on a locked device.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
     @Parameter(title: "Screen") var target: ControlScreen
 
