@@ -94,6 +94,11 @@ Screen, and on the Action button, so students don't have to build a shortcut:
 | Schedule | Home at today. Same route as Open Tab › Home. |
 | Lunch Menu | Lunch at today. Same route as Open Tab › Lunch. |
 
+Like Show Student ID, the Student ID control leaves an open sheet or picker in
+place so unfinished edits survive. Siri and Shortcuts read out the intent's
+“close the open sheet” error, but a control has nowhere to show it, so the app
+just comes forward with that sheet still open.
+
 They appear under **SHS Space** in the controls gallery: in Control Center, tap
 **+** and then **Add a Control**; on the Lock Screen, customize it and replace
 one of the bottom controls; for the Action button, pick **Controls** in
@@ -180,9 +185,10 @@ device; repeat the checks below with both **SHS Space** and **Stevenson Space**.
 - Real-device testing is complete and works, as confirmed by the maintainer.
 - Controls, on the iOS 27.2 simulator: all three appear under SHS Space in the
   Control Center gallery and open their screens both from a terminated app and
-  from another tab. Student ID was checked without a saved ID, so it opened ID
-  setup. The scanner with a saved ID, the Lock Screen, the Action button, and
-  locked-device authentication still need a device.
+  from another tab. Student ID opened ID setup with no saved ID, and the scanner
+  once a test ID was imported; Schedule closed an open scanner and went to Home.
+  The Lock Screen, the Action button, and locked-device authentication still
+  need a device.
 
 Use these system-level flows for future regression checks on supported iOS versions:
 
@@ -210,6 +216,6 @@ Use these system-level flows for future regression checks on supported iOS versi
 7. Add all three controls to Control Center, the Lock Screen, and the Action
    button. Run each one from a terminated app, from another tab, and on a
    locked device, which should ask to unlock first. Run Student ID with and
-   without a saved ID. Confirm the controls don't appear as Shortcuts actions.
+   without a saved ID, and with a sheet open. Confirm the controls don't appear as Shortcuts actions.
    In the Simulator, the gallery lists newly installed controls only after the
    simulator reboots.
