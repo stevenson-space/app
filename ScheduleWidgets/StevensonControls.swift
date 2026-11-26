@@ -11,7 +11,7 @@ struct StudentIDControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
             ControlWidgetButton(action: OpenControlScreenIntent(.studentID)) {
-                Label("Student ID", systemImage: "barcode.viewfinder")
+                Label("Student ID", systemImage: "person.text.rectangle")
                     .controlWidgetActionHint("Show Student ID")
             }
             .tint(.accentColor)
@@ -28,7 +28,7 @@ struct ScheduleControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
             ControlWidgetButton(action: OpenControlScreenIntent(.schedule)) {
-                Label("Schedule", systemImage: "calendar")
+                Label("Schedule", systemImage: "calendar.badge.clock")
                     .controlWidgetActionHint("Show Schedule")
             }
             .tint(.accentColor)
