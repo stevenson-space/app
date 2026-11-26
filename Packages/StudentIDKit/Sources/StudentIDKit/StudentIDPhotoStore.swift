@@ -2,10 +2,10 @@ import Foundation
 
 /// Stores the cropped headshot as a file.
 ///
-/// It lives in the app's own container, not the App Group container, because the
-/// project has no App Group entitlement yet (see the note in ScheduleKit's
-/// `SharedStore`). When widgets arrive and the entitlement lands, move this
-/// directory into the group container so other surfaces can show the card too.
+/// It lives in the app's own container on purpose, never the App Group
+/// container the widgets read: the privacy policy promises that ID details and
+/// photos are not provided to widgets, and the card's fields stay in the app's
+/// keychain for the same reason.
 ///
 /// The source screenshot is never written anywhere — only this crop and the
 /// handful of extracted fields.
@@ -48,10 +48,12 @@ public struct StudentIDPhotoStore: Sendable {
         try? Data(contentsOf: fileURL)
     }
 
-    /// Rewrites an existing photo with the current protection class.
+    /// Rewrites an existing photo with the current protection class, unless
+    /// it already has it. An unreadable attribute falls through to the rewrite.
     public func reapplyProtectionIfPresent() {
         #if os(iOS)
-        guard let data = loadData() else { return }
+        let protection = try? fileURL.resourceValues(forKeys: [.fileProtectionKey]).fileProtection
+        guard protection != .complete, let data = loadData() else { return }
         try? data.write(to: fileURL, options: [.atomic, .completeFileProtection])
         #endif
     }

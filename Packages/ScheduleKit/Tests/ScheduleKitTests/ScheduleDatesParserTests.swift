@@ -24,6 +24,46 @@ import Foundation
         #expect(map.match(day(2025, 9, 3)) == nil)
     }
 
+    @Test func parsesTheAPIEnvelope() throws {
+        let map = try ScheduleDatesParser.parse(TestSupport.fixture("schedule-dates-api-v1"))
+        // The envelope's own fields are build metadata, not day types that
+        // failed to parse.
+        #expect(map.warnings.isEmpty)
+
+        #expect(map.match(day(2026, 11, 5))?.family == .bell(.lateArrival))
+        #expect(map.match(day(2026, 11, 10))?.family == .bell(.activityPeriod))
+        let thanksgiving = try #require(map.match(day(2026, 11, 26)))
+        #expect(thanksgiving.family == .noSchool)
+        #expect(thanksgiving.span == DateSpan(start: day(2026, 11, 25), end: day(2026, 11, 27)))
+        #expect(map.match(day(2026, 11, 12)) == nil)
+    }
+
+    @Test func theEnvelopeAndTheBareMapItWrapsParseAlike() throws {
+        // Installs that synced before the API hold the bare map in their cache.
+        let bare = #"{"Late Arrival": ["9/18/2026"], "No School": ["11/25/2026-11/27/2026"]}"#
+        let envelope = #"{"version": 1, "generatedAt": "2026-11-09T07:44:09.498Z", "signature": "c283", "scheduleDates": \#(bare)}"#
+        #expect(try TestSupport.map(envelope) == TestSupport.map(bare))
+    }
+
+    @Test func anEnvelopeWithoutUsableDatesFailsWholesale() {
+        // Neither may read as "a year with no exceptions".
+        #expect(throws: ParserError.noValidEntries) {
+            _ = try ScheduleDatesParser.parse(Data(#"{"version": 1, "scheduleDates": {}}"#.utf8))
+        }
+        #expect(throws: ParserError.noValidEntries) {
+            _ = try ScheduleDatesParser.parse(
+                Data(#"{"version": 1, "generatedAt": "2026-11-09T07:44:09.498Z", "signature": "c283"}"#.utf8))
+        }
+    }
+
+    @Test(arguments: ["null", "[]", #"["9/18/2026"]"#, #""invalid""#, "42", "true"])
+    func anInvalidEnvelopeCannotFallBackToTopLevelDates(value: String) {
+        let payload = #"{"scheduleDates": \#(value), "Late Arrival": ["9/18/2026"]}"#
+        #expect(throws: ParserError.notAnObject) {
+            _ = try ScheduleDatesParser.parse(Data(payload.utf8))
+        }
+    }
+
     @Test func datesWithoutLeadingZerosAndRanges() throws {
         let map = try TestSupport.map(
             #"{"No School": ["9/1/2026", "11/25/2026-11/27/2026"]}"#)
@@ -31,6 +71,33 @@ import Foundation
         #expect(map.match(day(2026, 11, 26))?.family == .noSchool)
         #expect(map.match(day(2026, 11, 27))?.family == .noSchool)
         #expect(map.match(day(2026, 11, 28)) == nil)
+    }
+
+    @Test func weekendsInsideRangesAreLeftToTheCalendar() throws {
+        let map = try TestSupport.map(
+            #"{"Late Arrival": ["10/9/2026-10/12/2026", "10/17/2026"], "No School": ["11/25/2026-11/30/2026"]}"#)
+        // The Friday and Monday ends of the range match…
+        #expect(map.match(day(2026, 10, 9))?.family == .bell(.lateArrival))
+        #expect(map.match(day(2026, 10, 12))?.family == .bell(.lateArrival))
+        // …the weekend between them does not…
+        #expect(map.match(day(2026, 10, 10)) == nil)
+        #expect(map.match(day(2026, 10, 11)) == nil)
+        // …a weekend listed as its own date still does…
+        #expect(map.match(day(2026, 10, 17))?.family == .bell(.lateArrival))
+        // …and a No School range keeps its weekend.
+        #expect(map.match(day(2026, 11, 28))?.family == .noSchool)
+    }
+
+    @Test func weekendListedOnItsOwnBeatsASurroundingNoSchoolRange() throws {
+        let map = try TestSupport.map(
+            #"{"Late Arrival": ["11/28/2026"], "No School": ["11/25/2026-11/30/2026"]}"#)
+        // Saturday 11/28 is listed on its own, so it wins over the range…
+        let saturday = try #require(map.match(day(2026, 11, 28)))
+        #expect(saturday.family == .bell(.lateArrival))
+        #expect(saturday.hadConflict)
+        // …while the rest of the range, weekend and weekday alike, is No School.
+        #expect(map.match(day(2026, 11, 29))?.family == .noSchool)
+        #expect(map.match(day(2026, 11, 30))?.family == .noSchool)
     }
 
     @Test func keyRegistryAndAliases() {

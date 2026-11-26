@@ -5,9 +5,17 @@ struct LunchMenuView: View {
     @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
     @State private var selectedDay: DayKey?
+    /// Bumped only when a tap here moves the day, so the midnight rollover and
+    /// the Lunch tab's return to today stay silent.
+    @State private var dayChanges = 0
+    /// Set only by the Try Again button, so automatic syncs stay silent.
+    @State private var didRetryFail = false
 
+    /// Observed, unlike `model.today` (a clock read), so the week strip and
+    /// the preferred day roll over at midnight while the tab stays open.
+    private var today: DayKey { model.todayTimeline.day }
     private var preferredDay: DayKey {
-        model.preferredLunchDay(startingAt: model.today)
+        model.preferredLunchDay(startingAt: today)
     }
     private var day: DayKey { selectedDay ?? preferredDay }
     private var weekStart: DayKey {
@@ -36,9 +44,9 @@ struct LunchMenuView: View {
                         WeekPicker(
                             weekdays: weekdays,
                             selectedDay: day,
-                            today: model.today,
+                            today: today,
                             hasMenu: { model.lunchMenu(for: $0) != nil },
-                            select: { selectedDay = $0 },
+                            select: { choose($0) },
                             moveWeek: moveWeek)
                     }
 
@@ -49,16 +57,23 @@ struct LunchMenuView: View {
                 .padding(.bottom, 28)
             }
             .background(Color(.systemGroupedBackground))
+            .sensoryFeedback(.selection, trigger: dayChanges)
+            // Here, not on the empty state: it gives way to a spinner while
+            // the retry runs, so it can't be the view that notices the result.
+            .sensoryFeedback(.error, trigger: didRetryFail) { _, failed in failed }
             .navigationTitle("Lunch")
             .onChange(of: navigation.lunchTodayRequest, initial: true) {
                 guard navigation.lunchTodayRequest > 0 else { return }
-                selectedDay = model.today
+                selectedDay = today
+            }
+            .onChange(of: today) { oldDay, _ in
+                if selectedDay == oldDay { selectedDay = nil }
             }
             .toolbar {
                 if day != preferredDay {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(preferredDay == model.today ? "Today" : "Next Lunch") {
-                            selectedDay = nil
+                        Button(preferredDay == today ? "Today" : "Next Lunch") {
+                            choose(nil)
                         }
                     }
                 }
@@ -74,13 +89,6 @@ struct LunchMenuView: View {
                     .font(.title2.weight(.bold))
                     .accessibilityAddTraits(.isHeader)
 
-                if model.isLunchMenuBundled {
-                    Label("Showing the menu included with the app. Check for updates for the latest menu.",
-                          systemImage: "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
                     ForEach(menu.sections) { section in
                         LunchStationCard(section: section)
@@ -89,11 +97,28 @@ struct LunchMenuView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else if model.lunchMenu == nil {
-            ContentUnavailableView(
-                "Menu unavailable",
-                systemImage: "fork.knife.circle",
-                description: Text("The lunch menu could not be loaded."))
-            .frame(minHeight: 320)
+            // No menu ships with the app, so this is every install's state
+            // until its first download finishes.
+            if model.isLunchSyncing {
+                ProgressView("Loading the lunch menu…")
+                    .frame(maxWidth: .infinity, minHeight: 320)
+            } else {
+                ContentUnavailableView {
+                    Label("Menu unavailable", systemImage: "fork.knife.circle")
+                } description: {
+                    Text("The lunch menu could not be downloaded. Check your connection and try again.")
+                } actions: {
+                    Button("Try Again") {
+                        didRetryFail = false
+                        Task {
+                            await model.syncLunch(force: true)
+                            // Still no menu means the student is back on this screen.
+                            didRetryFail = model.lunchMenu == nil
+                        }
+                    }
+                }
+                .frame(minHeight: 320)
+            }
         } else {
             ContentUnavailableView(
                 "No lunch menu",
@@ -106,7 +131,14 @@ struct LunchMenuView: View {
     private func moveWeek(_ offset: Int) {
         let targetWeek = weekStart.advanced(by: offset * 7)
         let preferredWeekday = min(max((day.weekday() ?? 2) - 2, 0), 4)
-        selectedDay = targetWeek.advanced(by: preferredWeekday)
+        choose(targetWeek.advanced(by: preferredWeekday))
+    }
+
+    /// `nil` goes back to the preferred day.
+    private func choose(_ newDay: DayKey?) {
+        let oldDay = day
+        selectedDay = newDay
+        if day != oldDay { dayChanges += 1 }
     }
 }
 
@@ -256,27 +288,34 @@ struct WeekdayButton: View {
 
                     Text("\(day.day)")
                         .font(.title3.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(isSelected ? .white : .primary)
+                        .foregroundStyle(isSelected ? StevensonPalette.onAccent : .primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .padding(4)
                 }
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: circleSize)
+                .opacity(dayOpacity)
 
                 Circle()
                     .fill(indicatorColor)
                     .frame(width: 4, height: 4)
+                    .opacity(dayOpacity)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 2)
             .contentShape(Rectangle())
-            .opacity(hasMenu || isSelected ? 1 : 0.42)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(accessibilityValue)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// Fades a day without a menu. The weekday letter stays unfaded: it's
+    /// already secondary gray, and faded it drops below 3:1.
+    private var dayOpacity: Double {
+        hasMenu || isSelected ? 1 : 0.42
     }
 
     private var indicatorColor: Color {

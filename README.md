@@ -31,14 +31,14 @@ Packages/ScheduleKit/          Schedule logic and shared presentation helpers.
   Sources/ScheduleKit/
     Models/                    PeriodID, DayKey, Block, BellSchedule, UserConfig, DayTimeline…
     Catalog/                   Bundled bell tables + school-year boundaries
-    Parsing/                   schedule-dates.json and lunch-manifest parsers
+    Parsing/                   Day-type map and lunch menu parsers for the website API
     Resolution/                resolveDay(...) priority chain + momentState(at:)
-    Sync/                      Schedule (ETag) and lunch fetches, last-good cache semantics
+    Sync/                      Day-type map and lunch fetches (ETag), last-good cache semantics
     Storage/                   App Group store + read-only widget snapshot + Keychain SecretStore
     Presentation/              Shared role colors, emoji, and time formatting
     Widgets/                   Pure seven-day timeline planner
     Notifications/             Pure NotificationPlanner (56 alerts + 1 refresh reminder)
-    Resources/                 bell-schedules.json, lunch-menu.json
+    Resources/                 bell-schedules.json
   Tests/ScheduleKitTests/      The quality gate — run with `swift test`
 Packages/StudentIDKit/         Student ID logic — no UI.
   Sources/StudentIDKit/
@@ -49,7 +49,7 @@ Packages/StudentIDKit/         Student ID logic — no UI.
     StudentIDPhotoStore.swift  The cropped headshot, on disk with complete file protection
   Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
 Stevenson Space/               SwiftUI app target: Home, Lunch, ID, Settings, the welcome tour
-ScheduleWidgets/              Schedule widgets and small/large lunch widgets
+ScheduleWidgets/              Schedule and lunch widgets; Control Center controls
 ```
 
 Two pure functions are the heart of everything; the app and widgets must go through them so all surfaces agree:
@@ -84,13 +84,17 @@ networking is required. See [widget behavior and validation](docs/schedule-widge
 A week strip (Monday–Friday) over the menu for the chosen day. It opens on the
 first day from today that has a menu, so on a weekend it opens on Monday.
 
-The website publishes the menu as six station files (`comfort`, `international`,
-`mindful`, `sides`, `soup`, `special`) with no combined manifest, so the app
-fetches all six and assembles one itself. The rotation metadata the website
-doesn't publish — `validFrom`, `validTo`, `semesterSwitch`, `offset` — comes from
-the bundled `lunch-menu.json`. The rotation length is read from the data rather
-than hardcoded, and every station must agree on it. One failed or invalid station
-fails the whole refresh, and the last good menu stays.
+The menus come from the website's API (`/api/v1/lunch.json`), which publishes one
+menu per school day in a rolling window: a week behind the day the site was built
+and three weeks ahead. The website resolves its own rotation, so the app does no
+rotation math and carries no rotation dates. It looks each day up, leaves out the
+kitchen's placeholder dishes, and applies its own calendar on top, so a student's
+overrides still decide whether lunch is served.
+
+No menu ships with the app. Until the first download the tab shows a loading
+state, and a retry if the download failed. A response that fails validation never
+replaces the last good menus, and days beyond the published window have no menu
+until a later refresh brings them in.
 
 The **Lunch Menu** widget offers a configurable small size for one station and
 a large size showing all six categories. Both sizes share the app’s menu
@@ -138,37 +142,46 @@ launch and deletes the plaintext copies only once the Keychain write succeeds.
    Freshman Orientation). Outside these bounds the app shows Summer Break instead
    of guessing Standard.
 
-3. **Day-type map** — the live JSON shared with stevenson.space:
-   `https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json`
-   (branch ref on purpose; a commit-pinned URL would freeze updates). It lists
+3. **Day-type map** — live from the website's API:
+   `https://stevenson.space/api/v1/schedule-dates.json`. The website's build
+   generates the API (`ingest/api.ts` in `stevenson-space/shs`) from the same
+   `schedule-dates.json` the website reads, and serves the map under
+   `scheduleDates` inside an envelope of build metadata. It lists
    only exceptions (`Late Arrival`, `Activity Period`, `PM Assembly`,
    `Early Dismissal`, `No School`, `Asynchronous`); unlisted in-session weekdays
-   are Standard. Ranges use `"12/17/2026-12/18/2026"`. Early Dismissal rotation
+   are Standard. Ranges use `"12/17/2026-12/18/2026"`. A weekend inside a range
+   stays a weekend unless the range is `No School`; to schedule a weekend, list
+   that date on its own. Early Dismissal rotation
    is inferred from position within a range (1st school-weekday → periods
    6·2·3·4, 2nd → 5·1·7·8). The app refetches with ETag on launch/foreground
-   (1 h throttle) and always keeps the last good copy if a fetch or parse fails.
+   (throttled to 1 h after a successful check, 5 min after a failed one) and
+   always keeps the last good copy if a fetch or parse fails.
+   The site is rebuilt nightly, which restamps the file; a refresh counts as a
+   change only when the dates differ.
 
-4. **Lunch menu** — the six station files under
-   `https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-rotating/`,
-   refetched on the same 1 h throttle. **Each year, update the bundled
-   `Packages/ScheduleKit/Sources/ScheduleKit/Resources/lunch-menu.json`**:
-   `validFrom`/`validTo` (the menu's date range; the rotation advances on Mondays,
-   starting with the week containing `validFrom`; align it with `rotatingMenuMap` in
-   `src/utils/food/rotating-map.ts`), `semesterSwitch` (when the
-   `special` station moves to its second semester), and `offset` (which rotation
-   week `validFrom` falls in). Outside that range the Lunch tab shows no menu.
+4. **Lunch menu** — live from `https://stevenson.space/api/v1/lunch.json`,
+   refetched with ETag on the same throttle (which applies only while there
+   is a menu to show). **Nothing in the app needs a yearly update**: the
+   rotation, its date range, and the semester switch live in the website
+   (`src/data/lunch-rotating/` and `src/utils/food/rotating-map.ts`), and the
+   API serves the resolved days. The window slides forward with each nightly
+   build, so the cache holds about three weeks of menus from the last time the
+   app was opened. Past that, the Lunch tab and widget report the menu as
+   unavailable until the next refresh.
 
-The app only fetches from `raw.githubusercontent.com` (`SharedStore.allowedHosts`),
-redirects included.
+The app only fetches from `stevenson.space` (`SharedStore.allowedHosts`),
+redirects included. The API's `signature.json` and `schedules.json` are not
+used: each feed is already one small conditional request, and the bell tables
+stay bundled (item 1).
 
 Home and Lunch stay quiet about data freshness until their respective feed has
-gone five days without a successful update check. A successful check clears
+gone two days without a successful update check. A successful check clears
 the reminder even when the data is unchanged. Installs that have never synced
 get the same grace period from their first attempt; failed retries do not reset
 it. Reminders offer **Check for Updates**, which bypasses the usual throttle,
 and show a short failure message only after a student requests a check. Automatic
 checks keep the reminder hidden while they run. Reminders use the real clock,
-independent of the selected date or DEBUG time travel, and update at the five-day
+independent of the selected date or DEBUG time travel, and update at the two-day
 deadline. Future timestamps cannot suppress a reminder after a clock correction.
 
 ## The welcome tour
@@ -209,12 +222,16 @@ without completing it, so it returns on the next launch.
   accept `-SiriGeneration classic`, `appleIntelligence`, or `siriAI` to preview
   each Siri look.
 
-## Shortcuts and Siri
+## Shortcuts, Siri, and controls
 
 Eight actions open the student ID scanner or a selected tab, and return the
 current class/period, next class, schedule, schedule type, and lunch menu.
 Class results expose names, periods, saved rooms, and times to subsequent
-Shortcuts actions. See [implementation, Apple references, and validation](docs/app-intents.md).
+Shortcuts actions.
+
+Three controls (**Student ID**, **Schedule**, and **Lunch Menu**) open the
+same screens from Control Center, the Lock Screen, or the Action button, with
+no shortcut to build. See [implementation, Apple references, and validation](docs/app-intents.md).
 
 ## Deferred (architecture is ready for them)
 

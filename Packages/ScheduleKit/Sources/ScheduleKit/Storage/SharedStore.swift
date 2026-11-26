@@ -8,22 +8,16 @@ import Foundation
 /// instead, which reads schedule keys without initializing secrets or migrating.
 public final class SharedStore: @unchecked Sendable {
     public static let appGroupID = "group.space.stevenson.shared"
-    public static let defaultMapURL = URL(
-        string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/schedule-dates.json")!
-    /// The website publishes the lunch rotation as one file per station under
-    /// `src/data/lunch-rotating`. There is no consolidated manifest, so the app
-    /// fetches every station and assembles the manifest itself.
-    public static let lunchStationNames = [
-        "comfort", "international", "mindful", "sides", "soup", "special",
-    ]
+    /// The day-type map, from the website's static data API. The API is
+    /// generated on every site build, so its shape is a contract rather than
+    /// the layout of the website's repository.
+    public static let defaultMapURL = URL(string: "https://stevenson.space/api/v1/schedule-dates.json")!
+    /// The lunch menus for the weeks around today, from the same API.
+    public static let lunchMenuURL = URL(string: "https://stevenson.space/api/v1/lunch.json")!
 
-    public static func lunchStationURL(named name: String) -> URL {
-        URL(string: "https://raw.githubusercontent.com/stevenson-space/shs/main/src/data/lunch-rotating/\(name).json")!
-    }
-
-    /// Hosts the schedule manifest and the lunch station files. Every remote
-    /// source the app is allowed to reach lives here; nothing else is fetchable.
-    public static let allowedHosts: Set<String> = ["raw.githubusercontent.com"]
+    /// Hosts the API. Every remote source the app is allowed to reach lives
+    /// here; nothing else is fetchable.
+    public static let allowedHosts: Set<String> = ["stevenson.space"]
 
     private let defaults: UserDefaults
     private let secrets: SecretStore
@@ -320,7 +314,7 @@ public final class SharedStore: @unchecked Sendable {
         set { encode(newValue, key: Keys.fetchMetadata) }
     }
 
-    /// Raw bytes of the last successfully validated lunch manifest.
+    /// Raw bytes of the last successfully validated lunch response.
     public var cachedLunchMenuData: Data? {
         get { defaults.data(forKey: Keys.lunchMenuData) }
         set { defaults.set(newValue, forKey: Keys.lunchMenuData) }
@@ -465,16 +459,20 @@ public struct FetchMetadata: Equatable, Sendable {
         lastAttempt = now
     }
 
-    /// Automatic checks wait `interval` after the last attempt. An attempt
+    /// Automatic checks wait `interval` after the last attempt, or only
+    /// `retryInterval` when the last finished check failed, so one bad
+    /// connection doesn't leave the data stale for the full interval. While a
+    /// check is in flight the previous outcome still applies. An attempt
     /// stamped in the future never throttles, so a clock correction can't
     /// stall syncing.
-    public func isThrottled(at now: Date, interval: TimeInterval) -> Bool {
+    public func isThrottled(at now: Date, interval: TimeInterval,
+                            retryInterval: TimeInterval) -> Bool {
         guard let lastAttempt else { return false }
         let elapsed = now.timeIntervalSince(lastAttempt)
-        return elapsed >= 0 && elapsed < interval
+        return elapsed >= 0 && elapsed < (lastError == nil ? interval : retryInterval)
     }
 
-    /// Quiet for five days after a successful check, even if the content has
+    /// Quiet for two days after a successful check, even if the content has
     /// not changed. Failed retries must not restart a never-synced install's
     /// grace period. Older metadata falls back to its last recorded attempt.
     public func isUpdateCheckOverdue(at now: Date) -> Bool {
@@ -489,7 +487,7 @@ public struct FetchMetadata: Equatable, Sendable {
     /// The single time at which a valid check date becomes overdue.
     public var updateCheckDeadline: Date? {
         guard let reference = updateCheckReference else { return nil }
-        return SchoolTime.calendar.date(byAdding: .day, value: 5, to: reference)
+        return SchoolTime.calendar.date(byAdding: .day, value: 2, to: reference)
     }
 
     private var updateCheckReference: Date? { lastSuccess ?? firstAttempt ?? lastAttempt }

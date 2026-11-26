@@ -91,7 +91,8 @@ import Testing
         #expect(inquiry.timeline.blocks.isEmpty)
         #expect(inquiry.nextClass == nil)
         #expect(!inquiry.timeline.isSchoolDay)
-        #expect(LunchMenuLoader.menu(try LunchMenuParser.loadBundled(),
+        #expect(TestSupport.septemberLunchMenu.menu(for: monday) != nil)
+        #expect(LunchMenuLoader.menu(TestSupport.septemberLunchMenu,
                                    for: monday, inputs: inputs) == nil)
     }
 }

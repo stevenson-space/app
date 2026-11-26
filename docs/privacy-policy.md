@@ -1,6 +1,6 @@
 # Stevenson Space Privacy Policy
 
-Last updated: October 4, 2026
+Last updated: November 10, 2026
 
 ## About this policy
 
@@ -99,13 +99,19 @@ contain those older copies. Updating the app does not rewrite existing backups.
 
 Your schedule customizations and app preferences are stored locally and may be
 included in device backups. The app downloads school schedule and lunch menu
-updates from GitHub. These requests do not include your student ID or photo;
-GitHub receives the connection information needed to serve the requests, such as
-your IP address, under [GitHub’s privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
+updates from the Stevenson Space website (stevenson.space), which is served
+through Cloudflare. These requests do not include your student ID or photo;
+Cloudflare receives the connection information needed to serve the requests, such
+as your IP address, under [Cloudflare’s privacy policy](https://www.cloudflare.com/privacypolicy/).
 
-The app uses HTTPS for these downloads. GitHub controls retention and deletion
-of its service logs; we do not set their retention period. We do not send GitHub
-your saved class names, room numbers, or other schedule customizations.
+The app uses HTTPS for these downloads. Cloudflare controls retention and
+deletion of its service logs; we do not set their retention period. We do not
+send the website or Cloudflare your saved class names, room numbers, or other
+schedule customizations.
+
+Older app versions download these updates from GitHub instead, where
+[GitHub’s privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement)
+applies in the same way.
 
 Apple separately operates the App Store, device backups, iCloud Photos, and Siri.
 Apple may also provide developers with app usage statistics or diagnostic

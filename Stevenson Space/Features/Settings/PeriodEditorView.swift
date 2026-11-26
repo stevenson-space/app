@@ -7,6 +7,7 @@ import ScheduleKit
 struct PeriodEditorListView: View {
     @Environment(AppModel.self) private var model
     @State private var editing: EditorTarget?
+    @State private var confirmingReset = false
 
     var body: some View {
         let config = model.config
@@ -31,17 +32,53 @@ struct PeriodEditorListView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                resetButton
+                    .padding(.top, 16)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("My Schedule")
+        // Resetting wipes the whole schedule, so the prompt plays a warning
+        // while the student can still cancel.
+        .sensoryFeedback(.warning, trigger: confirmingReset) { _, isAsking in isAsking }
         .sheet(item: $editing) { target in
             BlockEditSheet(target: target)
                 .id(target.id)
                 .presentationDetents([.medium, .large])
         }
+        .alert("Reset your schedule?", isPresented: $confirmingReset) {
+            Button("Reset", role: .destructive) {
+                model.updateConfig { $0.resetSchedule() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This clears your classes, lunch, advisory, and free periods. It can't be undone.")
+        }
+    }
+
+    /// Card-shaped so it sits in the list's visual language; disabled while
+    /// there's nothing to reset.
+    private var resetButton: some View {
+        let disabled = model.config.isDefaultSchedule
+        return Button(role: .destructive) {
+            confirmingReset = true
+        } label: {
+            Text("Reset Schedule")
+                .font(.headline)
+                .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.red))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     /// "Period 2 · 9:26 – 10:38 · 118" (span label replaces the period name
@@ -100,6 +137,7 @@ struct BlockEditSheet: View {
     @State private var emoji = ""
     @State private var showingEmojiPicker = false
     @State private var loaded = false
+    @State private var kindChanges = 0
     @FocusState private var nameFocused: Bool
 
     private var number: Int { target.period }
@@ -194,12 +232,14 @@ struct BlockEditSheet: View {
                             config.setPlan(PeriodPlan(a: .free, b: .free), for: number)
                         }
                     }
+                    kindChanges += 1
                 })) {
                 Text("Class").tag(CardKind.classwork)
                 Text("Lunch").tag(CardKind.lunch)
                 Text("Free").tag(CardKind.free)
             }
             .pickerStyle(.segmented)
+            .sensoryFeedback(.selection, trigger: kindChanges)
         }
     }
 
@@ -383,7 +423,7 @@ struct BlockEditSheet: View {
             .labelsHidden()
         } footer: {
             if current == .advisory {
-                Text("Advisory pairs with lunch in the other half and doesn't meet on Fridays.")
+                Text("Advisory doesn't meet on Fridays, Late Arrival days, or Activity Period days.")
             }
         }
 
@@ -418,12 +458,6 @@ struct BlockEditSheet: View {
                     Text("B (second half)").tag(Half.b)
                 }
                 .pickerStyle(.menu)
-            } footer: {
-                if current == .advisory {
-                    Text("Lunch takes the other half.")
-                } else if otherSlot == .advisory {
-                    Text("Advisory takes the other half.")
-                }
             }
         }
 
@@ -447,11 +481,9 @@ struct BlockEditSheet: View {
                     }))
                 .disabled(!canToggle)
             } footer: {
-                if otherSlot == .advisory {
-                    Text("Advisory holds \(period)\(otherHalf.rawValue) and doesn't meet on Fridays — lunch fills the whole period then.")
-                } else if canToggle {
+                if otherSlot == .free {
                     Text("Freshmen: advisory takes \(period)\(otherHalf.rawValue), the other half of this period.")
-                } else {
+                } else if !canToggle {
                     let owner = otherSlot.classAnchor.map { className($0) } ?? "another block"
                     Text("Advisory would take \(period)\(otherHalf.rawValue), which belongs to \(owner). Free that half first.")
                 }
@@ -561,8 +593,9 @@ private struct ClassEmojiPicker: View {
                                             .frame(maxWidth: .infinity, minHeight: 44)
                                             .background {
                                                 if selection == emoji {
+                                                    // A solid fill: a light tint is under 3:1 against the sheet.
                                                     RoundedRectangle(cornerRadius: 10)
-                                                        .fill(Color.accentColor.opacity(0.16))
+                                                        .fill(Color.accentColor)
                                                 }
                                             }
                                             .contentShape(Rectangle())

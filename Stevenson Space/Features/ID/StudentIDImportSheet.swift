@@ -50,6 +50,7 @@ struct StudentIDImportSheet: View {
                     }
                 }
             }
+            .sensoryFeedback(.error, trigger: saveFailed) { _, failed in failed }
             .alert("Could not save your ID", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -99,6 +100,8 @@ struct StudentIDImportSheet: View {
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color(.secondarySystemGroupedBackground)))
 
+                purchaseNote
+
                 if !messages.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(messages, id: \.self) { warning in
@@ -132,9 +135,12 @@ struct StudentIDImportSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button("Try Another Screenshot", action: onChooseAnother)
-                .buttonStyle(.borderedProminent)
-                .tint(StevensonPalette.accent)
+            Button(action: onChooseAnother) {
+                Text("Try Another Screenshot")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(StevensonPalette.onAccent)
+            }
+            .buttonStyle(.borderedProminent)
                 .padding(.top, 4)
         }
         .padding(.horizontal, 32)
@@ -160,6 +166,26 @@ struct StudentIDImportSheet: View {
             .fill(Color.red.opacity(0.08)))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
             .strokeBorder(Color.red.opacity(0.3), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The card only stands in for the printed ID; lunch and other purchases
+    /// still go through the GET app.
+    private var purchaseNote: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Not for lunch or purchases", systemImage: "creditcard")
+                .font(.subheadline.weight(.semibold))
+
+            Text("This ID can’t be used to buy lunch or make purchases at school. "
+                 + "You’ll still need the GET app for those.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color(.secondarySystemGroupedBackground)))
         .accessibilityElement(children: .combine)
     }
 

@@ -6,7 +6,7 @@ import Testing
     private let monday = day(2026, 9, 14)
 
     @Test func everyOverrideKeepsAppAndWidgetInAgreement() throws {
-        let menu = try LunchMenuParser.loadBundled()
+        let menu = TestSupport.septemberLunchMenu
         let published = try #require(menu.menu(for: monday))
         let types: [OverrideType] = [
             .noSchool, .asynchronous,
@@ -31,17 +31,17 @@ import Testing
             let expected = serves ? published : nil
             #expect(LunchMenuLoader.menu(menu, for: monday, inputs: inputs) == expected)
             let entry = try #require(LunchWidgetTimelinePlanner.entries(
-                from: monday.date()!, cachedData: nil, inputs: inputs).first)
+                from: monday.date()!, cachedData: TestSupport.septemberLunchPayload, inputs: inputs).first)
             #expect(entry.menu == expected)
             #expect(entry.isServingDay == serves)
-            // An override never shifts another date's dishes or rotation.
+            // An override never shifts another date's dishes.
             let tuesday = monday.advanced(by: 1)
             #expect(LunchMenuLoader.menu(menu, for: tuesday, inputs: inputs) == menu.menu(for: tuesday))
         }
     }
 
     @Test func replacingAndRemovingOverridesRestoresCalendarRules() throws {
-        let menu = try LunchMenuParser.loadBundled()
+        let menu = TestSupport.septemberLunchMenu
         let map = try TestSupport.map(#"{"No School":["09/14/2026"]}"#)
         var inputs = TestSupport.inputs(map: map)
         #expect(LunchMenuLoader.menu(menu, for: monday, inputs: inputs) == nil)
@@ -60,7 +60,7 @@ import Testing
     }
 
     @Test func bellOverridesCannotInventUnpublishedMenus() throws {
-        let menu = try LunchMenuParser.loadBundled()
+        let menu = TestSupport.septemberLunchMenu
         for date in [day(2026, 9, 19), day(2027, 6, 1)] {
             let inputs = TestSupport.inputs(overrides: [
                 date: DayOverride(day: date, type: .bell(family: .standard, rotation: nil)),
@@ -68,7 +68,7 @@ import Testing
             #expect(resolveDay(date, inputs: inputs).isSchoolDay)
             #expect(LunchMenuLoader.menu(menu, for: date, inputs: inputs) == nil)
             let entry = try #require(LunchWidgetTimelinePlanner.entries(
-                from: date.date()!, cachedData: nil, inputs: inputs).first)
+                from: date.date()!, cachedData: TestSupport.septemberLunchPayload, inputs: inputs).first)
             #expect(entry.menu == nil)
             #expect(entry.isServingDay == !date.isWeekend)
         }
@@ -82,11 +82,11 @@ import Testing
         defaults.set(true, forKey: "sk.widgetDataReady")
         store.overrides = [DayOverride(day: monday, type: .noSchool)]
         let closed = try SharedStore.readLunchWidgetData(from: defaults)
-        #expect(LunchMenuLoader.menu(try LunchMenuParser.loadBundled(), for: monday,
+        #expect(LunchMenuLoader.menu(TestSupport.septemberLunchMenu, for: monday,
                                     inputs: closed.schedule.resolverInputs(catalog: TestSupport.catalog)) == nil)
         store.overrides = []
         let restored = try SharedStore.readLunchWidgetData(from: defaults)
-        #expect(LunchMenuLoader.menu(try LunchMenuParser.loadBundled(), for: monday,
+        #expect(LunchMenuLoader.menu(TestSupport.septemberLunchMenu, for: monday,
                                     inputs: restored.schedule.resolverInputs(catalog: TestSupport.catalog)) != nil)
     }
 }

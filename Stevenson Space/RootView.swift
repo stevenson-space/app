@@ -12,18 +12,34 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var navigation = navigation
-        TabView(selection: $navigation.selectedTab) {
-            Tab("Home", systemImage: "clock", value: RootTab.home) {
+        TabView(selection: Binding(
+            get: { navigation.selectedTab },
+            set: { tab in
+                // Tapping Home while it's showing takes it back to today.
+                if tab == .home, navigation.selectedTab == .home {
+                    navigation.returnHomeToToday()
+                }
+                navigation.selectedTab = tab
+            })) {
+            Tab(value: RootTab.home) {
                 HomeView()
+            } label: {
+                TabLabel("Home", systemImage: "clock")
             }
-            Tab("Lunch", systemImage: "fork.knife", value: RootTab.lunch) {
+            Tab(value: RootTab.lunch) {
                 LunchMenuView()
+            } label: {
+                TabLabel("Lunch", systemImage: "fork.knife")
             }
-            Tab("ID", systemImage: "person.text.rectangle", value: RootTab.id) {
+            Tab(value: RootTab.id) {
                 StudentIDView()
+            } label: {
+                TabLabel("ID", systemImage: "person.text.rectangle")
             }
-            Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
+            Tab(value: RootTab.settings) {
                 SettingsView()
+            } label: {
+                TabLabel("Settings", systemImage: "gearshape")
             }
         }
         .accessibilityHidden(navigation.isOnboardingPresented)
@@ -71,27 +87,28 @@ struct RootView: View {
 
     private func attachNavigation() {
         do { try model.navigation.attach(navigation) }
-        catch { presentNavigationError(error) }
+        catch { navigation.presentError(error) }
+    }
+}
+
+/// Icons alone in the iOS 26 tab bar; older systems keep the standard titles
+/// under each icon. The title stays the item's accessibility label either way.
+private struct TabLabel: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+
+    init(_ title: LocalizedStringKey, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
     }
 
-    private func presentNavigationError(_ error: Error) {
-        guard var presenter = navigation.window?.rootViewController else { return }
-        // A pending intent can fail because a sheet is open. Present from that
-        // sheet so the error remains visible without discarding unfinished edits.
-        while let presented = presenter.presentedViewController {
-            presenter = presented
+    var body: some View {
+        if #available(iOS 26, *) {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+        } else {
+            Label(title, systemImage: systemImage)
         }
-        if let transition = presenter.transitionCoordinator {
-            transition.animate(alongsideTransition: nil) { _ in
-                DispatchQueue.main.async { presentNavigationError(error) }
-            }
-            return
-        }
-        let alert = UIAlertController(title: "Could not show your student ID",
-                                      message: error.localizedDescription,
-                                      preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
-        presenter.present(alert, animated: true)
     }
 }
 

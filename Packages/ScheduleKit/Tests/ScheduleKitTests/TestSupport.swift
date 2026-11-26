@@ -28,6 +28,53 @@ enum TestSupport {
                        catalog: catalog, years: SchoolYearCatalog.years)
     }
 
+    /// A `lunch.json` response in the API's shape, with a menu for each
+    /// weekday from `start` through `end`. Dishes are named after their date
+    /// and `seed`, so a test can tell one day or one publication from another.
+    static func lunchPayload(from start: DayKey, through end: DayKey, seed: String = "a",
+                             generatedAt: String = "2026-09-14T07:44:09.498Z") -> Data {
+        var days: [(DayKey, [String: Any])] = []
+        var candidate = start
+        while candidate <= end {
+            if !candidate.isWeekend { days.append((candidate, lunchDishes(candidate, seed: seed))) }
+            candidate = candidate.advanced(by: 1)
+        }
+        return lunchPayload(days: days, generatedAt: generatedAt)
+    }
+
+    static func lunchPayload(days: [(DayKey, [String: Any])],
+                             generatedAt: String = "2026-09-14T07:44:09.498Z") -> Data {
+        let object: [String: Any] = [
+            "version": 1,
+            "generatedAt": generatedAt,
+            "signature": "121fea1d",
+            "validRange": ["start": "2026-08-10", "end": "2027-05-31"],
+            "days": days.map { ["date": $0.0.description, "menu": $0.1] },
+        ]
+        return try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    static func lunchDishes(_ day: DayKey, seed: String = "a") -> [String: Any] {
+        [
+            "comfort": "\(seed)-comfort-\(day)",
+            "mindful": "\(seed)-mindful-\(day)",
+            "sides": ["\(seed)-sides-\(day)-a", "\(seed)-sides-\(day)-b"],
+            "soup": ["\(seed)-soup-\(day)-a", "\(seed)-soup-\(day)-b"],
+            "international": "\(seed)-international-\(day)",
+            "special": "\(seed)-special",
+        ]
+    }
+
+    /// Four school weeks of menus around mid-September 2026.
+    static let septemberLunchPayload = lunchPayload(from: day(2026, 9, 7), through: day(2026, 10, 2))
+    static let septemberLunchMenu: LunchMenu = {
+        do {
+            return try LunchMenuParser.parse(septemberLunchPayload)
+        } catch {
+            fatalError("test lunch payload failed to parse: \(error)")
+        }
+    }()
+
     /// Compact textual snapshot of a timeline for readable assertions:
     /// "08:30-08:54 4A lunch Lunch"
     static func lines(_ timeline: DayTimeline) -> [String] {

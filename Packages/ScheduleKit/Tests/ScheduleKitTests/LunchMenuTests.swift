@@ -3,284 +3,355 @@ import Foundation
 @testable import ScheduleKit
 
 @Suite struct LunchMenuParserTests {
-    @Test func bundledManifestMatchesWebsiteRotation() throws {
-        let menu = try LunchMenuParser.loadBundled()
+    @Test func parsesTheAPISnapshot() throws {
+        let menu = try LunchMenuParser.parse(TestSupport.fixture("lunch-api-v1"))
 
-        let openingTuesday = try #require(menu.menu(for: day(2026, 8, 11)))
-        #expect(items(.comfort, in: openingTuesday) == ["Chicken Shawarma with Pita"])
-        #expect(items(.sides, in: openingTuesday)
-                == ["Simple Green Salad", "Lemon Rice with Tzatziki Sauce"])
-        #expect(items(.soup, in: openingTuesday) == ["Smoky Poblano", "Chicken Noodle"])
-        #expect(items(.special, in: openingTuesday) == ["Tacos Tuesday"])
+        let monday = try #require(menu.menu(for: day(2026, 11, 2)))
+        #expect(monday.sections.map(\.station) == LunchMenuStation.allCases)
+        #expect(items(.comfort, in: monday) == ["Vegetarian Paella"])
+        #expect(items(.mindful, in: monday) == ["Baked Chicken Parmesan"])
+        #expect(items(.sides, in: monday) == ["Roasted Broccolini", "Pasta"])
+        #expect(items(.soup, in: monday) == ["Lasagna Soup", "Cream of Potato"])
+        #expect(items(.international, in: monday) == ["Burrito Bowl"])
+        // The website names the special after its weekday.
+        #expect(items(.special, in: monday) == ["Sushi Monday"])
+        let tuesday = try #require(menu.menu(for: day(2026, 11, 10)))
+        #expect(items(.special, in: tuesday) == ["Tacos Tuesday"])
 
-        // The website advances the rotation every seven calendar days from
-        // validFrom, which it anchors to a Monday so a whole school week
-        // shares one rotation week.
-        let nextTuesday = try #require(menu.menu(for: day(2026, 8, 18)))
-        #expect(items(.comfort, in: nextTuesday) == ["Moroccan Chickpea Stew with Naan"])
-        #expect(items(.international, in: nextTuesday) == ["Pasta Bowl"])
-
-        #expect(menu.validFrom.weekday() == 2)
-        let monday = try #require(menu.menu(for: day(2026, 8, 17)))
-        #expect(items(.international, in: monday) == ["Pasta Bowl"])
-
-        // Five weeks in, the rotation wraps back to its first week. The
-        // website's own tests pin this menu for September 14.
-        #expect(menu.rotationWeeks == 5)
-        let wrapped = try #require(menu.menu(for: day(2026, 9, 14)))
-        #expect(items(.comfort, in: wrapped) == ["Cheese Tortellini"])
-        #expect(items(.mindful, in: wrapped) == ["Lemon Garlic Baked Chicken"])
-        #expect(items(.sides, in: wrapped) == ["Roasted Carrots", "Roasted Red Potatoes"])
-        #expect(items(.soup, in: wrapped) == ["Smoky Poblano", "Chicken Noodle"])
-        #expect(items(.international, in: wrapped) == ["Asian Bowl"])
-        #expect(items(.special, in: wrapped) == ["Sushi Monday"])
+        // Only school days are published: election day, a weekend and the
+        // Thanksgiving break are simply absent.
+        #expect(menu.menu(for: day(2026, 11, 3)) == nil)
+        #expect(menu.menu(for: day(2026, 11, 7)) == nil)
+        #expect(menu.menu(for: day(2026, 11, 26)) == nil)
+        // The window ends on the last published day.
+        #expect(menu.lastDay == day(2026, 11, 30))
+        #expect(menu.menu(for: day(2026, 12, 1)) == nil)
     }
 
-    @Test func bundledPlaceholderStationsAreLeftOffTheDay() throws {
-        let menu = try LunchMenuParser.loadBundled()
+    @Test func snapshotPlaceholderStationsAreLeftOffTheDay() throws {
+        let menu = try LunchMenuParser.parse(TestSupport.fixture("lunch-api-v1"))
 
-        // Week five's Monday has no comfort, mindful or sides plan yet; the
-        // website publishes "?? No Information" in those slots.
-        let monday = try #require(menu.menu(for: day(2026, 10, 12)))
+        // The kitchen has no comfort, mindful or sides plan for this Monday;
+        // the API passes its "?? No Information" through.
+        let monday = try #require(menu.menu(for: day(2026, 11, 16)))
         #expect(items(.comfort, in: monday) == nil)
         #expect(items(.mindful, in: monday) == nil)
         #expect(items(.sides, in: monday) == nil)
         #expect(items(.soup, in: monday) == ["Garden Vegetable Soup", "New England Clam Chowder"])
         #expect(items(.international, in: monday) == ["Mediterranean"])
         #expect(items(.special, in: monday) == ["Sushi Monday"])
-
-        let tuesday = try #require(menu.menu(for: day(2026, 10, 13)))
-        #expect(items(.comfort, in: tuesday) == ["Poblano White Cheddar Chicken"])
-        #expect(items(.sides, in: tuesday) == ["Vegetable Medley", "Mashed Potato"])
     }
 
-    @Test(arguments: [" ?? No Information ", " No Information ", " None Specified ", " TBD ", " no information ", " tbd "])
-    func placeholderItemsAreDroppedFromLiveData(placeholder: String) throws {
-        let menu = try LunchMenuParser.parse(validManifest(
-            comfort: [placeholder, "week-1", "week-2", "week-3"],
-            sides: [[placeholder, "week-0-b"], ["week-1-a", "week-1-b"],
-                    ["week-2-a", "week-2-b"], ["week-3-a", "week-3-b"]]))
+    @Test(arguments: [" ?? No Information ", " No Information ", " None Specified ", " TBD ", " no information ", " tbd ", "  "])
+    func placeholderItemsAreDropped(placeholder: String) throws {
+        let tuesday = day(2026, 9, 15)
+        var dishes = TestSupport.lunchDishes(tuesday)
+        dishes["comfort"] = placeholder
+        dishes["sides"] = [placeholder, "Lemon Rice"]
+        let menu = try LunchMenuParser.parse(TestSupport.lunchPayload(days: [(tuesday, dishes)]))
 
-        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
-        #expect(items(.comfort, in: tuesday) == nil)
-        #expect(items(.sides, in: tuesday) == ["week-0-b"])
-        #expect(items(.mindful, in: tuesday) == ["week-0"])
+        let published = try #require(menu.menu(for: tuesday))
+        #expect(items(.comfort, in: published) == nil)
+        #expect(items(.sides, in: published) == ["Lemon Rice"])
+        #expect(items(.mindful, in: published) == ["a-mindful-2026-09-15"])
     }
 
-    @Test func dishNamesAreTrimmedBeforeDisplay() throws {
-        let menu = try LunchMenuParser.parse(validManifest(
-            comfort: [" \tRoasted Chicken\n", "week-1", "week-2", "week-3"],
-            sides: [[" ?? No Information ", " Maple Whipped Sweet Potatoes "],
-                    ["week-1-a", "week-1-b"], ["week-2-a", "week-2-b"], ["week-3-a", "week-3-b"]]))
-        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
-        #expect(items(.comfort, in: tuesday) == ["Roasted Chicken"])
-        #expect(items(.sides, in: tuesday) == ["Maple Whipped Sweet Potatoes"])
-
-        let bundled = try LunchMenuParser.loadBundled()
-        let friday = try #require(bundled.menu(for: day(2026, 8, 28)))
-        #expect(items(.sides, in: friday) == ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"])
-    }
-
-    @Test(arguments: [" ?? No Information ", " No Information ", " None Specified ", " TBD ", " no information ", " tbd "])
-    func allPlaceholderStationsHaveNoMenu(placeholder: String) throws {
-        var json = try #require(JSONSerialization.jsonObject(with: validManifest()) as? [String: Any])
-        var stations: [String: Any] = [:]
-        for name in ["comfort", "mindful", "international"] {
-            stations[name] = ["cadence": "weekly", "data": Array(repeating: placeholder, count: 4)]
-        }
-        for name in ["sides", "soup"] {
-            stations[name] = ["cadence": "weekly",
-                              "data": Array(repeating: [placeholder, placeholder], count: 4)]
-        }
-        json["stations"] = stations
-        json["special"] = Array(repeating: Array(repeating: placeholder, count: 5), count: 2)
-        let menu = try LunchMenuParser.parse(JSONSerialization.data(withJSONObject: json))
+    @Test(arguments: [" ?? No Information ", " None Specified ", " TBD "])
+    func aDayOfNothingButPlaceholdersHasNoMenu(placeholder: String) throws {
         let monday = day(2026, 9, 14)
+        let dishes: [String: Any] = [
+            "comfort": placeholder, "mindful": placeholder, "international": placeholder,
+            "sides": [placeholder, placeholder], "soup": [placeholder, placeholder],
+            "special": placeholder,
+        ]
+        let menu = try LunchMenuParser.parse(TestSupport.lunchPayload(days: [
+            (monday, dishes),
+            (monday.advanced(by: 1), TestSupport.lunchDishes(monday.advanced(by: 1))),
+        ]))
 
         #expect(menu.menu(for: monday) == nil)
         #expect(LunchMenuLoader.menu(menu, for: monday,
                                      inputs: ResolverInputs(catalog: TestSupport.catalog)) == nil)
+        // An unplanned day is not the end of the published menus.
+        #expect(menu.lastDay == monday.advanced(by: 1))
     }
 
-    @Test func weekendAndOutOfRangeDatesHaveNoMenu() throws {
-        let menu = try LunchMenuParser.loadBundled()
-        #expect(menu.menu(for: day(2026, 8, 9)) == nil)
-        #expect(menu.menu(for: day(2026, 8, 15)) == nil)
-        #expect(menu.menu(for: day(2027, 6, 1)) == nil)
+    @Test func dishNamesAreTrimmedBeforeDisplay() throws {
+        let tuesday = day(2026, 9, 15)
+        var dishes = TestSupport.lunchDishes(tuesday)
+        dishes["comfort"] = " \tRoasted Chicken\n"
+        let menu = try LunchMenuParser.parse(TestSupport.lunchPayload(days: [(tuesday, dishes)]))
+        #expect(items(.comfort, in: try #require(menu.menu(for: tuesday))) == ["Roasted Chicken"])
+
+        let snapshot = try LunchMenuParser.parse(TestSupport.fixture("lunch-api-v1"))
+        let friday = try #require(snapshot.menu(for: day(2026, 11, 6)))
+        #expect(items(.sides, in: friday) == ["Roasted Vegetables", "Maple Whipped Sweet Potatoes"])
     }
 
-    @Test(arguments: 10...16, [0, 3])
-    func rotationAdvancesOnMondayRegardlessOfStartWeekday(startDay: Int, offset: Int) throws {
-        let menu = try LunchMenuParser.parse(validManifest(validFrom: "2026-08-\(startDay)", offset: offset))
-        #expect(menu.menu(for: day(2026, 8, startDay).advanced(by: -1)) == nil)
-        for weekday in 0..<5 {
-            let firstWeekDay = day(2026, 8, 10 + weekday)
-            if firstWeekDay >= menu.validFrom {
-                let firstWeek = try #require(menu.menu(for: firstWeekDay))
-                #expect(items(.comfort, in: firstWeek) == ["week-\(offset)"])
-            }
-            let nextWeek = try #require(menu.menu(for: day(2026, 8, 17 + weekday)))
-            #expect(items(.comfort, in: nextWeek) == ["week-\((offset + 1) % 4)"])
+    @Test func theSpecialIsNamedAfterEachWeekday() throws {
+        let menu = TestSupport.septemberLunchMenu
+        let names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        for (offset, name) in names.enumerated() {
+            let published = try #require(menu.menu(for: day(2026, 9, 14 + offset)))
+            #expect(items(.special, in: published) == ["a-special \(name)"])
         }
     }
 
-    @Test func mondayRotationUsesCalendarDaysAcrossDST() throws {
-        let menu = try LunchMenuParser.parse(validManifest(validFrom: "2026-10-28"))
-        let monday = try #require(menu.menu(for: day(2026, 11, 2)))
-        #expect(items(.comfort, in: monday) == ["week-1"])
-        let followingMonday = try #require(menu.menu(for: day(2026, 11, 9)))
-        #expect(items(.comfort, in: followingMonday) == ["week-2"])
+    @Test func aStationCanServeOneDishOrSeveral() throws {
+        let tuesday = day(2026, 9, 15)
+        var dishes = TestSupport.lunchDishes(tuesday)
+        dishes["comfort"] = ["Fried Chicken", "Veggie Burger"]
+        dishes["soup"] = "Minestrone"
+        let menu = try LunchMenuParser.parse(TestSupport.lunchPayload(days: [(tuesday, dishes)]))
+
+        let published = try #require(menu.menu(for: tuesday))
+        #expect(items(.comfort, in: published) == ["Fried Chicken", "Veggie Burger"])
+        #expect(items(.soup, in: published) == ["Minestrone"])
     }
 
-    @Test func semesterSwitchChangesSpecialRotation() throws {
-        let menu = try LunchMenuParser.loadBundled()
-        let firstSemesterThursday = try #require(menu.menu(for: day(2026, 12, 31)))
-        let secondSemesterThursday = try #require(menu.menu(for: day(2027, 1, 7)))
-        #expect(items(.special, in: firstSemesterThursday) == ["Nachos Thursday"])
-        #expect(items(.special, in: secondSemesterThursday) == ["Chilli Thursday"])
+    @Test func stationsTheAppDoesNotKnowAreIgnored() throws {
+        let tuesday = day(2026, 9, 15)
+        var dishes = TestSupport.lunchDishes(tuesday)
+        dishes["grill"] = ["name": "Burger", "price": 4] as [String: Any]
+        dishes["soup"] = nil
+        let menu = try LunchMenuParser.parse(TestSupport.lunchPayload(days: [(tuesday, dishes)]))
+
+        // A station the API adds, or stops sending, costs only that station.
+        let published = try #require(menu.menu(for: tuesday))
+        #expect(published.sections.map(\.station) == [.comfort, .mindful, .sides, .international, .special])
     }
 
-    @Test func malformedManifestsFailWholesale() throws {
-        #expect(throws: LunchMenuParserError.self) {
-            _ = try LunchMenuParser.parse(Data("not json".utf8))
-        }
-        #expect(throws: LunchMenuParserError.self) {
-            _ = try LunchMenuParser.parse(validManifest(offset: 4))
-        }
-        #expect(throws: LunchMenuParserError.self) {
-            _ = try LunchMenuParser.parse(validManifest(specialWeekdays: 4))
-        }
-        #expect(throws: LunchMenuParserError.self) {
-            _ = try LunchMenuParser.parse(
-                Data(repeating: 0x20, count: LunchMenuParser.maxBytes + 1))
-        }
+    @Test func anEmptyWindowIsAMenuWithNoDays() throws {
+        // What the API serves once its window leaves the menu data's range,
+        // as it does over the summer.
+        let summer = Data(#"""
+            {"version": 1, "window": {"start": null, "end": null, "refreshAfter": "2027-07-20"},
+             "validRange": {"start": "2026-08-10", "end": "2027-05-31"}, "days": []}
+            """#.utf8)
+        let menu = try LunchMenuParser.parse(summer)
+        #expect(menu.lastDay == nil)
+        #expect(menu.menu(for: day(2027, 6, 14)) == nil)
     }
 
-    @Test func rotationLengthComesFromTheStationsNotAFixedFour() throws {
-        // The website moved from a four-week to a five-week rotation; a parser
-        // that insists on four rejects every live manifest.
-        let menu = try LunchMenuParser.parse(validManifest(weeks: 5))
-        #expect(menu.rotationWeeks == 5)
-
-        let firstTuesday = try #require(menu.menu(for: day(2026, 8, 11)))
-        #expect(items(.international, in: firstTuesday) == ["week-0"])
-        let fifthTuesday = try #require(menu.menu(for: day(2026, 9, 8)))
-        #expect(items(.international, in: fifthTuesday) == ["week-4"])
-        // Week six wraps to the top of the rotation, not to week two.
-        let sixthTuesday = try #require(menu.menu(for: day(2026, 9, 15)))
-        #expect(items(.international, in: sixthTuesday) == ["week-0"])
-    }
-
-    @Test func stationsMustAgreeOnTheRotationLength() {
-        #expect(throws: LunchMenuParserError.self) {
-            _ = try LunchMenuParser.parse(validManifest(weeks: 5, soupWeeks: 4))
+    @Test func malformedPayloadsFailWholesale() throws {
+        let tuesday = day(2026, 9, 15)
+        func payload(date: String, menu: Any) -> Data {
+            try! JSONSerialization.data(withJSONObject: ["days": [["date": date, "menu": menu]]])
         }
-        // Offset is bounded by the published rotation, not by a constant.
-        #expect(throws: LunchMenuParserError.self) {
-            _ = try LunchMenuParser.parse(validManifest(weeks: 5, offset: 5))
-        }
-        #expect(throws: Never.self) {
-            _ = try LunchMenuParser.parse(validManifest(weeks: 5, offset: 4))
+        let malformed: [Data] = [
+            Data("not json".utf8),
+            // What the site serves for a path it does not have.
+            Data("<!doctype html><html><body>Stevenson Space</body></html>".utf8),
+            Data("{}".utf8),
+            Data(#"{"days": {"2026-09-15": {}}}"#.utf8),
+            payload(date: "9/15/2026", menu: TestSupport.lunchDishes(tuesday)),
+            payload(date: "2026-02-30", menu: TestSupport.lunchDishes(tuesday)),
+            payload(date: "2026-09-15", menu: ["comfort": 7]),
+            payload(date: "2026-09-15", menu: ["sides": ["Rice", 7] as [Any]]),
+            Data(#"{"days": [{"date": "2026-09-15"}]}"#.utf8),
+            Data(repeating: 0x20, count: LunchMenuParser.maxBytes + 1),
+        ]
+        for data in malformed {
+            #expect(throws: LunchMenuParserError.self) { _ = try LunchMenuParser.parse(data) }
         }
     }
 
-    private func items(_ station: LunchMenuStation, in menu: LunchMenuDay) -> [String]? {
-        menu.sections.first { $0.station == station }?.items
+    @Test func aRotationManifestFromAnEarlierVersionIsNotAMenu() {
+        // Versions before the API cached the rotation itself. It cannot be
+        // read as published days, so it loads as no menu until the next refresh.
+        #expect(throws: LunchMenuParserError.self) { _ = try LunchMenuParser.parse(legacyRotationManifest) }
+        #expect(LunchMenuLoader.load(cachedData: legacyRotationManifest) == nil)
     }
 }
 
 @Suite(.serialized) struct LunchMenuSyncTests {
-    @Test func refreshBuildsTheManifestFromTheSixRotatingStationFiles() async throws {
+    private let monday = day(2026, 9, 14)
+    private var mondayPayload: Data {
+        TestSupport.lunchPayload(from: day(2026, 9, 7), through: day(2026, 10, 5))
+    }
+
+    @Test func fetchesTheMenusFromTheWebsiteAPI() async throws {
         let (store, defaults, suite) = makeLunchStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         LunchStubURLProtocol.reset()
-        LunchStubURLProtocol.handler = { request in stationResponse(for: request) }
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, ["ETag": "\"monday\""], body) }
         let service = LunchMenuSyncService(store: store, session: makeStubSession())
         let now = Date(timeIntervalSince1970: 1_900_000_000)
 
         #expect(await service.refresh(force: true, now: now) == .updated)
 
-        let expected = Set(SharedStore.lunchStationNames.map { SharedStore.lunchStationURL(named: $0) })
-        #expect(Set(LunchStubURLProtocol.requestedURLs) == expected)
-        // The consolidated manifest is gone from the website; nothing may ask
-        // for it, not even as a probe.
-        #expect(!LunchStubURLProtocol.requestedURLs.contains { $0.lastPathComponent == "lunch-menu.json" })
+        // One document, where the old source needed six.
+        let requests = LunchStubURLProtocol.requests
+        #expect(requests.map(\.url?.absoluteString) == ["https://stevenson.space/api/v1/lunch.json"])
+        #expect(requests.first?.value(forHTTPHeaderField: "If-None-Match") == nil)
 
-        let cached = try #require(store.cachedLunchMenuData)
-        let menu = try LunchMenuParser.parse(cached)
-        // The bundled manifest keeps supplying the rotation metadata the
-        // website does not publish per station.
-        let bundled = try LunchMenuParser.loadBundled()
-        #expect(menu.validFrom == bundled.validFrom)
-        #expect(menu.validTo == bundled.validTo)
-        #expect(menu.semesterSwitch == bundled.semesterSwitch)
-        #expect(menu.offset == bundled.offset)
-        // Station data is the live payload, and its five-week rotation wins
-        // over the bundled four.
-        #expect(menu.rotationWeeks == 5)
-        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
-        #expect(tuesday.sections.first { $0.station == .comfort }?.items == ["a-comfort-w0-d1"])
-        #expect(tuesday.sections.first { $0.station == .soup }?.items == ["a-soup-w0-a", "a-soup-w0-b"])
+        #expect(store.cachedLunchMenuData == body)
+        let menu = try #require(LunchMenuLoader.load(cachedData: store.cachedLunchMenuData))
+        let published = try #require(menu.menu(for: monday))
+        #expect(published.sections.first { $0.station == .comfort }?.items == ["a-comfort-2026-09-14"])
+        #expect(published.sections.first { $0.station == .soup }?.items
+                == ["a-soup-2026-09-14-a", "a-soup-2026-09-14-b"])
 
         #expect(store.lunchFetchMetadata.lastSuccess == now)
         #expect(store.lunchFetchMetadata.lastChanged == now)
         #expect(store.lunchFetchMetadata.lastError == nil)
-        #expect(store.lunchFetchMetadata.etag == nil)
+        #expect(store.lunchFetchMetadata.etag == "\"monday\"")
     }
 
-    @Test func changedLiveDataReplacesTheCachedManifest() async throws {
+    @Test func aLaterCheckIsConditionalAndA304KeepsTheMenus() async throws {
         let (store, defaults, suite) = makeLunchStore()
         defer { defaults.removePersistentDomain(forName: suite) }
-        let seed = SeedBox()
         LunchStubURLProtocol.reset()
-        LunchStubURLProtocol.handler = { request in stationResponse(for: request, seed: seed.value) }
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { request in
+            request.value(forHTTPHeaderField: "If-None-Match") == "\"monday\""
+                ? (304, [:], Data()) : (200, ["ETag": "\"monday\""], body)
+        }
         let service = LunchMenuSyncService(store: store, session: makeStubSession())
         let first = Date(timeIntervalSince1970: 1_900_000_000)
-
         #expect(await service.refresh(force: true, now: first) == .updated)
-        let firstCache = try #require(store.cachedLunchMenuData)
 
-        // An overdue check clears the reminder even when the menu is unchanged.
+        // An overdue check clears the reminder even when the menus are unchanged.
         let later = SchoolTime.calendar.date(byAdding: .day, value: 8, to: first)!
         #expect(store.lunchFetchMetadata.isUpdateCheckOverdue(at: later))
         #expect(await service.refresh(force: true, now: later) == .notModified)
-        #expect(store.cachedLunchMenuData == firstCache)
+
+        #expect(LunchStubURLProtocol.requests.last?.value(forHTTPHeaderField: "If-None-Match") == "\"monday\"")
+        #expect(store.cachedLunchMenuData == body)
         #expect(store.lunchFetchMetadata.lastChanged == first)
         #expect(store.lunchFetchMetadata.lastSuccess == later)
         #expect(!store.lunchFetchMetadata.isUpdateCheckOverdue(at: later))
-
-        // The kitchen publishes a new rotation.
-        seed.value = "b"
-        #expect(await service.refresh(force: true, now: later + 10) == .updated)
-        let secondCache = try #require(store.cachedLunchMenuData)
-        #expect(secondCache != firstCache)
-        #expect(store.lunchFetchMetadata.lastChanged == later + 10)
-        let menu = try LunchMenuParser.parse(secondCache)
-        let tuesday = try #require(menu.menu(for: day(2026, 8, 11)))
-        #expect(tuesday.sections.first { $0.station == .comfort }?.items == ["b-comfort-w0-d1"])
     }
 
-    @Test func oneFailedStationKeepsTheLastGoodMenu() async throws {
+    @Test func aRebuildWithTheSameMenusIsNotModified() async throws {
         let (store, defaults, suite) = makeLunchStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         LunchStubURLProtocol.reset()
-        LunchStubURLProtocol.handler = { request in stationResponse(for: request) }
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, ["ETag": "\"monday\""], body) }
         let service = LunchMenuSyncService(store: store, session: makeStubSession())
         let first = Date(timeIntervalSince1970: 1_900_000_000)
         #expect(await service.refresh(force: true, now: first) == .updated)
-        let lastGood = try #require(store.cachedLunchMenuData)
 
-        // Five stations still serve; the sixth does not. A partial menu is
-        // worse than yesterday's complete one, so nothing is committed.
-        LunchStubURLProtocol.handler = { request in
-            if request.url?.lastPathComponent == "soup.json" { return (500, [:], Data()) }
-            return stationResponse(for: request, seed: "b")
-        }
-        guard case .failed = await service.refresh(force: true, now: first + 20) else {
-            Issue.record("Expected a failing station to fail the refresh")
+        // The site was redeployed the same day: a new stamp and ETag around
+        // the same menus.
+        let redeployed = TestSupport.lunchPayload(from: day(2026, 9, 7), through: day(2026, 10, 5),
+                                                  generatedAt: "2026-09-14T15:02:41.118Z")
+        #expect(redeployed != body)
+        LunchStubURLProtocol.handler = { _ in (200, ["ETag": "\"redeploy\""], redeployed) }
+        #expect(await service.refresh(force: true, now: first + 60) == .notModified)
+
+        #expect(store.lunchFetchMetadata.lastChanged == first)
+        #expect(store.lunchFetchMetadata.lastSuccess == first + 60)
+        // The cache follows the ETag, so a later 304 refers to what is held.
+        #expect(store.lunchFetchMetadata.etag == "\"redeploy\"")
+        #expect(store.cachedLunchMenuData == redeployed)
+    }
+
+    @Test func theSlidingWindowReplacesTheCachedMenus() async throws {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LunchStubURLProtocol.reset()
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, [:], body) }
+        let service = LunchMenuSyncService(store: store, session: makeStubSession())
+        let first = Date(timeIntervalSince1970: 1_900_000_000)
+        #expect(await service.refresh(force: true, now: first) == .updated)
+
+        // Overnight the window moves a day: one old menu drops off the back
+        // and a new one appears at the front.
+        let tuesdayPayload = TestSupport.lunchPayload(from: day(2026, 9, 8), through: day(2026, 10, 6),
+                                                      generatedAt: "2026-09-15T07:44:10.201Z")
+        LunchStubURLProtocol.handler = { _ in (200, [:], tuesdayPayload) }
+        #expect(await service.refresh(force: true, now: first + 86_400) == .updated)
+
+        #expect(store.lunchFetchMetadata.lastChanged == first + 86_400)
+        let menu = try #require(LunchMenuLoader.load(cachedData: store.cachedLunchMenuData))
+        #expect(menu.menu(for: day(2026, 9, 7)) == nil)
+        #expect(menu.menu(for: day(2026, 10, 6)) != nil)
+        #expect(menu.lastDay == day(2026, 10, 6))
+    }
+
+    @Test func aCacheFromAnEarlierVersionIsReplacedWithoutWaiting() async throws {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        // An install updated minutes after its last check: a rotation manifest
+        // in the cache, a tag for it, and a throttle window still open.
+        store.cachedLunchMenuData = legacyRotationManifest
+        store.lunchFetchMetadata = FetchMetadata(lastAttempt: now - 600, lastSuccess: now - 600,
+                                                 etag: "\"rotation\"")
+        LunchStubURLProtocol.reset()
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, ["ETag": "\"monday\""], body) }
+        let service = LunchMenuSyncService(store: store, session: makeStubSession())
+
+        // Not throttled: there is no menu to show in the meantime.
+        #expect(await service.refresh(force: false, now: now) == .updated)
+
+        // And not conditional: a 304 would vouch for a cache that cannot be read.
+        #expect(LunchStubURLProtocol.requests.map { $0.value(forHTTPHeaderField: "If-None-Match") } == [nil])
+        #expect(store.cachedLunchMenuData == body)
+        #expect(store.lunchFetchMetadata.etag == "\"monday\"")
+    }
+
+    @Test func aFailedFirstFetchIsRetriedOnTheNextActivation() async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LunchStubURLProtocol.reset()
+        LunchStubURLProtocol.handler = { _ in throw URLError(.notConnectedToInternet) }
+        let service = LunchMenuSyncService(store: store, session: makeStubSession())
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        guard case .failed = await service.refresh(force: false, now: now) else {
+            Issue.record("Expected the offline fetch to fail")
             return
         }
-        #expect(store.cachedLunchMenuData == lastGood)
+
+        // No menu ships with the app, so waiting out the throttle would leave
+        // the Lunch tab empty for an hour after one bad connection.
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, [:], body) }
+        #expect(await service.refresh(force: false, now: now + 60) == .updated)
+        #expect(store.cachedLunchMenuData == body)
+    }
+
+    @Test func a304ToAnUnconditionalRequestFails() async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LunchStubURLProtocol.reset()
+        LunchStubURLProtocol.handler = { _ in (304, [:], Data()) }
+        let service = LunchMenuSyncService(store: store, session: makeStubSession())
+
+        #expect(await service.refresh(force: true) == .failed("HTTP 304"))
+        #expect(LunchStubURLProtocol.requests.count == 1)
+        #expect(store.cachedLunchMenuData == nil)
+        #expect(store.lunchFetchMetadata.lastSuccess == nil)
+        #expect(store.lunchFetchMetadata.lastError == "HTTP 304")
+    }
+
+    @Test(arguments: [
+        (200, Data("<!doctype html><html><body>Stevenson Space</body></html>".utf8)),
+        (200, Data(#"{"days": [{"date": "soon", "menu": {}}]}"#.utf8)),
+        (500, Data()),
+        (404, Data()),
+    ])
+    func aBadResponseKeepsTheLastGoodMenus(status: Int, body: Data) async throws {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LunchStubURLProtocol.reset()
+        let good = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, [:], good) }
+        let service = LunchMenuSyncService(store: store, session: makeStubSession())
+        let first = Date(timeIntervalSince1970: 1_900_000_000)
+        #expect(await service.refresh(force: true, now: first) == .updated)
+
+        LunchStubURLProtocol.handler = { _ in (status, [:], body) }
+        guard case .failed = await service.refresh(force: true, now: first + 20) else {
+            Issue.record("Expected HTTP \(status) to fail the refresh")
+            return
+        }
+        #expect(store.cachedLunchMenuData == good)
         #expect(store.lunchFetchMetadata.lastError != nil)
         #expect(store.lunchFetchMetadata.lastChanged == first)
         #expect(store.lunchFetchMetadata.lastSuccess == first)
@@ -310,92 +381,104 @@ import Foundation
         #expect(reopenedStore.lunchFetchMetadata.isUpdateCheckOverdue(at: later))
     }
 
-    @Test func stationsThatDisagreeOnTheRotationKeepTheLastGoodMenu() async throws {
-        let (store, defaults, suite) = makeLunchStore()
-        defer { defaults.removePersistentDomain(forName: suite) }
-        LunchStubURLProtocol.reset()
-        LunchStubURLProtocol.handler = { request in stationResponse(for: request) }
-        let service = LunchMenuSyncService(store: store, session: makeStubSession())
-        #expect(await service.refresh(force: true) == .updated)
-        let lastGood = try #require(store.cachedLunchMenuData)
-
-        LunchStubURLProtocol.handler = { request in
-            if request.url?.lastPathComponent == "soup.json" {
-                return stationResponse(for: request, weeks: 4)
-            }
-            return stationResponse(for: request)
-        }
-        guard case .failed = await service.refresh(force: true) else {
-            Issue.record("Expected an inconsistent rotation to fail validation")
-            return
-        }
-        #expect(store.cachedLunchMenuData == lastGood)
-    }
-
     @Test func throttleSkipsRecentAttemptsUnlessForced() async {
         let (store, defaults, suite) = makeLunchStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         LunchStubURLProtocol.reset()
-        LunchStubURLProtocol.handler = { request in stationResponse(for: request) }
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, [:], body) }
         let service = LunchMenuSyncService(store: store, session: makeStubSession())
         let now = Date(timeIntervalSince1970: 1_900_000_000)
 
         #expect(await service.refresh(force: true, now: now) == .updated)
         LunchStubURLProtocol.reset()
 
-        // A foreground activation minutes later must not re-fetch six files.
+        // A foreground activation minutes later must not fetch again.
         #expect(await service.refresh(force: false, now: now + 60) == .skippedThrottled)
-        #expect(LunchStubURLProtocol.requestedURLs.isEmpty)
+        #expect(LunchStubURLProtocol.requests.isEmpty)
 
         // Pull-to-refresh bypasses the window.
         #expect(await service.refresh(force: true, now: now + 60) == .notModified)
-        #expect(LunchStubURLProtocol.requestedURLs.count == SharedStore.lunchStationNames.count)
+        #expect(LunchStubURLProtocol.requests.count == 1)
 
         // So does an activation past the window, measured from that forced
         // attempt rather than from the first one.
         LunchStubURLProtocol.reset()
         let pastWindow = now + 60 + LunchMenuSyncService.throttleInterval + 1
         #expect(await service.refresh(force: false, now: pastWindow) == .notModified)
-        #expect(LunchStubURLProtocol.requestedURLs.count == SharedStore.lunchStationNames.count)
+        #expect(LunchStubURLProtocol.requests.count == 1)
     }
 
-    @Test func anOversizedStationFileIsRejected() async {
+    @Test func failedCheckIsRetriedAfterTheShortDelay() async {
         let (store, defaults, suite) = makeLunchStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         LunchStubURLProtocol.reset()
-        LunchStubURLProtocol.handler = { request in
-            if request.url?.lastPathComponent == "soup.json" {
-                // Six of these are fetched at once, so an endpoint serving an
-                // endless body must be cut off mid-stream, not buffered whole.
-                return (200, [:], Data(repeating: 0x20, count: LunchMenuParser.maxBytes * 4))
-            }
-            return stationResponse(for: request)
+        let body = mondayPayload
+        LunchStubURLProtocol.handler = { _ in (200, [:], body) }
+        let service = LunchMenuSyncService(store: store, session: makeStubSession())
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        #expect(await service.refresh(force: true, now: now) == .updated)
+
+        // A check past the hour fails while a menu is cached.
+        LunchStubURLProtocol.handler = { _ in (503, [:], Data()) }
+        let failedAt = now + LunchMenuSyncService.throttleInterval
+        #expect(await service.refresh(force: false, now: failedAt) == .failed("HTTP 503"))
+
+        // The next activation waits only the short delay, not another hour.
+        LunchStubURLProtocol.reset()
+        LunchStubURLProtocol.handler = { _ in (200, [:], body) }
+        #expect(await service.refresh(force: false, now: failedAt + 60) == .skippedThrottled)
+        #expect(LunchStubURLProtocol.requests.isEmpty)
+        let retry = failedAt + LunchMenuSyncService.retryInterval
+        #expect(await service.refresh(force: false, now: retry) == .notModified)
+        #expect(LunchStubURLProtocol.requests.count == 1)
+    }
+
+    @Test func anOversizedResponseIsRejected() async {
+        let (store, defaults, suite) = makeLunchStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        LunchStubURLProtocol.reset()
+        // An endpoint serving an endless body must be cut off mid-stream, not
+        // buffered whole.
+        LunchStubURLProtocol.handler = { _ in
+            (200, [:], Data(repeating: 0x20, count: LunchMenuParser.maxBytes * 4))
         }
         let service = LunchMenuSyncService(store: store, session: makeStubSession())
 
         guard case .failed = await service.refresh(force: true) else {
-            Issue.record("Expected an oversized station to fail")
+            Issue.record("Expected an oversized response to fail")
             return
         }
         #expect(store.cachedLunchMenuData == nil)
     }
 }
 
-/// Lets a stub handler serve a different menu on a later refresh.
-private final class SeedBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var storage = "a"
-    var value: String {
-        get { lock.lock(); defer { lock.unlock() }; return storage }
-        set { lock.lock(); storage = newValue; lock.unlock() }
-    }
+private func items(_ station: LunchMenuStation, in menu: LunchMenuDay) -> [String]? {
+    menu.sections.first { $0.station == station }?.items
 }
+
+/// The shape versions before the API cached under the same key: the website's
+/// rotation, which those versions resolved to dates themselves.
+let legacyRotationManifest: Data = {
+    let weekly = ["cadence": "weekly", "data": ["week-0", "week-1"]] as [String: Any]
+    let pairs = ["cadence": "weekly", "data": [["a", "b"], ["c", "d"]]] as [String: Any]
+    let object: [String: Any] = [
+        "validFrom": "2026-08-10",
+        "validTo": "2027-05-31",
+        "semesterSwitch": "2027-01-01",
+        "offset": 0,
+        "stations": ["comfort": weekly, "mindful": weekly, "sides": pairs, "soup": pairs,
+                     "international": weekly],
+        "special": [Array(repeating: "Sushi", count: 5), Array(repeating: "Tacos", count: 5)],
+    ]
+    return try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+}()
 
 private final class LunchStubURLProtocol: URLProtocol {
     nonisolated(unsafe) static var handler:
         (@Sendable (URLRequest) throws -> (Int, [String: String], Data))?
-    /// The six stations are fetched concurrently, so recording is locked.
-    private nonisolated(unsafe) static var recorded: [URL] = []
+    /// Handlers run on URLSession's queue, so recording is locked.
+    private nonisolated(unsafe) static var recorded: [URLRequest] = []
     private static let lock = NSLock()
 
     static func reset() {
@@ -404,7 +487,7 @@ private final class LunchStubURLProtocol: URLProtocol {
         lock.unlock()
     }
 
-    static var requestedURLs: [URL] {
+    static var requests: [URLRequest] {
         lock.lock()
         defer { lock.unlock() }
         return recorded
@@ -414,11 +497,9 @@ private final class LunchStubURLProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        if let url = request.url {
-            Self.lock.lock()
-            Self.recorded.append(url)
-            Self.lock.unlock()
-        }
+        Self.lock.lock()
+        Self.recorded.append(request)
+        Self.lock.unlock()
         guard let handler = Self.handler else {
             client?.urlProtocol(self, didFailWithError: URLError(.unsupportedURL))
             return
@@ -446,64 +527,4 @@ private func makeLunchStore() -> (SharedStore, UserDefaults, String) {
 
 private func makeStubSession() -> URLSession {
     ScheduleSyncService.makeSession(protocolClasses: [LunchStubURLProtocol.self])
-}
-
-private func validManifest(weeks: Int = 4, soupWeeks: Int? = nil, validFrom: String = "2026-08-11",
-                           offset: Int = 0, specialWeekdays: Int = 5,
-                           comfort: [String]? = nil, sides: [[String]]? = nil) -> Data {
-    let weeklyStrings = (0..<weeks).map { "week-\($0)" }
-    let weeklyPairs = (0..<(soupWeeks ?? weeks)).map { ["week-\($0)-a", "week-\($0)-b"] }
-    let special = Array(repeating: "special", count: specialWeekdays)
-    let object: [String: Any] = [
-        "validFrom": validFrom,
-        "validTo": "2027-05-31",
-        "semesterSwitch": "2027-01-01",
-        "offset": offset,
-        "stations": [
-            "comfort": ["cadence": "weekly", "data": comfort ?? weeklyStrings],
-            "mindful": ["cadence": "weekly", "data": weeklyStrings],
-            "sides": ["cadence": "weekly",
-                      "data": sides ?? (0..<weeks).map { ["week-\($0)-a", "week-\($0)-b"] }],
-            "soup": ["cadence": "weekly", "data": weeklyPairs],
-            "international": ["cadence": "weekly", "data": weeklyStrings],
-        ],
-        "special": [special, special],
-    ]
-    return try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
-}
-
-/// Mirrors the live files: `comfort`, `mindful` and `sides` are daily, the
-/// rest weekly, and every station runs the same five-week rotation.
-private func stationPayload(_ name: String, weeks: Int, seed: String) -> Data {
-    func daily<T>(_ make: (Int, Int) -> T) -> [[T]] {
-        (0..<weeks).map { week in (0..<5).map { make(week, $0) } }
-    }
-    let value: Any
-    switch name {
-    case "comfort", "mindful":
-        value = ["cadence": "daily", "data": daily { "\(seed)-\(name)-w\($0)-d\($1)" }]
-    case "sides":
-        value = ["cadence": "daily",
-                 "data": daily { ["\(seed)-sides-w\($0)-d\($1)-a", "\(seed)-sides-w\($0)-d\($1)-b"] }]
-    case "international":
-        value = ["cadence": "weekly", "data": (0..<weeks).map { "\(seed)-international-w\($0)" }]
-    case "soup":
-        value = ["cadence": "weekly",
-                 "data": (0..<weeks).map { ["\(seed)-soup-w\($0)-a", "\(seed)-soup-w\($0)-b"] }]
-    case "special":
-        value = [Array(repeating: "\(seed)-special-one", count: 5),
-                 Array(repeating: "\(seed)-special-two", count: 5)]
-    default:
-        value = [:]
-    }
-    return try! JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
-}
-
-private func stationResponse(for request: URLRequest, weeks: Int = 5,
-                             seed: String = "a") -> (Int, [String: String], Data) {
-    guard let name = request.url?.deletingPathExtension().lastPathComponent,
-          SharedStore.lunchStationNames.contains(name) else {
-        return (404, [:], Data())
-    }
-    return (200, [:], stationPayload(name, weeks: weeks, seed: seed))
 }

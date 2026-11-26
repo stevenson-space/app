@@ -1,0 +1,305 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-09T07:44:09.498Z",
+  "signature": "121fea1d1f37f4c18ed3dee5e9d35f19097769e83ac7dd86eae181401851764c",
+  "window": {
+    "start": "2026-11-02",
+    "end": "2026-11-30",
+    "refreshAfter": "2026-11-23"
+  },
+  "validRange": {
+    "start": "2026-08-10",
+    "end": "2027-05-31"
+  },
+  "days": [
+    {
+      "date": "2026-11-02",
+      "menu": {
+        "comfort": "Vegetarian Paella",
+        "mindful": "Baked Chicken Parmesan",
+        "sides": [
+          "Roasted Broccolini",
+          "Pasta"
+        ],
+        "soup": [
+          "Lasagna Soup",
+          "Cream of Potato"
+        ],
+        "international": "Burrito Bowl",
+        "special": "Sushi"
+      }
+    },
+    {
+      "date": "2026-11-04",
+      "menu": {
+        "comfort": "Falafel Sandwich",
+        "mindful": "Gyro Sandwich with Pita",
+        "sides": [
+          "Cucumber Salad with Tzatiki Sauce",
+          "Lemon Rice"
+        ],
+        "soup": [
+          "Lasagna Soup",
+          "Cream of Potato"
+        ],
+        "international": "Burrito Bowl",
+        "special": "Wings"
+      }
+    },
+    {
+      "date": "2026-11-05",
+      "menu": {
+        "comfort": "Fried Chicken",
+        "mindful": "Chopped Steak with Onion Gravy",
+        "sides": [
+          "Roasted Asparagus",
+          "Scalloped Potatoes"
+        ],
+        "soup": [
+          "Lasagna Soup",
+          "Cream of Potato"
+        ],
+        "international": "Burrito Bowl",
+        "special": "Nachos"
+      }
+    },
+    {
+      "date": "2026-11-06",
+      "menu": {
+        "comfort": "Baked Turkey Meatloaf with Chipotle BBQ Sauce",
+        "mindful": "Cajun Shrimp Pasta",
+        "sides": [
+          "Roasted Vegetables",
+          "Maple Whipped Sweet Potatoes "
+        ],
+        "soup": [
+          "Lasagna Soup",
+          "Cream of Potato"
+        ],
+        "international": "Burrito Bowl",
+        "special": "Sushi"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "menu": {
+        "comfort": "Spicy Whole Wheat Spaghetti",
+        "mindful": "Chicken Marsala",
+        "sides": [
+          "Lemon Pepper Green Beans",
+          "Italian Roasted Red Potatoes"
+        ],
+        "soup": [
+          "Street Corn Soup",
+          "Chicken Gumbo"
+        ],
+        "international": "Macaroni and Cheese Bowl",
+        "special": "Sushi"
+      }
+    },
+    {
+      "date": "2026-11-10",
+      "menu": {
+        "comfort": "Swedish Meatballs with Egg Noodles",
+        "mindful": "Chicken Tikka Masala",
+        "sides": [
+          "Roasted Zucchini",
+          "Lime Cilantro Rice"
+        ],
+        "soup": [
+          "Street Corn Soup",
+          "Chicken Gumbo"
+        ],
+        "international": "Macaroni and Cheese Bowl",
+        "special": "Tacos"
+      }
+    },
+    {
+      "date": "2026-11-11",
+      "menu": {
+        "comfort": "Cheese Enchilada Casserole",
+        "mindful": "Chipotle Orange Chicken",
+        "sides": [
+          "Roasted Broccolini",
+          "Rice Pilaf"
+        ],
+        "soup": [
+          "Street Corn Soup",
+          "Chicken Gumbo"
+        ],
+        "international": "Macaroni and Cheese Bowl",
+        "special": "Wings"
+      }
+    },
+    {
+      "date": "2026-11-12",
+      "menu": {
+        "comfort": "Tuna Noodle Casserole",
+        "mindful": "Adobo Roasted Turkey Breast",
+        "sides": [
+          "Roasted Corn",
+          "Cauliflower"
+        ],
+        "soup": [
+          "Street Corn Soup",
+          "Chicken Gumbo"
+        ],
+        "international": "Macaroni and Cheese Bowl",
+        "special": "Nachos"
+      }
+    },
+    {
+      "date": "2026-11-13",
+      "menu": {
+        "comfort": "Baked Battered Cod",
+        "mindful": "Chicken Vesuvio",
+        "sides": [
+          "Roasted Vegetables",
+          "Roasted Potato Wedges"
+        ],
+        "soup": [
+          "Street Corn Soup",
+          "Chicken Gumbo"
+        ],
+        "international": "Macaroni and Cheese Bowl",
+        "special": "Sushi"
+      }
+    },
+    {
+      "date": "2026-11-16",
+      "menu": {
+        "comfort": "?? No Information",
+        "mindful": "?? No Information",
+        "sides": [
+          "?? No Information",
+          "?? No Information"
+        ],
+        "soup": [
+          "Garden Vegetable Soup",
+          "New England Clam Chowder"
+        ],
+        "international": "Mediterranean",
+        "special": "Sushi"
+      }
+    },
+    {
+      "date": "2026-11-17",
+      "menu": {
+        "comfort": "Poblano White Cheddar Chicken",
+        "mindful": "Salisbury Steak Meatball",
+        "sides": [
+          "Vegetable Medley",
+          "Mashed Potato"
+        ],
+        "soup": [
+          "Garden Vegetable Soup",
+          "New England Clam Chowder"
+        ],
+        "international": "Mediterranean",
+        "special": "Tacos"
+      }
+    },
+    {
+      "date": "2026-11-18",
+      "menu": {
+        "comfort": "Vegetable Fajitas",
+        "mindful": "Chicken Fajitas",
+        "sides": [
+          "Refried Beans",
+          "Mexican Rice"
+        ],
+        "soup": [
+          "Garden Vegetable Soup",
+          "New England Clam Chowder"
+        ],
+        "international": "Mediterranean",
+        "special": "Wings"
+      }
+    },
+    {
+      "date": "2026-11-19",
+      "menu": {
+        "comfort": "Mushroom Stroganoff with Egg Noodles",
+        "mindful": "Fried Chicken with Waffles",
+        "sides": [
+          "Peas & Carrots",
+          "Corn Souffle"
+        ],
+        "soup": [
+          "Garden Vegetable Soup",
+          "New England Clam Chowder"
+        ],
+        "international": "Mediterranean",
+        "special": "Nachos"
+      }
+    },
+    {
+      "date": "2026-11-20",
+      "menu": {
+        "comfort": "Cheese Lasagna Roll",
+        "mindful": "Shrimp Paella",
+        "sides": [
+          "Asparagus",
+          "Roasted Root Vegetables"
+        ],
+        "soup": [
+          "Garden Vegetable Soup",
+          "New England Clam Chowder"
+        ],
+        "international": "Mediterranean",
+        "special": "Sushi"
+      }
+    },
+    {
+      "date": "2026-11-23",
+      "menu": {
+        "comfort": "Cheese Tortellini",
+        "mindful": "Lemon Garlic Baked Chicken",
+        "sides": [
+          "Roasted Carrots",
+          "Roasted Red Potatoes"
+        ],
+        "soup": [
+          "Smoky Poblano",
+          "Chicken Noodle"
+        ],
+        "international": "Asian Bowl",
+        "special": "Sushi"
+      }
+    },
+    {
+      "date": "2026-11-24",
+      "menu": {
+        "comfort": "Chicken Shawarma with Pita",
+        "mindful": "Gyro Sandwich with Pita",
+        "sides": [
+          "Simple Green Salad",
+          "Lemon Rice with Tzatziki Sauce"
+        ],
+        "soup": [
+          "Smoky Poblano",
+          "Chicken Noodle"
+        ],
+        "international": "Asian Bowl",
+        "special": "Tacos"
+      }
+    },
+    {
+      "date": "2026-11-30",
+      "menu": {
+        "comfort": "BBQ Pulled Chicken Sandwich",
+        "mindful": "Jerk Chicken",
+        "sides": [
+          "Roasted Brussels Sprouts",
+          "Scalloped Potatoes"
+        ],
+        "soup": [
+          "Chicken & Dumplings",
+          "Broccoli Cheddar"
+        ],
+        "international": "Pasta Bowl",
+        "special": "Sushi"
+      }
+    }
+  ]
+}

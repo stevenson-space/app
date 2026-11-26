@@ -23,11 +23,13 @@ selected category’s menu, including visually truncated text.
 
 ## Data and updates
 
-- `LunchMenuLoader` is shared by the app and widgets. It uses valid cached station
-  data only when its saved date range, semester switch, and starting week match
-  the current bundle. Otherwise it falls back to the bundled rotation until a
-  successful refresh, and uses the existing school calendar to
-  exclude weekends, breaks, asynchronous days, and Summer schedules.
+- `LunchMenuLoader` is shared by the app and widgets. It reads the cached
+  response from the website's API (`/api/v1/lunch.json`): one menu per school
+  day in a window of about a week back and three weeks ahead of the last
+  refresh. No menu ships with the app, so there is no fallback: a missing or
+  unreadable cache, or a day past the end of the window, has no menu. The
+  existing school calendar still excludes weekends, breaks, asynchronous days,
+  and Summer schedules, including the student's own overrides.
 - Widgets read the existing App Group cache without initializing `SharedStore`,
   running migrations, or accessing student identity data. They do not fetch a
   second copy of the menu. The app’s existing `LunchMenuSyncService` owns live
@@ -49,8 +51,9 @@ selected category’s menu, including visually truncated text.
 
 ## Validation
 
-`LunchWidgetTests` covers valid/invalid/expired caches, calendar exclusions,
-menu expiry, the terminal empty entry, DST rollover, and read-only storage.
+`LunchWidgetTests` covers valid, missing, and unreadable caches, calendar
+exclusions, the end of the published window, the terminal empty entry, DST
+rollover, and read-only storage.
 Run `swift test --package-path Packages/ScheduleKit` and build the app scheme
 for iOS Simulator to compile both the app and widget extension.
 

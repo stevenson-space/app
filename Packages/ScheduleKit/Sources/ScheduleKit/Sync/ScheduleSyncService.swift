@@ -12,7 +12,7 @@ private final class RedirectPolicy: NSObject, URLSessionTaskDelegate {
 public enum SyncResult: Equatable, Sendable {
     /// New content validated and committed to the cache.
     case updated
-    /// Server reached; content unchanged (304 or byte-identical 200).
+    /// Server reached; content unchanged (a 304, or a 200 that says the same thing).
     case notModified
     /// Skipped because a recent attempt exists and `force` was false.
     case skippedThrottled
@@ -25,6 +25,13 @@ public enum SyncResult: Equatable, Sendable {
 /// bad deploy of the JSON can never take out users' cached schedules.
 public actor ScheduleSyncService {
     public static let throttleInterval: TimeInterval = 3600
+    /// The shorter wait after a failed check.
+    public static let retryInterval: TimeInterval = 300
+
+    /// Whether an automatic check should wait.
+    public static func isThrottled(_ metadata: FetchMetadata, at now: Date) -> Bool {
+        metadata.isThrottled(at: now, interval: throttleInterval, retryInterval: retryInterval)
+    }
 
     private let store: SharedStore
     private let session: URLSession
@@ -59,7 +66,7 @@ public actor ScheduleSyncService {
         // without committing (the queued forced refresh does the real work).
         let generation = invalidationGeneration
 
-        if !force, metadata.isThrottled(at: now, interval: Self.throttleInterval) {
+        if !force, Self.isThrottled(metadata, at: now) {
             return .skippedThrottled
         }
 
@@ -80,6 +87,15 @@ public actor ScheduleSyncService {
 
             switch http.statusCode {
             case 304:
+                // Only a conditional request can earn a 304. One answering an
+                // unconditional request (a captive portal or a misbehaving
+                // proxy) confirms nothing: with a cache it would hide an overdue
+                // check, and without one the refetch below would loop forever.
+                guard metadata.etag != nil else {
+                    metadata.lastError = "HTTP 304"
+                    store.fetchMetadata = metadata
+                    return .failed("HTTP 304")
+                }
                 // A 304 is only meaningful if we still hold the payload it refers
                 // to; if the cache is gone, drop the ETag and refetch in full.
                 guard store.cachedMapData != nil else {
@@ -95,18 +111,24 @@ public actor ScheduleSyncService {
             case 200:
                 // Bound the body before materializing it: abort as soon as the
                 // stream exceeds the parser's limit instead of buffering it all.
-                let data = try await collectBody(byteStream, limit: ScheduleDatesParser.maxBytes)
+                let data = try await byteStream.collectBody(
+                    limit: ScheduleDatesParser.maxBytes, tooLarge: ParserError.tooLarge)
                 guard generation == invalidationGeneration else { return .notModified }
                 // Validate before committing — this is the last-good guarantee.
-                _ = try ScheduleDatesParser.parse(data)
-                let changed = data != store.cachedMapData
+                let map = try ScheduleDatesParser.parse(data)
+                // Every site build restamps the payload, so its bytes differ
+                // nightly. Compare the dates it lists, or each rebuild would
+                // count as a change and reload the widgets for nothing.
+                let cached = store.cachedMapData
+                let cachedMap = cached.flatMap { try? ScheduleDatesParser.parse($0) }
+                let changed = map != cachedMap
                 metadata.lastSuccess = now
                 metadata.lastError = nil
                 metadata.etag = http.value(forHTTPHeaderField: "ETag")
-                if changed {
-                    metadata.lastChanged = now
-                    store.cachedMapData = data
-                }
+                if changed { metadata.lastChanged = now }
+                // Stored even when only the stamp moved, so the cache is always
+                // the payload the ETag above describes.
+                if data != cached { store.cachedMapData = data }
                 store.fetchMetadata = metadata
                 return changed ? .updated : .notModified
 
@@ -134,17 +156,5 @@ public actor ScheduleSyncService {
         var metadata = store.fetchMetadata
         metadata.etag = nil
         store.fetchMetadata = metadata
-    }
-
-    /// Accumulates a byte stream into `Data`, throwing `ParserError.tooLarge` the
-    /// moment it would exceed `limit` — the payload is never fully buffered if
-    /// it's oversized.
-    private func collectBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
-        var data = Data()
-        for try await byte in bytes {
-            data.append(byte)
-            if data.count > limit { throw ParserError.tooLarge(bytes: data.count) }
-        }
-        return data
     }
 }

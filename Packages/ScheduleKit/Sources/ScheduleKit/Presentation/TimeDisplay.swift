@@ -14,24 +14,23 @@ public enum TimeDisplay {
     private static let twelveHour = makeFormatter("h:mm a")
     private static let twelveHourShort = makeFormatter("h:mm")
     private static let twentyFourHour = makeFormatter("H:mm")
-    private static let shortWeekday: DateFormatter = {
+    /// Day and month names follow the student's language, but the date is
+    /// always the school's Gregorian one: a device set to another calendar
+    /// must not relabel Aug 12 as a different month and day. `locale` exists
+    /// for tests; production formatters keep the system default.
+    static func makeDayFormatter(_ format: String, locale: Locale? = nil) -> DateFormatter {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
+        // Locale first: it carries a default calendar of its own.
+        if let locale { formatter.locale = locale }
+        formatter.calendar = SchoolTime.calendar
         formatter.timeZone = SchoolTime.timeZone
+        formatter.dateFormat = format
         return formatter
-    }()
-    private static let weekdayMonthDay: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMM d"
-        formatter.timeZone = SchoolTime.timeZone
-        return formatter
-    }()
-    private static let shortWeekdayMonthDay: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE, MMM d"
-        formatter.timeZone = SchoolTime.timeZone
-        return formatter
-    }()
+    }
+
+    private static let shortWeekday = makeDayFormatter("EEE")
+    private static let weekdayMonthDay = makeDayFormatter("EEEE, MMM d")
+    private static let shortWeekdayMonthDay = makeDayFormatter("EEE, MMM d")
 
     public static var systemUses24Hour: Bool {
         DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current)?

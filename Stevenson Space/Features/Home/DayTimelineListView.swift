@@ -61,7 +61,7 @@ struct DayTimelineListView: View {
                     } else if let now, block.id == nextUpcomingID {
                         Text(TimeDisplay.untilChip(block.start.timeIntervalSince(now)))
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.green)
+                            .foregroundStyle(StevensonPalette.accent)
                     }
                 }
                 .accessibilityElement(children: .ignore)

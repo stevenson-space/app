@@ -42,10 +42,10 @@ struct CircularScheduleView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("First bell \(TimeDisplay.dayLabel(bell.day, relativeTo: schedule.timeline.day)), \(TimeDisplay.time(bell.time, format))")
             } else {
-                symbol("calendar", label: "No upcoming school day")
+                symbol("calendar", label: "Next school day not posted yet")
             }
         } else {
-            symbol("calendar.badge.exclamationmark", label: "Open Stevenson Space")
+            symbol("calendar.badge.exclamationmark", label: "No schedule yet. Open the app to load your schedule.")
         }
     }
 

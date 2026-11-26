@@ -50,10 +50,24 @@ public struct DayTypeMap: Equatable, Sendable {
         self.warnings = warnings
     }
 
+    /// The entry that decides `day`, by precedence when several apply.
+    ///
+    /// A multi-day range speaks for the school days inside it, so on a weekend
+    /// it is skipped: a Friday–Monday finals range must not turn the Saturday
+    /// between into a finals day. No School ranges still apply, and a weekend
+    /// listed as its own date always counts, even inside a No School range.
     public func match(_ day: DayKey) -> Match? {
-        let hits = entries.enumerated().filter { $0.element.span.contains(day) }
+        let isWeekend = day.isWeekend
+        let hits = entries.enumerated().filter { hit in
+            let entry = hit.element
+            guard entry.span.contains(day) else { return false }
+            return !isWeekend || entry.span.isSingleDay || entry.family == .noSchool
+        }
+        // On a weekend, a date listed on its own outranks any range around it.
+        let rangeRank = { (entry: Entry) in isWeekend && !entry.span.isSingleDay ? 1 : 0 }
         guard let best = hits.min(by: {
-            ($0.element.family.precedenceRank, $0.offset) < ($1.element.family.precedenceRank, $1.offset)
+            (rangeRank($0.element), $0.element.family.precedenceRank, $0.offset)
+                < (rangeRank($1.element), $1.element.family.precedenceRank, $1.offset)
         }) else { return nil }
         return Match(rawKey: best.element.rawKey,
                      family: best.element.family,
@@ -83,17 +97,28 @@ public enum ParserError: Error, Equatable, CustomStringConvertible {
     }
 }
 
-/// Parses `schedule-dates.json`: `{"Late Arrival": ["8/21/2025", "12/18/2025-12/19/2025", …], …}`.
+/// Parses the day-type map: `{"Late Arrival": ["8/21/2025", "12/18/2025-12/19/2025", …], …}`.
 /// M/D/YYYY, no leading zeros, ranges via "start-end". Malformed individual
 /// entries are skipped with warnings; a non-conforming file fails wholesale so
 /// the caller keeps its last-good cache.
+///
+/// The API serves the map under `scheduleDates`, inside an envelope of build
+/// metadata. A bare map parses the same way: that is what versions before the
+/// API cached, and it has to keep loading until the next refresh replaces it.
 public enum ScheduleDatesParser {
     public static let maxBytes = 262_144
 
     public static func parse(_ data: Data, calendar: Calendar = SchoolTime.calendar) throws -> DayTypeMap {
         guard data.count <= maxBytes else { throw ParserError.tooLarge(bytes: data.count) }
         guard let object = try? JSONSerialization.jsonObject(with: data),
-              let dict = object as? [String: Any] else { throw ParserError.notAnObject }
+              let top = object as? [String: Any] else { throw ParserError.notAnObject }
+        let dict: [String: Any]
+        if let scheduleDates = top["scheduleDates"] {
+            guard let map = scheduleDates as? [String: Any] else { throw ParserError.notAnObject }
+            dict = map
+        } else {
+            dict = top
+        }
 
         var entries: [DayTypeMap.Entry] = []
         var warnings: [String] = []

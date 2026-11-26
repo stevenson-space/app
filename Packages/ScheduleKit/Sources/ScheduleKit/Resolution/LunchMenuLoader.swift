@@ -1,26 +1,15 @@
 import Foundation
 
-/// Shared cache selection and serving-day rules for the app and widgets.
+/// Shared cache loading and serving-day rules for the app and widgets.
 public enum LunchMenuLoader {
+    /// Nil until a refresh has succeeded, and for a cache this version cannot
+    /// read: versions before the API cached a rotation manifest instead.
     public static func load(cachedData: Data?) -> LunchMenu? {
-        loadWithSource(cachedData: cachedData).menu
+        cachedData.flatMap { try? LunchMenuParser.parse($0) }
     }
 
-    /// Reports the source actually selected, independently of previous fetch successes.
-    public static func loadWithSource(cachedData: Data?) -> (menu: LunchMenu?, isBundled: Bool) {
-        loadWithSource(cachedData: cachedData, bundledData: try? LunchMenuParser.bundledData())
-    }
-
-    static func loadWithSource(cachedData: Data?, bundledData: Data?) -> (menu: LunchMenu?, isBundled: Bool) {
-        let bundled = bundledData.flatMap { try? LunchMenuParser.parse($0) }
-        let cached = cachedData.flatMap { try? LunchMenuParser.parse($0) }
-        guard let bundled else { return (cached, false) }
-        // A bundle update must not carry old dishes onto new rotation dates.
-        guard let cached,
-              cached.rotationSettings == bundled.rotationSettings else { return (bundled, true) }
-        return (cached, false)
-    }
-
+    /// The published menu, on days the app's own calendar serves lunch. The
+    /// calendar includes the student's overrides, which the API cannot know.
     public static func menu(_ menu: LunchMenu?, for day: DayKey, inputs: ResolverInputs) -> LunchMenuDay? {
         let timeline = resolveDay(day, inputs: inputs)
         guard timeline.isSchoolDay, timeline.family != .summer else { return nil }
