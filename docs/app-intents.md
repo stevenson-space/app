@@ -101,8 +101,8 @@ over that sheet.
 
 They appear under **SHS Space** in the controls gallery: in Control Center, tap
 **+** and then **Add a Control**; on the Lock Screen, customize it and replace
-one of the bottom controls; for the Action button, pick **Controls** in
-Settings › Action Button.
+one of the bottom controls; for the Action button, swipe to **Controls** in
+Settings › Action Button, then tap the button under it and choose one.
 
 Apple's [controls guide](https://developer.apple.com/documentation/widgetkit/creating-controls-to-perform-actions-across-the-system)
 describes this setup. `ScheduleWidgets/StevensonControls.swift` declares each
