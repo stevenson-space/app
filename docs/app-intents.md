@@ -190,8 +190,10 @@ device; repeat the checks below with both **SHS Space** and **Stevenson Space**.
   from another tab. Student ID opened ID setup with no saved ID, and the scanner
   once a test ID was imported; Schedule closed an open scanner and went to Home.
   With Home's calendar sheet open, Student ID showed the “close the open sheet”
-  alert over it and left the sheet in place. The Lock Screen, the Action button, and locked-device authentication still
-  need a device.
+  alert over it and left the sheet in place. Running it again with that alert
+  up added no second alert; after OK, the next run showed it again. The Lock
+  Screen, the Action button, and locked-device authentication still need a
+  device.
 
 Use these system-level flows for future regression checks on supported iOS versions:
 
@@ -220,6 +222,7 @@ Use these system-level flows for future regression checks on supported iOS versi
    button. Run each one from a terminated app, from another tab, and on a
    locked device, which should ask to unlock first. Run Student ID with and
    without a saved ID, and with a sheet open, which should show an alert over
-   that sheet. Confirm the controls don't appear as Shortcuts actions.
+   that sheet. Run it again with the alert still up: it should stay one alert.
+   Confirm the controls don't appear as Shortcuts actions.
    In the Simulator, the gallery lists newly installed controls only after the
    simulator reboots.
