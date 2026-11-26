@@ -27,6 +27,7 @@ enum StudentIDPresentationResult {
 final class SceneNavigation {
     let model: AppModel
     @ObservationIgnored weak var window: UIWindow?
+    @ObservationIgnored private weak var errorAlert: UIAlertController?
     var selectedTab: RootTab = .home
     var isStudentIDScanning = false
     var isStudentIDScannerPresented = false
@@ -125,10 +126,13 @@ final class SceneNavigation {
             }
             return
         }
+        // A repeated request while this alert is up would stack a copy on it.
+        guard presenter !== errorAlert else { return }
         let alert = UIAlertController(title: "Could not show your student ID",
                                       message: error.localizedDescription,
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        errorAlert = alert
         presenter.present(alert, animated: true)
     }
 }
