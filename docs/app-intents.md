@@ -21,7 +21,12 @@ and refreshes shortcut parameters during initialization.
 screen supplies a sharp Code 39 barcode, the ID number, maximum brightness, and
 an awake screen. Dismissing or backgrounding it restores display settings.
 An inline Siri preview cannot provide the same controlled scanning experience.
-With no saved ID, the action opens the ID tab and explains how to import one.
+With no saved ID, the action opens the ID tab, which explains how to import one.
+
+It returns no dialog. The screen it opens is the result, and a dialog would
+cover the top of the barcode; it would also give the action a Show When Run
+option in Shortcuts that does nothing useful. Only the “close the open sheet”
+error is shown or spoken. Open Tab returns no dialog for the same reason.
 
 The action requires authentication, using
 [`IntentAuthenticationPolicy`](https://developer.apple.com/documentation/appintents/intentauthenticationpolicy).
@@ -62,6 +67,9 @@ results: a snapshot of this invocation, not a persistent catalog of classes.
 They avoid making yesterday's resolved schedule a searchable source of truth.
 `ReturnsValue` supports subsequent Shortcuts actions, while `ProvidesDialog`
 supplies spoken answers. Schedule and lunch also provide visual snippets.
+The dialog is the answer Siri speaks, so these six keep it, and with it
+Shortcuts' Show When Run option; turn that off in a shortcut to use the value
+without showing it.
 
 All queries read the same saved inputs as widgets and call ScheduleKit's
 `resolveDay` and `momentState`. Queries don't instantiate another UI model or
@@ -192,6 +200,11 @@ device; repeat the checks below with both **SHS Space** and **Stevenson Space**.
   With Home's calendar sheet open, Student ID showed the “close the open sheet”
   alert over it and left the sheet in place. Running it again with that alert
   up added no second alert; after OK, the next run showed it again.
+- Show Student ID without a dialog, on the iOS 27.2 simulator: run from the
+  Shortcuts app, with the app in the background and with it terminated, it
+  opened the scanner with nothing over it. The Shortcuts run log lists no
+  `ShowWhenRun` parameter for it, where the build with a dialog listed
+  `ShowWhenRun = 1`.
 - Controls, on a device, as confirmed by the maintainer: they work from the
   Lock Screen and the Action button, and a locked device asks to unlock first.
 
@@ -210,8 +223,10 @@ Use these system-level flows for future regression checks on supported iOS versi
    For an unrecognized calendar entry, verify next class, schedule, and lunch
    report unavailable data rather than confirmed absence.
 4. Run Show Student ID with a saved ID from a terminated app and from another
-   tab, dismiss it, and repeat. Verify missing-ID setup and locked-device
-   authentication. Confirm brightness and auto-lock restoration.
+   tab, dismiss it, and repeat. No dialog or snippet should cover the scanner,
+   and the action should have no Show When Run option in a shortcut. Verify
+   missing-ID setup and locked-device authentication. Confirm brightness and
+   auto-lock restoration.
    Repeat with two iPad windows: only the target window should present or dismiss
    its scanner, and a sheet in the other window should not block it.
 5. Run Open Tab for all four choices, including while the scanner is open.
