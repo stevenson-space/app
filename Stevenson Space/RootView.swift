@@ -92,27 +92,7 @@ struct RootView: View {
 
     private func attachNavigation() {
         do { try model.navigation.attach(navigation) }
-        catch { presentNavigationError(error) }
-    }
-
-    private func presentNavigationError(_ error: Error) {
-        guard var presenter = navigation.window?.rootViewController else { return }
-        // A pending intent can fail because a sheet is open. Present from that
-        // sheet so the error remains visible without discarding unfinished edits.
-        while let presented = presenter.presentedViewController {
-            presenter = presented
-        }
-        if let transition = presenter.transitionCoordinator {
-            transition.animate(alongsideTransition: nil) { _ in
-                DispatchQueue.main.async { presentNavigationError(error) }
-            }
-            return
-        }
-        let alert = UIAlertController(title: "Could not show your student ID",
-                                      message: error.localizedDescription,
-                                      preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
-        presenter.present(alert, animated: true)
+        catch { navigation.presentError(error) }
     }
 }
 

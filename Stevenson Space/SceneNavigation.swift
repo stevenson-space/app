@@ -13,12 +13,8 @@ enum StudentIDPresentationError: LocalizedError {
     case presentationInProgress
 
     var errorDescription: String? {
-        "Close the open sheet or picker in Stevenson Space, then ask to show your student ID again."
+        "Close the open sheet or picker in Stevenson Space, then try again."
     }
-}
-
-enum StudentIDPresentationResult {
-    case presented, opening, needsImport
 }
 
 /// Each RootView owns this state; the shared app model only routes requests.
@@ -27,6 +23,7 @@ enum StudentIDPresentationResult {
 final class SceneNavigation {
     let model: AppModel
     @ObservationIgnored weak var window: UIWindow?
+    @ObservationIgnored private weak var errorAlert: UIAlertController?
     var selectedTab: RootTab = .home
     var isStudentIDScanning = false
     var isStudentIDScannerPresented = false
@@ -80,18 +77,18 @@ final class SceneNavigation {
         onboardingGaveWay = true
     }
 
-    func openStudentIDScanner() throws -> StudentIDPresentationResult {
+    func openStudentIDScanner() throws {
         if isStudentIDScannerDismissing || (!isStudentIDScanning && isStudentIDScannerPresented) {
             reopenStudentIDAfterDismissal = true
-            return .opening
+            return
         }
-        if isStudentIDScanning && isStudentIDScannerPresented { return .presented }
+        if isStudentIDScanning && isStudentIDScannerPresented { return }
         let presentations = (window?.windowScene?.windows ?? [])
             .compactMap { $0.rootViewController?.presentedViewController }
         // viewDidAppear hasn't acknowledged an animating cover yet. Preserve
         // its host and binding until UIKit finishes the presentation.
         if isStudentIDScanning && presentations.contains(where: \.isBeingPresented) {
-            return .opening
+            return
         }
         if isStudentIDScanning {
             isStudentIDScanning = false
@@ -108,7 +105,6 @@ final class SceneNavigation {
         yieldOnboarding()
         selectedTab = .id
         isStudentIDScanning = model.studentID != nil
-        return isStudentIDScanning ? .opening : .needsImport
     }
 
     func studentIDScannerDidDismiss() {
@@ -155,6 +151,29 @@ final class SceneNavigation {
         selectedTab = .home
         homeTodayRequest += 1
     }
+
+    func presentError(_ error: Error) {
+        guard var presenter = window?.rootViewController else { return }
+        // A request can fail because a sheet is open. Present from that sheet
+        // so the error remains visible without discarding unfinished edits.
+        while let presented = presenter.presentedViewController {
+            presenter = presented
+        }
+        if let transition = presenter.transitionCoordinator {
+            transition.animate(alongsideTransition: nil) { _ in
+                DispatchQueue.main.async { self.presentError(error) }
+            }
+            return
+        }
+        // A repeated request while this alert is up would stack a copy on it.
+        guard presenter !== errorAlert else { return }
+        let alert = UIAlertController(title: "Could not show your student ID",
+                                      message: error.localizedDescription,
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        errorAlert = alert
+        presenter.present(alert, animated: true)
+    }
 }
 
 /// Foreground intents select one attached window. A cold-launch request waits
@@ -187,19 +206,18 @@ final class AppNavigation {
         guard let target, let request = pending else { return }
         pending = nil
         switch request {
-        case .scanner: _ = try target.openStudentIDScanner()
+        case .scanner: try target.openStudentIDScanner()
         case .tab(let tab): target.openTab(tab)
         }
     }
 
-    func openStudentIDScanner(model: AppModel) throws -> StudentIDPresentationResult {
+    func openStudentIDScanner() throws {
         guard let target else {
-            model.reloadStudentIDIfUnread()
             pending = .scanner
-            return model.studentID == nil ? .needsImport : .opening
+            return
         }
         pending = nil
-        return try target.openStudentIDScanner()
+        try target.openStudentIDScanner()
     }
 
     func openTab(_ tab: RootTab) {
@@ -209,6 +227,10 @@ final class AppNavigation {
         }
         pending = nil
         target.openTab(tab)
+    }
+
+    func presentError(_ error: Error) {
+        target?.presentError(error)
     }
 }
 
