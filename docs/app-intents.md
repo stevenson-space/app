@@ -96,8 +96,8 @@ Screen, and on the Action button, so students don't have to build a shortcut:
 
 Like Show Student ID, the Student ID control leaves an open sheet or picker in
 place so unfinished edits survive. Siri and Shortcuts read out the intent's
-“close the open sheet” error, but a control has nowhere to show it, so the app
-just comes forward with that sheet still open.
+“close the open sheet” error; the control shows the same message as an alert
+over that sheet.
 
 They appear under **SHS Space** in the controls gallery: in Control Center, tap
 **+** and then **Add a Control**; on the Lock Screen, customize it and replace
@@ -187,7 +187,8 @@ device; repeat the checks below with both **SHS Space** and **Stevenson Space**.
   Control Center gallery and open their screens both from a terminated app and
   from another tab. Student ID opened ID setup with no saved ID, and the scanner
   once a test ID was imported; Schedule closed an open scanner and went to Home.
-  The Lock Screen, the Action button, and locked-device authentication still
+  With Home's calendar sheet open, Student ID showed the “close the open sheet”
+  alert over it and left the sheet in place. The Lock Screen, the Action button, and locked-device authentication still
   need a device.
 
 Use these system-level flows for future regression checks on supported iOS versions:
@@ -216,6 +217,7 @@ Use these system-level flows for future regression checks on supported iOS versi
 7. Add all three controls to Control Center, the Lock Screen, and the Action
    button. Run each one from a terminated app, from another tab, and on a
    locked device, which should ask to unlock first. Run Student ID with and
-   without a saved ID, and with a sheet open. Confirm the controls don't appear as Shortcuts actions.
+   without a saved ID, and with a sheet open, which should show an alert over
+   that sheet. Confirm the controls don't appear as Shortcuts actions.
    In the Simulator, the gallery lists newly installed controls only after the
    simulator reboots.
