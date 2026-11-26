@@ -191,9 +191,9 @@ device; repeat the checks below with both **SHS Space** and **Stevenson Space**.
   once a test ID was imported; Schedule closed an open scanner and went to Home.
   With Home's calendar sheet open, Student ID showed the “close the open sheet”
   alert over it and left the sheet in place. Running it again with that alert
-  up added no second alert; after OK, the next run showed it again. The Lock
-  Screen, the Action button, and locked-device authentication still need a
-  device.
+  up added no second alert; after OK, the next run showed it again.
+- Controls, on a device, as confirmed by the maintainer: they work from the
+  Lock Screen and the Action button, and a locked device asks to unlock first.
 
 Use these system-level flows for future regression checks on supported iOS versions:
 
