@@ -13,7 +13,7 @@ struct OnboardingSiriPage: View {
             OnboardingHeadline(
                 eyebrow: "Siri",
                 title: "Just ask Siri",
-                message: "Ask about your classes, lunch, or your student ID, and Siri answers without opening the app. Say Stevenson Space or SHS Space.")
+                message: "Ask about your classes and lunch, or for your student ID. Say Stevenson Space or SHS Space.")
             if SiriGeneration.mightBeSiriAI {
                 // Siri AI is an opt-in no API reveals, so the student says.
                 VStack(alignment: .leading, spacing: 8) {
@@ -48,7 +48,8 @@ private struct SiriRequest {
         var spoken: String {
             switch self {
             case .text(let text): text
-            case .studentID: "Your student ID is opening."
+            // Show Student ID returns no dialog; the app opens to the scanner.
+            case .studentID: "Opens to your ID, ready to scan."
             }
         }
     }
