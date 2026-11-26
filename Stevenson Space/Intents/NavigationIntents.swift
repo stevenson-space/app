@@ -54,7 +54,7 @@ struct ShowStudentIDIntent: AppIntent {
     // only cover the barcode, and Shortcuts would offer a pointless Show When Run.
     @MainActor
     func perform() async throws -> some IntentResult {
-        _ = try model.navigation.openStudentIDScanner(model: model)
+        try model.navigation.openStudentIDScanner()
         return .result()
     }
 }
