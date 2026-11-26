@@ -44,9 +44,22 @@
 		A19000000000000000000002 /* Stevenson Space/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Stevenson Space/Assets.xcassets"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A1A000000000000000000001 /* Exceptions for "Stevenson Space" folder in "ScheduleWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Intents/ControlIntents.swift,
+			);
+			target = A18000000000000000000003 /* ScheduleWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		905622AA300F25D400F40B5E /* Stevenson Space */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A1A000000000000000000001 /* Exceptions for "Stevenson Space" folder in "ScheduleWidgets" target */,
+			);
 			path = "Stevenson Space";
 			sourceTree = "<group>";
 		};
@@ -459,6 +472,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = space.stevenson.ios.ScheduleWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -487,6 +501,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = space.stevenson.ios.ScheduleWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;

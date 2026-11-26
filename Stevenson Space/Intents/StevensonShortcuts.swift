@@ -5,7 +5,7 @@ struct StevensonShortcuts: AppShortcutsProvider {
         AppShortcut(intent: ShowStudentIDIntent(), phrases: [
             "Show my student ID in \(.applicationName)",
             "Scan my ID with \(.applicationName)",
-        ], shortTitle: "Show Student ID", systemImageName: "barcode.viewfinder")
+        ], shortTitle: "Show Student ID", systemImageName: "person.text.rectangle")
 
         AppShortcut(intent: GetCurrentClassIntent(), phrases: [
             "What's my current class in \(.applicationName)",

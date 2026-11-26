@@ -13,7 +13,7 @@ enum StudentIDPresentationError: LocalizedError {
     case presentationInProgress
 
     var errorDescription: String? {
-        "Close the open sheet or picker in Stevenson Space, then ask to show your student ID again."
+        "Close the open sheet or picker in Stevenson Space, then try again."
     }
 }
 
@@ -27,6 +27,7 @@ enum StudentIDPresentationResult {
 final class SceneNavigation {
     let model: AppModel
     @ObservationIgnored weak var window: UIWindow?
+    @ObservationIgnored private weak var errorAlert: UIAlertController?
     var selectedTab: RootTab = .home
     var isStudentIDScanning = false
     var isStudentIDScannerPresented = false
@@ -111,6 +112,29 @@ final class SceneNavigation {
         selectedTab = .home
         homeTodayRequest += 1
     }
+
+    func presentError(_ error: Error) {
+        guard var presenter = window?.rootViewController else { return }
+        // A request can fail because a sheet is open. Present from that sheet
+        // so the error remains visible without discarding unfinished edits.
+        while let presented = presenter.presentedViewController {
+            presenter = presented
+        }
+        if let transition = presenter.transitionCoordinator {
+            transition.animate(alongsideTransition: nil) { _ in
+                DispatchQueue.main.async { self.presentError(error) }
+            }
+            return
+        }
+        // A repeated request while this alert is up would stack a copy on it.
+        guard presenter !== errorAlert else { return }
+        let alert = UIAlertController(title: "Could not show your student ID",
+                                      message: error.localizedDescription,
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        errorAlert = alert
+        presenter.present(alert, animated: true)
+    }
 }
 
 /// Foreground intents select one attached window. A cold-launch request waits
@@ -165,6 +189,10 @@ final class AppNavigation {
         }
         pending = nil
         target.openTab(tab)
+    }
+
+    func presentError(_ error: Error) {
+        target?.presentError(error)
     }
 }
 

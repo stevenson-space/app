@@ -111,5 +111,8 @@ struct StevensonWidgetBundle: WidgetBundle {
     var body: some Widget {
         ScheduleWidget()
         LunchMenuWidget()
+        StudentIDControl()
+        ScheduleControl()
+        LunchMenuControl()
     }
 }

@@ -1,11 +1,12 @@
-# Shortcuts and Siri
+# Shortcuts, Siri, and controls
 
 ## Implementation and Apple documentation
 
 The app exposes eight `AppIntent` actions and eight ready-to-use App Shortcuts.
 They live in the main app target's `Intents` directory; a separate extension
 is unnecessary for these small read-only actions and foreground navigation.
-The existing iOS 18 minimum stays unchanged.
+The existing iOS 18 minimum stays unchanged. Three [controls](#controls) reuse
+the same navigation from Control Center, the Lock Screen, and the Action button.
 
 Apple's [App Intents guide](https://developer.apple.com/documentation/appintents/creating-your-first-app-intent)
 and [AppShortcutsProvider documentation](https://developer.apple.com/documentation/appintents/appshortcutsprovider)
@@ -82,6 +83,56 @@ overrides, split classes, custom names, rooms, and finals ordering come from the
 existing resolver. Current period uses physical blocks because the display can
 merge multiple free periods into one span.
 
+## Controls
+
+Three controls put the most common actions in Control Center, on the Lock
+Screen, and on the Action button, so students don't have to build a shortcut:
+
+| Control | Opens |
+| --- | --- |
+| Student ID | The full-screen scanner, or ID setup with no saved ID. Same route as Show Student ID. |
+| Schedule | Home at today. Same route as Open Tab › Home. |
+| Lunch Menu | Lunch at today. Same route as Open Tab › Lunch. |
+
+Like Show Student ID, the Student ID control leaves an open sheet or picker in
+place so unfinished edits survive. Siri and Shortcuts read out the intent's
+“close the open sheet” error; the control shows the same message as an alert
+over that sheet.
+
+They appear under **SHS Space** in the controls gallery: in Control Center, tap
+**+** and then **Add a Control**; on the Lock Screen, customize it and replace
+one of the bottom controls; for the Action button, swipe to **Controls** in
+Settings › Action Button, then tap the button under it and choose one.
+
+Apple's [controls guide](https://developer.apple.com/documentation/widgetkit/creating-controls-to-perform-actions-across-the-system)
+describes this setup. `ScheduleWidgets/StevensonControls.swift` declares each
+control as a [`StaticControlConfiguration`](https://developer.apple.com/documentation/widgetkit/staticcontrolconfiguration)
+with a [`ControlWidgetButton`](https://developer.apple.com/documentation/widgetkit/controlwidgetbutton).
+The widget bundle lists them after the widgets; that order is also their order
+in the gallery. They are stateless buttons, so they need no value provider and
+never reload.
+
+Each button runs `OpenControlScreenIntent`
+(`Stevenson Space/Intents/ControlIntents.swift`), an
+[`OpenIntent`](https://developer.apple.com/documentation/appintents/openintent).
+The system brings the app forward and runs `perform()` there, which only works
+when the intent belongs to both the app and the widget extension. The project
+adds the file to the widget target with a membership exception on the
+synchronized **Stevenson Space** folder. The widget target defines
+`WIDGET_EXTENSION`, so the extension's copy compiles without `AppModel` and
+never navigates.
+
+- [`isDiscoverable`](https://developer.apple.com/documentation/appintents/appintent/isdiscoverable)
+  is `false`, keeping the intent out of Shortcuts and Siri, which already offer
+  Show Student ID and Open Tab.
+- `authenticationPolicy` is `.requiresAuthentication`, as for Show Student ID.
+- The Lock Screen shows only the symbol, so each one names its screen:
+  `person.text.rectangle` (an ID card, as on the ID tab and the Show Student ID
+  shortcut), `calendar.badge.clock` (a calendar with a clock, for the bell
+  schedule), and `fork.knife` (as on the Lunch tab).
+  `controlWidgetActionHint` supplies the Action button's hint, such as
+  “Show Student ID”.
+
 ## Siri and Siri AI scope
 
 Apple's [Siri AI guide](https://developer.apple.com/documentation/appintents/apple-intelligence-and-siri-ai)
@@ -134,6 +185,15 @@ device; repeat the checks below with both **SHS Space** and **Stevenson Space**.
   English phrase training for all eight shortcuts, with no app build warnings.
 - The app installed and launched on an iOS 27 simulator.
 - Real-device testing is complete and works, as confirmed by the maintainer.
+- Controls, on the iOS 27.2 simulator: all three appear under SHS Space in the
+  Control Center gallery and open their screens both from a terminated app and
+  from another tab. Student ID opened ID setup with no saved ID, and the scanner
+  once a test ID was imported; Schedule closed an open scanner and went to Home.
+  With Home's calendar sheet open, Student ID showed the “close the open sheet”
+  alert over it and left the sheet in place. Running it again with that alert
+  up added no second alert; after OK, the next run showed it again.
+- Controls, on a device, as confirmed by the maintainer: they work from the
+  Lock Screen and the Action button, and a locked device asks to unlock first.
 
 Use these system-level flows for future regression checks on supported iOS versions:
 
@@ -158,3 +218,11 @@ Use these system-level flows for future regression checks on supported iOS versi
 6. Ask Siri the example phrases and natural variations, once with “SHS Space”
    and once with “Stevenson Space”; check spoken answers
    using AirPods and compare standard Siri with Siri AI on supported devices.
+7. Add all three controls to Control Center, the Lock Screen, and the Action
+   button. Run each one from a terminated app, from another tab, and on a
+   locked device, which should ask to unlock first. Run Student ID with and
+   without a saved ID, and with a sheet open, which should show an alert over
+   that sheet. Run it again with the alert still up: it should stay one alert.
+   Confirm the controls don't appear as Shortcuts actions.
+   In the Simulator, the gallery lists newly installed controls only after the
+   simulator reboots.
