@@ -126,8 +126,10 @@ never navigates.
   is `false`, keeping the intent out of Shortcuts and Siri, which already offer
   Show Student ID and Open Tab.
 - `authenticationPolicy` is `.requiresAuthentication`, as for Show Student ID.
-- The symbols match the App Shortcuts (`barcode.viewfinder`, `calendar`,
-  `fork.knife`) because the Lock Screen shows only the symbol.
+- The Lock Screen shows only the symbol, so each one names its screen:
+  `person.text.rectangle` (an ID card, as on the ID tab and the Show Student ID
+  shortcut), `calendar.badge.clock` (a calendar with a clock, for the bell
+  schedule), and `fork.knife` (as on the Lunch tab).
   `controlWidgetActionHint` supplies the Action button's hint, such as
   “Show Student ID”.
 
