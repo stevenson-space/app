@@ -13,7 +13,7 @@ enum StudentIDPresentationError: LocalizedError {
     case presentationInProgress
 
     var errorDescription: String? {
-        "Close the open sheet or picker in Stevenson Space, then ask to show your student ID again."
+        "Close the open sheet or picker in Stevenson Space, then try again."
     }
 }
 
@@ -111,6 +111,26 @@ final class SceneNavigation {
         selectedTab = .home
         homeTodayRequest += 1
     }
+
+    func presentError(_ error: Error) {
+        guard var presenter = window?.rootViewController else { return }
+        // A request can fail because a sheet is open. Present from that sheet
+        // so the error remains visible without discarding unfinished edits.
+        while let presented = presenter.presentedViewController {
+            presenter = presented
+        }
+        if let transition = presenter.transitionCoordinator {
+            transition.animate(alongsideTransition: nil) { _ in
+                DispatchQueue.main.async { self.presentError(error) }
+            }
+            return
+        }
+        let alert = UIAlertController(title: "Could not show your student ID",
+                                      message: error.localizedDescription,
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        presenter.present(alert, animated: true)
+    }
 }
 
 /// Foreground intents select one attached window. A cold-launch request waits
@@ -165,6 +185,10 @@ final class AppNavigation {
         }
         pending = nil
         target.openTab(tab)
+    }
+
+    func presentError(_ error: Error) {
+        target?.presentError(error)
     }
 }
 

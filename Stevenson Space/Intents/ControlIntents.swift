@@ -37,7 +37,10 @@ struct OpenControlScreenIntent: OpenIntent {
     func perform() async throws -> some IntentResult {
         #if !WIDGET_EXTENSION
         switch target {
-        case .studentID: _ = try model.navigation.openStudentIDScanner(model: model)
+        case .studentID:
+            // Siri and Shortcuts speak this error; a control shows it in the app.
+            do { _ = try model.navigation.openStudentIDScanner(model: model) }
+            catch { model.navigation.presentError(error) }
         case .schedule: model.navigation.openTab(.home)
         case .lunch: model.navigation.openTab(.lunch)
         }
