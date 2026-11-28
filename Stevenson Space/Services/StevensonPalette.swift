@@ -5,6 +5,9 @@ import SwiftUI
 enum StevensonPalette {
     /// #1F5D39 — the crest's green. Carries white text at about 7.9:1.
     static let green = Color(red: 0.122, green: 0.365, blue: 0.224)
+    /// Secondary text on `green`, at about 6.2:1. The system secondary label
+    /// manages only about 3:1 there.
+    static let onGreenSecondary = Color.white.opacity(0.85)
     /// #C99A2C — the crest's gold. Carries black text at about 8.2:1.
     static let gold = Color(red: 0.788, green: 0.604, blue: 0.173)
     /// A half-stop down from `gold`, for the printed-stock gradient.
