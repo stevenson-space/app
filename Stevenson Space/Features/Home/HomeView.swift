@@ -57,8 +57,8 @@ struct HomeView: View {
                 if timeline.isSchoolDay {
                     if isToday {
                         Section {
-                            // Fill the compact viewport with cards rather than a blank
-                            // footer, while retaining enough scroll range for pinning.
+                            // Fill the compact viewport with cards (except Summer School's
+                            // one card), while retaining enough scroll range for pinning.
                             DayTimelineListView(
                                 timeline: timeline, isLive: true,
                                 minimumHeight: max(viewportHeight - compactHeaderHeight - 24, 0))
