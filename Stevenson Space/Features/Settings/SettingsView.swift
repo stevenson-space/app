@@ -2,6 +2,7 @@ import SwiftUI
 import ScheduleKit
 
 struct SettingsView: View {
+    @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -45,13 +46,7 @@ struct SettingsView: View {
                 }))
 
             if model.prefs.blockEndEnabled {
-                Stepper(model.prefs.blockEndLeadMinutes == 0
-                            ? "Alert at the bell"
-                            : "Lead time: \(model.prefs.blockEndLeadMinutes) min",
-                        value: Binding(
-                            get: { model.prefs.blockEndLeadMinutes },
-                            set: { newValue in model.updatePrefs { $0.blockEndLeadMinutes = newValue } }),
-                        in: 0...15)
+                HeadsUpLeadTimeStepper()
             }
 
             Toggle("Morning alert on special days", isOn: Binding(
@@ -61,12 +56,7 @@ struct SettingsView: View {
                 }))
 
             if model.prefs.morningEnabled {
-                DatePicker("Alert time", selection: morningTimeBinding,
-                           displayedComponents: .hourAndMinute)
-                    // Pin to Chicago so the displayed hour matches the stored
-                    // HourMinute regardless of the device's own timezone.
-                    .environment(\.calendar, SchoolTime.calendar)
-                    .environment(\.timeZone, SchoolTime.timeZone)
+                MorningAlertTimePicker()
             }
         } header: {
             Text("Notifications")
@@ -76,20 +66,6 @@ struct SettingsView: View {
                     .foregroundStyle(.orange)
             }
         }
-    }
-
-    private var morningTimeBinding: Binding<Date> {
-        Binding(
-            get: {
-                model.today.date(at: model.prefs.morningTime) ?? Date()
-            },
-            set: { newValue in
-                let components = SchoolTime.calendar.dateComponents([.hour, .minute], from: newValue)
-                model.updatePrefs {
-                    $0.morningTime = HourMinute(hour: components.hour ?? 7,
-                                                minute: components.minute ?? 0)
-                }
-            })
     }
 
     // MARK: - Override
@@ -151,6 +127,17 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
+            Button {
+                navigation.replayOnboarding()
+            } label: {
+                Label {
+                    // A concrete color: a Button's label takes the tint.
+                    Text("Guided Setup")
+                        .foregroundStyle(Color.primary)
+                } icon: {
+                    Image(systemName: "checklist")
+                }
+            }
             aboutLink("Support", systemImage: "questionmark.circle",
                       destination: URL(string: "https://stevenson.space/app/support")!)
             aboutLink("Privacy Policy", systemImage: "hand.raised",

@@ -37,6 +37,10 @@ final class AppModel {
     private(set) var studentID: StudentIDCard?
     private(set) var studentIDPhoto: UIImage?
     private(set) var studentIDPhotoHidden: Bool
+    /// True from a new install's first launch until the student finishes or
+    /// skips onboarding. Installs that were in use before it existed never are.
+    /// Nil for the moment a first launch takes to tell which of the two it is.
+    private(set) var needsOnboarding: Bool?
 
     // MARK: Derived
 
@@ -142,7 +146,18 @@ final class AppModel {
         updateCurrentState()
 
         scheduleDataReady = preparedScheduleData
-        if scheduleDataReady { reloadScheduleWidgets() }
+        if scheduleDataReady {
+            // Before the first sync, which is what tells a new install from
+            // one that was already in use.
+            needsOnboarding = store.needsOnboarding()
+            reloadScheduleWidgets()
+        } else {
+            // UIKit rarely reports protected data as available this early, so
+            // the deciding usually waits for the scene to become active. An
+            // answer already on record needs none, and every launch after the
+            // first has one.
+            needsOnboarding = store.recordedOnboardingNeed
+        }
 
         dayChangeObserver = NotificationCenter.default.addObserver(
             forName: .NSCalendarDayChanged, object: nil, queue: nil
@@ -504,6 +519,7 @@ final class AppModel {
         fetchMetadata = store.fetchMetadata
         lunchMenu = LunchMenuLoader.load(cachedData: store.cachedLunchMenuData)
         lunchFetchMetadata = store.lunchFetchMetadata
+        needsOnboarding = store.needsOnboarding()
         scheduleDataReady = true
         refreshDerived()
         rescheduleNotifications()
@@ -515,6 +531,14 @@ final class AppModel {
         timeTravelOffset = 0
         #endif
         refreshDerived()
+    }
+
+    // MARK: - Onboarding
+
+    func completeOnboarding() {
+        guard needsOnboarding == true else { return }
+        store.completeOnboarding()
+        needsOnboarding = false
     }
 
     // MARK: - Notifications

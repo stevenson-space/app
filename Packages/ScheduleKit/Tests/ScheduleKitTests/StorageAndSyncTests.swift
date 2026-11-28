@@ -281,6 +281,69 @@ private struct WriteRefusingSecretStore: SecretStore {
         #expect(!SharedStore.migratableKeys.contains("sk.studentID"))
     }
 
+    // MARK: - First-run onboarding
+
+    @Test func aNewInstallOwesOnboardingUntilItIsCompleted() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        #expect(store.needsOnboarding())
+        store.completeOnboarding()
+        #expect(!store.needsOnboarding())
+    }
+
+    @Test func theFirstSyncDoesNotMakeANewInstallLookUsed() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        #expect(store.needsOnboarding())
+        // What a first launch writes before the student gets anywhere.
+        var metadata = FetchMetadata()
+        metadata.recordAttempt(at: Date())
+        store.fetchMetadata = metadata
+        store.cachedMapData = Data("{}".utf8)
+
+        #expect(store.needsOnboarding())
+        #expect(SharedStore(defaults: defaults, secrets: InMemorySecretStore()).needsOnboarding())
+    }
+
+    @Test func anInstallThatPredatesOnboardingNeverOwesIt() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // Every launch of an earlier version recorded at least a sync attempt.
+        var metadata = FetchMetadata()
+        metadata.recordAttempt(at: Date())
+        store.fetchMetadata = metadata
+
+        #expect(!store.needsOnboarding())
+        #expect(!store.needsOnboarding())
+    }
+
+    @Test func aSavedStudentIDAloneDoesNotCountAsEarlierUse() throws {
+        // The keychain outlives the app being deleted, so a reinstall can find
+        // a card with nothing else: that student still gets onboarding.
+        let (store, defaults, suite, _) = makeStoreWithSecrets()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        try store.setStudentIDData(Data("card".utf8))
+        #expect(store.needsOnboarding())
+    }
+
+    @Test func noOnboardingAnswerIsOnRecordUntilOneIsDecided() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // Looking for a recorded answer must not decide one.
+        #expect(store.recordedOnboardingNeed == nil)
+        #expect(store.recordedOnboardingNeed == nil)
+
+        #expect(store.needsOnboarding())
+        #expect(store.recordedOnboardingNeed == true)
+        store.completeOnboarding()
+        #expect(store.recordedOnboardingNeed == false)
+    }
+
     @Test func mapURLDefaultsAndReset() {
         let (store, defaults, suite) = makeStore()
         defer { defaults.removePersistentDomain(forName: suite) }
