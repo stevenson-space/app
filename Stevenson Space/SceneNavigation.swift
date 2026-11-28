@@ -25,6 +25,9 @@ final class SceneNavigation {
     @ObservationIgnored weak var window: UIWindow?
     @ObservationIgnored private weak var errorAlert: UIAlertController?
     var selectedTab: RootTab = .home
+    /// What Home is showing now, so the tab bar can tint its selection to
+    /// read on the field and the gold side as well as on the lining.
+    var homeGround: JacketGround = .lining
     var isStudentIDScanning = false
     var isStudentIDScannerPresented = false
     var isStudentIDScannerDismissing = false

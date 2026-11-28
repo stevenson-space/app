@@ -1,43 +1,8 @@
 import SwiftUI
 
-/// Visual identity per schedule family and block role. Standard stays quiet;
-/// everything abnormal gets a loud color — the design principle is that the
-/// app should shout exactly when the day is weird.
+/// Identity per schedule family and block: the symbol a special day's patch
+/// carries, and the emoji a class shows. Colour lives in `Jacket`.
 public enum ScheduleStyle {
-    public static func accent(for family: BellFamily?) -> Color {
-        switch family {
-        case .standard, nil: return .secondary
-        case .lateArrival: return .purple
-        case .odyssey: return .pink
-        case .activityPeriod: return .teal
-        case .pmAssembly: return .orange
-        case .earlyDismissal: return .red
-        case .summer: return .orange
-        }
-    }
-
-    /// Opaque fills for schedule badges, distinct from standalone text accents.
-    /// Custom variants are tuned for white labels (at least 4.5:1); use
-    /// `ContrastingForeground` to select the label color for the resolved fill.
-    public static func badgeFill(for family: BellFamily?, contrast: ColorSchemeContrast) -> Color {
-        switch family {
-        case .lateArrival:
-            // Match the increased-contrast purple in both appearances/settings.
-            return Color(.sRGB, red: 176 / 255, green: 47 / 255, blue: 194 / 255)
-        case .odyssey:
-            return contrast == .increased
-                ? Color(.sRGB, red: 144 / 255, green: 37 / 255, blue: 72 / 255)
-                : Color(.sRGB, red: 174 / 255, green: 52 / 255, blue: 91 / 255)
-        case .activityPeriod where contrast == .increased:
-            return Color(.sRGB, red: 0, green: 101 / 255, blue: 113 / 255)
-        // Both families share the orange accent, so they share its badge too.
-        case .pmAssembly where contrast == .increased, .summer where contrast == .increased:
-            return Color(.sRGB, red: 157 / 255, green: 66 / 255, blue: 14 / 255)
-        default:
-            return accent(for: family)
-        }
-    }
-
     public static func icon(for family: BellFamily?) -> String {
         switch family {
         case .standard, nil: return "clock"
@@ -47,34 +12,6 @@ public enum ScheduleStyle {
         case .pmAssembly: return "megaphone.fill"
         case .earlyDismissal: return "graduationcap.fill"
         case .summer: return "sun.max.fill"
-        }
-    }
-
-    public static func tint(for role: BlockRole) -> Color {
-        switch role {
-        case .classPeriod: return .indigo
-        case .lunch: return .green
-        case .advisory: return .cyan
-        case .free: return .gray
-        case .homeroom: return .brown
-        case .activity: return .teal
-        case .assembly: return .orange
-        case .makeup: return .red
-        case .summerSchool: return .orange
-        }
-    }
-
-    public static func icon(for role: BlockRole) -> String {
-        switch role {
-        case .classPeriod: return "book.fill"
-        case .lunch: return "fork.knife"
-        case .advisory: return "person.2.fill"
-        case .free: return "cup.and.saucer.fill"
-        case .homeroom: return "house.fill"
-        case .activity: return "person.3.fill"
-        case .assembly: return "megaphone.fill"
-        case .makeup: return "pencil.and.list.clipboard"
-        case .summerSchool: return "sun.max.fill"
         }
     }
 

@@ -103,7 +103,7 @@ struct OverrideEditorView: View {
                 if choice == nil, let family = model.timeline(for: selectedDay).family {
                     Text("This day uses \(family.displayName). Choose a schedule to replace it, or go back to keep it unchanged.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Jacket.ink2)
                 }
                 if choice == .earlyDismissal {
                     Picker("Finals rotation", selection: $rotation) {
@@ -114,6 +114,7 @@ struct OverrideEditorView: View {
                     .pickerStyle(.inline)
                 }
             }
+            .jacketRows()
 
             Section {
                 Button("Save Override") {
@@ -130,7 +131,9 @@ struct OverrideEditorView: View {
                     }
                 }
             }
+            .jacketRows()
         }
+        .jacketForm()
         .navigationTitle("Schedule Override")
         .sensoryFeedback(.success, trigger: saves)
         .onAppear {

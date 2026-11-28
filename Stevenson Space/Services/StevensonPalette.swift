@@ -12,19 +12,4 @@ enum StevensonPalette {
     /// Card ink. Not `.primary`: the card keeps its printed colours in both
     /// appearances, so its text must not invert with the system.
     static let cardInk = Color(red: 0.086, green: 0.086, blue: 0.098)
-
-    /// The interactive green used for selection and controls, which does have to
-    /// adapt: the light value is dark enough to carry white text, the dark value
-    /// light enough to read against a dark background. Both live in the
-    /// AccentColor asset, which also tints the app's native controls.
-    static let accent = Color.accentColor
-
-    /// Text and symbols on an `accent` fill. White, except in dark mode with
-    /// Increase Contrast, where iOS lightens the accent to a pale mint that only
-    /// dark text can be read on. Not tied to the tint, so iOS leaves it alone.
-    static let onAccent = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark && traits.accessibilityContrast == .high
-            ? .black
-            : .white
-    })
 }

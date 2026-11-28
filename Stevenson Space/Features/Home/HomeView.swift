@@ -5,6 +5,8 @@ import ScheduleKit
 struct HomeView: View {
     @Environment(SceneNavigation.self) private var navigation
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.appColorScheme) private var appColorScheme
     // nil follows the live day, including midnight and foreground rollovers.
     @State private var selectedDay: DayKey?
     @State private var scroll = HomeScroll()
@@ -23,111 +25,135 @@ struct HomeView: View {
     private var today: DayKey { model.todayTimeline.day }
     private var day: DayKey { selectedDay ?? today }
 
+    /// Green while a block is on, gold between bells, the lining otherwise.
+    /// Preview days are always the lining: nothing is happening on them yet.
+    private var ground: JacketGround {
+        day == today ? JacketGround(state: model.currentState) : .lining
+    }
+
     var body: some View {
         let isToday = day == today
         let timeline = isToday ? model.todayTimeline : model.timeline(for: day)
+        let ground = ground
 
-        ScrollView {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                UpdateCheckSection(
-                    title: "Schedule updates",
-                    metadata: model.fetchMetadata,
-                    isChecking: model.isSyncing,
-                    spacing: 22,
-                    checkForUpdates: {
-                        await model.sync(force: true)
-                        return model.fetchMetadata.lastError == nil
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    UpdateCheckSection(
+                        title: "Schedule updates",
+                        metadata: model.fetchMetadata,
+                        isChecking: model.isSyncing,
+                        spacing: 24,
+                        checkForUpdates: {
+                            await model.sync(force: true)
+                            return model.fetchMetadata.lastError == nil
+                        }
+                    ) {
+                        HomeDayBar(day: day, today: today, select: selectDay) {
+                            showsCalendar = true
+                        }
+                        if timeline.isSchoolDay {
+                            HomeHeaderView(timeline: timeline)
+                        }
                     }
-                ) {
-                    HomeDayBar(day: day, today: today, select: selectDay) {
-                        showsCalendar = true
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, timeline.isSchoolDay ? 28 : 8)
+                    .onGeometryChange(for: CGFloat.self) { geometry in
+                        geometry.size.height
+                    } action: { height in
+                        heroPinOffset = height
                     }
+
                     if timeline.isSchoolDay {
-                        HomeHeaderView(timeline: timeline)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 22)
-                .onGeometryChange(for: CGFloat.self) { geometry in
-                    geometry.size.height
-                } action: { height in
-                    heroPinOffset = height
-                }
-
-                if timeline.isSchoolDay {
-                    if isToday {
-                        Section {
-                            // Fill the compact viewport with cards (except Summer School's
-                            // one card), while retaining enough scroll range for pinning.
+                        if isToday {
+                            Section {
+                                // Fill the compact viewport with rows (except Summer
+                                // School's one row) rather than a blank footer, while
+                                // keeping enough scroll range for the hero to collapse
+                                // all the way.
+                                DayTimelineListView(
+                                    timeline: timeline, isLive: true, title: "Today",
+                                    minimumHeight: max(viewportHeight - compactHeaderHeight - 32, 0))
+                                    .padding(.horizontal, 20)
+                            } header: {
+                                PinnedHero(timeline: timeline, scroll: scroll, pinOffset: heroPinOffset,
+                                           compactHeight: $compactHeaderHeight,
+                                           collapseRangeChanged: keepCollapseEnd)
+                            }
+                        } else {
                             DayTimelineListView(
-                                timeline: timeline, isLive: true,
-                                minimumHeight: max(viewportHeight - compactHeaderHeight - 24, 0))
-                                .padding(.horizontal, 16)
-                        } header: {
-                            PinnedHero(scroll: scroll, pinOffset: heroPinOffset,
-                                       compactHeight: $compactHeaderHeight,
-                                       collapseRangeChanged: keepCollapseEnd)
+                                timeline: timeline, isLive: false,
+                                title: TimeDisplay.dayLabel(day, relativeTo: today))
+                                .padding(.horizontal, 20)
                         }
                     } else {
-                        DayTimelineListView(timeline: timeline, isLive: false)
-                            .padding(.horizontal, 16)
+                        StatusScreenView(timeline: timeline, isLive: isToday)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
                     }
-                } else {
-                    StatusScreenView(timeline: timeline, isLive: isToday)
-                        .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 32)
+                .background {
+                    // The scroll phase can be stale once a finger has caught a
+                    // moving scroll, so also settle once UIKit says it has stopped.
+                    ScrollTouchReader(scroll: scroll) {
+                        settleScroll(at: scroll.offset)
+                    }
                 }
             }
-            .padding(.bottom, 24)
-            .background {
-                // The scroll phase can be stale once a finger has caught a
-                // moving scroll, so also settle once UIKit says it has stopped.
-                ScrollTouchReader(scroll: scroll) {
-                    settleScroll(at: scroll.offset)
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                geometry.size.height
+            } action: { height in
+                viewportHeight = height
+            }
+            .scrollPosition($scrollPosition)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { old, offset in
+                if offset != old { scroll.isScrollingDown = offset > old }
+                scroll.offset = offset
+            }
+            .scrollTargetBehavior(CollapseSnap(scroll: scroll))
+            .onScrollPhaseChange { _, phase, context in
+                scroll.isAnimating = phase == .animating
+                if phase == .interacting { scroll.settleTarget = nil }
+                guard phase == .idle else { return }
+                settleScroll(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top)
+            }
+            // With no bar above it, keep the list out of the status bar so the
+            // ground shows there; it still runs under the tab bar.
+            .mask { Rectangle().ignoresSafeArea(edges: [.horizontal, .bottom]) }
+            .background { FieldBackground(ground: ground, day: day) }
+            .environment(\.jacketGround, ground)
+            .foregroundStyle(ground.ink)
+            .tint(ground == .lining ? Jacket.accent : ground.ink)
+            .animation(reduceMotion ? .easeInOut(duration: 0.25) : .spring(duration: 0.55, bounce: 0),
+                       value: ground)
+            .onChange(of: ground, initial: true) { _, newGround in
+                navigation.homeGround = newGround
+            }
+            .sensoryFeedback(.impact(weight: .heavy), trigger: ground) { old, new in
+                // The bell: a live change between the field and the gold side.
+                isToday && old != .lining && new != .lining
+            }
+            .sensoryFeedback(.selection, trigger: dayChanges)
+            // The day bar is the list's first row, so it scrolls away with it.
+            .toolbarVisibility(.hidden, for: .navigationBar)
+            .homeBars(background: ground.background.resolved(for: appColorScheme),
+                      isDark: ground.isDark(in: appColorScheme))
+            .sheet(isPresented: $showsCalendar) {
+                HomeDayPicker(day: day, today: today, select: selectDay)
+                    .environment(\.colorScheme, appColorScheme)
+            }
+            #if DEBUG
+            .overlay(alignment: .bottom) {
+                if model.isTimeTraveling {
+                    TimeTravelBanner()
                 }
             }
+            #endif
         }
-        .onGeometryChange(for: CGFloat.self) { geometry in
-            geometry.size.height
-        } action: { height in
-            viewportHeight = height
-        }
-        .scrollPosition($scrollPosition)
-        .onScrollGeometryChange(for: CGFloat.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top
-        } action: { old, offset in
-            if offset != old { scroll.isScrollingDown = offset > old }
-            scroll.offset = offset
-        }
-        .scrollTargetBehavior(CollapseSnap(scroll: scroll))
-        .onScrollPhaseChange { _, phase, context in
-            scroll.isAnimating = phase == .animating
-            if phase == .interacting { scroll.settleTarget = nil }
-            guard phase == .idle else { return }
-            settleScroll(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top)
-        }
-        .background(Color(.systemGroupedBackground))
-        .overlay(alignment: .top) {
-            GeometryReader { geometry in
-                // Scroll views can draw into the safe area. Cover only the
-                // status-bar region while leaving the pinned timer below it.
-                Color(.systemGroupedBackground)
-                    .frame(height: geometry.safeAreaInsets.top)
-                    .offset(y: -geometry.safeAreaInsets.top)
-            }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-        .sheet(isPresented: $showsCalendar) {
-            HomeDayPicker(day: day, today: today, select: selectDay)
-        }
-        #if DEBUG
-        .overlay(alignment: .bottom) {
-            if model.isTimeTraveling {
-                TimeTravelBanner()
-            }
-        }
-        #endif
-        .sensoryFeedback(.selection, trigger: dayChanges)
         .onChange(of: navigation.homeTodayRequest) { _, _ in
             // Today glides back to the top, even when it replaces another day.
             glidesToTop = day != today
@@ -421,16 +447,20 @@ private struct ScrollTouchReader: UIViewRepresentable {
     }
 }
 
-/// The hero above the day's cards. It keeps its full height in the layout, so
+/// The hero above the day's rows. It keeps its full height in the layout, so
 /// the list never jumps; once pinned, the part that shows gives way to the
-/// list point for point until only the pill is left.
+/// list point for point until only the strip is left, floating over the rows.
 private struct PinnedHero: View {
-    private static let insets = EdgeInsets(top: 12, leading: 16, bottom: 34, trailing: 16)
+    private static let insets = EdgeInsets(top: 8, leading: 20, bottom: 44, trailing: 20)
+    /// Room under the strip once the hero has collapsed. The list takes the
+    /// rest of the full hero's bottom inset along with the hero.
+    private static let collapsedBottom: CGFloat = 20
 
+    let timeline: DayTimeline
     let scroll: HomeScroll
     /// Scroll offset at which the hero reaches the top and pins.
     let pinOffset: CGFloat
-    /// Height of the header once only the pill is left.
+    /// Height of the header once only the strip is left.
     @Binding var compactHeight: CGFloat
     /// Called with the old and new collapse ranges whenever the hero resizes or moves.
     let collapseRangeChanged: (ClosedRange<CGFloat>, ClosedRange<CGFloat>) -> Void
@@ -440,10 +470,11 @@ private struct PinnedHero: View {
 
     var body: some View {
         // What the hero can give up, and how much of it the list has taken.
-        let range = max(fullHeight - pillHeight, 0)
+        let range = max(fullHeight + Self.insets.bottom - Self.collapsedBottom - pillHeight, 0)
         let given = min(max(scroll.offset - pinOffset, 0), range)
 
-        HeroSection(collapse: range > 0 ? given / range : 0, pillHeight: $pillHeight)
+        HeroSection(timeline: timeline, collapse: range > 0 ? given / range : 0,
+                    pillHeight: $pillHeight)
             .onGeometryChange(for: CGFloat.self) { geometry in
                 geometry.size.height
             } action: { height in
@@ -451,16 +482,38 @@ private struct PinnedHero: View {
             }
             .padding(Self.insets)
             .frame(maxWidth: .infinity)
-            .background(Color(.systemGroupedBackground))
+            // The list only ever reaches the part already given up, so the hero
+            // needs no backing of its own; past the collapse, the rows run under
+            // the strip's glass.
             .clipShape(Rectangle().offset(y: -given))
             .onChange(of: pillHeight, initial: true) { _, height in
-                compactHeight = height + Self.insets.top + Self.insets.bottom
+                compactHeight = height + Self.insets.top + Self.collapsedBottom
             }
             .onChange(of: pinOffset...(pinOffset + range), initial: true) { old, span in
                 scroll.collapseRange = span
                 collapseRangeChanged(old, span)
             }
             .onDisappear { scroll.collapseRange = 0...0 }
+    }
+}
+
+private extension View {
+    /// Bars over the ground: the status bar and tab bar take light content on
+    /// the field (and in dark mode), dark content on the gold and the lining.
+    /// iOS 26 lets content scroll under the toolbar with its edge effect;
+    /// earlier versions get a bar of the ground's own colour, resolved in the
+    /// app's real appearance like the field behind it.
+    @ViewBuilder
+    func homeBars(background: Color, isDark: Bool) -> some View {
+        let scheme: ColorScheme = isDark ? .dark : .light
+        if #available(iOS 26, *) {
+            toolbarColorScheme(scheme, for: .navigationBar, .tabBar)
+                .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+        } else {
+            toolbarColorScheme(scheme, for: .navigationBar, .tabBar)
+                .toolbarBackground(background, for: .navigationBar)
+                .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+        }
     }
 }
 

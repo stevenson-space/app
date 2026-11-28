@@ -53,10 +53,10 @@ struct CircularScheduleView: View {
         VStack(spacing: 0) {
             Text(caption)
                 .textCase(.uppercase)
-                .font(.caption2.weight(.semibold))
+                .font(.system(.caption2, weight: .bold).width(.expanded))
                 .widgetAccentable()
             value()
-                .font(.system(.title3, design: .rounded, weight: .semibold))
+                .font(.varsity(.title3))
                 .monospacedDigit()
         }
         .lineLimit(1)

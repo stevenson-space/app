@@ -75,8 +75,10 @@ private struct OverdueTimerID: Equatable {
 }
 
 /// A quiet, actionable reminder shown only when a feed's check is overdue.
+/// No card: a stitched rule, a line of text and a capsule button, in the
+/// inks of whatever ground it sits on.
 struct UpdateCheckReminder: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.jacketGround) private var ground
 
     let title: LocalizedStringKey
     let isChecking: Bool
@@ -84,36 +86,27 @@ struct UpdateCheckReminder: View {
     let checkForUpdates: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                if !dynamicTypeSize.isAccessibilitySize {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(StevensonPalette.accent)
-                        .frame(width: 36, height: 36)
-                        .background(StevensonPalette.accent.opacity(0.10),
-                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .accessibilityHidden(true)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            StitchRule(ground.stitch)
+                .padding(.bottom, 16)
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text("Check for updates to make sure you have the latest information.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityElement(children: .combine)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(ground.ink)
+                Text("Check for updates to make sure you have the latest information.")
+                    .font(.subheadline)
+                    .foregroundStyle(ground.ink2)
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
 
             if !isChecking, didManualCheckFail {
                 Text("Couldn't check for updates. Please try again later.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(ground.ink2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
             }
 
             Button(action: checkForUpdates) {
@@ -121,6 +114,7 @@ struct UpdateCheckReminder: View {
                     if isChecking {
                         ProgressView()
                             .controlSize(.small)
+                            .tint(ground.ink)
                             .accessibilityHidden(true)
                     } else {
                         Image(systemName: "arrow.clockwise")
@@ -130,22 +124,17 @@ struct UpdateCheckReminder: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity, minHeight: 32)
+                .foregroundStyle(ground.ink)
+                .padding(.horizontal, 20)
+                .frame(minHeight: 44)
+                .background(Capsule().fill(ground.ink.opacity(0.12)))
+                .contentShape(Capsule())
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: 12))
-            // Without its own tint a bordered button gets a gray fill; this
-            // keeps the light green fill that matches the icon tile above.
-            .tint(StevensonPalette.accent)
+            .buttonStyle(.plain)
             .disabled(isChecking)
+            .padding(.top, 14)
         }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(.primary.opacity(0.05), lineWidth: 1)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -155,7 +144,7 @@ struct UpdateCheckReminder: View {
         isChecking: false,
         checkForUpdates: {})
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Jacket.lining)
 }
 
 #Preview("Lunch reminder · Dark") {
@@ -164,7 +153,7 @@ struct UpdateCheckReminder: View {
         isChecking: false,
         checkForUpdates: {})
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Jacket.lining)
         .preferredColorScheme(.dark)
 }
 
@@ -174,7 +163,7 @@ struct UpdateCheckReminder: View {
         isChecking: true,
         checkForUpdates: {})
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Jacket.lining)
         .environment(\.dynamicTypeSize, .accessibility3)
 }
 
@@ -185,5 +174,5 @@ struct UpdateCheckReminder: View {
         didManualCheckFail: true,
         checkForUpdates: {})
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Jacket.lining)
 }

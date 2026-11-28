@@ -14,8 +14,10 @@ struct SettingsView: View {
                 aboutSection
                 #if DEBUG
                 DeveloperSection()
+                    .jacketRows()
                 #endif
             }
+            .jacketForm()
             .navigationTitle("Settings")
         }
     }
@@ -30,8 +32,9 @@ struct SettingsView: View {
                 Label("My Schedule", systemImage: "scroll")
             }
         } header: {
-            Text("My Schedule")
+            JacketSectionHeader("My Schedule")
         }
+        .jacketRows()
     }
 
     // MARK: - Notifications
@@ -69,13 +72,15 @@ struct SettingsView: View {
                     .environment(\.timeZone, SchoolTime.timeZone)
             }
         } header: {
-            Text("Notifications")
+            JacketSectionHeader("Notifications")
         } footer: {
             if model.notificationAuthDenied {
-                Text("Notifications are turned off for this app in iOS Settings. Allow them there, then try again.")
-                    .foregroundStyle(.orange)
+                Label("Notifications are turned off for this app in iOS Settings. Allow them there, then try again.",
+                      systemImage: "bell.slash")
+                    .foregroundStyle(Jacket.ink)
             }
         }
+        .jacketRows()
     }
 
     private var morningTimeBinding: Binding<Date> {
@@ -108,7 +113,7 @@ struct SettingsView: View {
                             .font(.subheadline.weight(.medium))
                         Text(override.type.displayName)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Jacket.ink2)
                     }
                     Spacer()
                     Button {
@@ -121,14 +126,15 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text("Schedule Override")
+            JacketSectionHeader("Schedule Override")
         }
+        .jacketRows()
     }
 
     // MARK: - Appearance
 
     private var appearanceSection: some View {
-        Section("Appearance") {
+        Section {
             Picker("Color scheme", selection: Binding(
                 get: { model.config.appearance },
                 set: { newValue in model.updateConfig { $0.appearance = newValue } })) {
@@ -144,7 +150,10 @@ struct SettingsView: View {
                     Text(pref.displayName).tag(pref)
                 }
             }
+        } header: {
+            JacketSectionHeader("Appearance")
         }
+        .jacketRows()
     }
 
     // MARK: - About
@@ -156,16 +165,18 @@ struct SettingsView: View {
             aboutLink("Privacy Policy", systemImage: "hand.raised",
                       destination: URL(string: "https://stevenson.space/app/privacy")!)
         } header: {
-            Text("About")
+            JacketSectionHeader("About")
         } footer: {
             VStack(alignment: .leading, spacing: 6) {
                 if let appVersion {
                     Text("Version \(appVersion)")
                 }
                 Text("Stevenson Space is an independent app. It is not affiliated with or endorsed by Adlai E. Stevenson High School.")
-                    .font(.caption2)
+                    .font(.caption)
             }
+            .foregroundStyle(Jacket.ink2)
         }
+        .jacketRows()
     }
 
     /// "1.0.0 (3)": the marketing version plus the build number, so builds
@@ -189,12 +200,12 @@ struct SettingsView: View {
                 Spacer()
                 Image(systemName: "arrow.up.right")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Jacket.ink3)
                     .accessibilityHidden(true)
             }
             // A concrete color: inside a Link, hierarchical styles like
             // `.primary` resolve against the tint and render the title blue.
-            .foregroundStyle(Color.primary)
+            .foregroundStyle(Jacket.ink)
             .contentShape(Rectangle())
         }
         .accessibilityHint("Opens in your browser")
@@ -318,6 +329,7 @@ struct PendingNotificationsView: View {
                 }
             }
         }
+        .jacketForm()
         .navigationTitle("Pending Queue")
         .task {
             items = await NotificationScheduler.shared.pendingItems()

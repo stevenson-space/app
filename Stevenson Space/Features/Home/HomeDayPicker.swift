@@ -96,14 +96,21 @@ struct HomeDayBar: View {
 }
 
 private extension View {
-    /// Liquid Glass on iOS 26, like the bar buttons this row stands in for;
-    /// a card-coloured capsule before it.
-    @ViewBuilder
     func dayBarCapsule() -> some View {
+        modifier(DayBarCapsule())
+    }
+}
+
+/// Liquid Glass on iOS 26, like the bar buttons this row stands in for;
+/// before it, a capsule of the ground's ink, like Check for Updates.
+private struct DayBarCapsule: ViewModifier {
+    @Environment(\.jacketGround) private var ground
+
+    func body(content: Content) -> some View {
         if #available(iOS 26, *) {
-            glassEffect(.regular.interactive(), in: .capsule)
+            content.glassEffect(.regular.interactive(), in: .capsule)
         } else {
-            background(Color(.secondarySystemGroupedBackground), in: .capsule)
+            content.background(ground.ink.opacity(0.12), in: .capsule)
         }
     }
 }
@@ -131,6 +138,7 @@ struct HomeDayPicker: View {
                     .datePickerStyle(.graphical)
                     .padding()
             }
+            .background(Jacket.lining)
             .navigationTitle("Choose a day")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -141,6 +149,7 @@ struct HomeDayPicker: View {
         }
         .environment(\.calendar, SchoolTime.calendar)
         .environment(\.timeZone, SchoolTime.timeZone)
+        .tint(Jacket.accent)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
