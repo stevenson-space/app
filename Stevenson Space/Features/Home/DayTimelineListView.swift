@@ -14,6 +14,10 @@ struct DayTimelineListView: View {
     let title: String
     var minimumHeight: CGFloat = 0
 
+    /// Summer School has a single block, so stretching it to fill the room would
+    /// make one screen-sized row. It keeps its own height and the rest stays empty.
+    private var stretchesRows: Bool { timeline.family != .summer }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
@@ -51,7 +55,7 @@ struct DayTimelineListView: View {
         }
         // Between bells, the block being walked to is the patch.
         let patchID = currentID ?? (ground == .gold ? nextUpcomingID : nil)
-        let rowHeight = max(0, minimumHeight / CGFloat(max(blocks.count, 1)))
+        let rowHeight = stretchesRows ? max(0, minimumHeight / CGFloat(max(blocks.count, 1))) : 0
 
         return VStack(spacing: 0) {
             ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
@@ -81,6 +85,8 @@ struct DayTimelineListView: View {
                 .accessibilityLabel(accessibilitySummary(for: block, now: now, pref: pref))
             }
         }
+        // Unstretched rows still keep the scroll room the pinned hero needs.
+        .frame(minHeight: stretchesRows ? 0 : minimumHeight, alignment: .top)
     }
 
     /// Classes show the student's emoji; lunch, free and the rest are named

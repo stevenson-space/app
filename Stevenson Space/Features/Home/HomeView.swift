@@ -68,9 +68,10 @@ struct HomeView: View {
                     if timeline.isSchoolDay {
                         if isToday {
                             Section {
-                                // Fill the compact viewport with rows rather than a
-                                // blank footer, while keeping enough scroll range for
-                                // the hero to collapse all the way.
+                                // Fill the compact viewport with rows (except Summer
+                                // School's one row) rather than a blank footer, while
+                                // keeping enough scroll range for the hero to collapse
+                                // all the way.
                                 DayTimelineListView(
                                     timeline: timeline, isLive: true, title: "Today",
                                     minimumHeight: max(viewportHeight - compactHeaderHeight - 32, 0))
