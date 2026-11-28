@@ -81,7 +81,7 @@ conditions; **Improvement** = optional quality work.
 | 4 | Low | Bug | Lunch tab's "today" is not observable, so it can go stale after midnight | Fixed in `badb983`, `360065f` |
 | 5 | Low | Improvement | Subject-emoji rule table is rebuilt on every call, and has no tests | Fixed in `ddff239`, `e477540` |
 | 6 | Low | Bug (docs) | Photo-store comment recommends moving the ID photo into the App Group | Fixed in `6764fc2` |
-| 7 | Medium | Bug (UX) | "Rotation unverified — tap to fix" cannot be fixed in release builds | Documented |
+| 7 | Medium | Bug (UX) | "Rotation unverified — tap to fix" cannot be fixed in release builds | Fixed in `419c2fd` |
 | 8 | Low | Improvement | Past overrides are never pruned | Documented |
 | 9 | Low | Improvement | The ID photo is rewritten on every launch | Documented |
 | 10 | Low | Potential | ID import reads the whole picked file into memory before size checks | Documented |
@@ -219,7 +219,7 @@ widgets. A maintainer who followed the comment would break that promise.
 **Fix.** Rewrite the comment to state the actual rule: the photo stays out of
 the App Group on purpose.
 
-### 7. "Rotation unverified — tap to fix" cannot be fixed in release builds — Medium, Bug (UX), documented
+### 7. "Rotation unverified — tap to fix" cannot be fixed in release builds — Medium, Bug (UX)
 
 **Where.** `Stevenson Space/Features/Home/HomeHeaderView.swift` (the badge) and
 `Stevenson Space/Features/Settings/OverrideEditorView.swift` (`Choice`, `prefill`).
@@ -233,10 +233,19 @@ the badge offers.
 **When it happens.** A standalone finals date in the map, a third or later
 weekday in a finals range, or a malformed range.
 
-**Recommendation.** This is a product decision. Either make the release badge
-non-interactive ("Rotation unverified"), or allow choosing a rotation when the
-date already resolves to Early Dismissal. It is not implemented here because
-the DEBUG restriction was deliberate.
+**Fix.** The badge stays tappable, and release builds now offer Early
+Dismissal when the chosen date already resolves to it. The editor
+pre-selects it with the inferred rotation and shows the Finals Day 1 / Day 2
+picker. Saving stores an override with an explicit rotation, which clears the
+badge. On any other date the choice stays hidden, so a student
+still cannot put finals on an ordinary day. DEBUG builds still offer it on
+every date, and Summer School stays DEBUG-only.
+
+**Limits.** If an Early Dismissal date is overridden to another schedule, the
+editor no longer offers Early Dismissal for it. Removing the override brings
+back the calendar's Early Dismissal day and its rotation choice. No automated
+test covers this, because the editor lives in the app target, which has no
+test target.
 
 ### 8. Past overrides are never pruned — Low, documented
 

@@ -4,7 +4,9 @@ import ScheduleKit
 /// Manual day-type override: for the morning the school changes plans at 6 AM
 /// or the map is wrong. Keyed to a single date; sync never touches it.
 /// Choosing Early Dismissal requires picking a rotation — there's no range to
-/// infer it from.
+/// infer it from. Release builds offer Early Dismissal only on a day that
+/// already uses it, so a student can correct the finals rotation without
+/// putting finals on an ordinary day; DEBUG builds offer it on any date.
 struct OverrideEditorView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -17,9 +19,9 @@ struct OverrideEditorView: View {
     @State private var saves = 0
 
     enum Choice: String, CaseIterable, Identifiable {
-        case standard, lateArrival, odyssey, activityPeriod, pmAssembly
+        case standard, lateArrival, odyssey, activityPeriod, pmAssembly, earlyDismissal
         #if DEBUG
-        case earlyDismissal, summer
+        case summer
         #endif
         case noSchool, asynchronous
 
@@ -32,8 +34,8 @@ struct OverrideEditorView: View {
             case .odyssey: return "Odyssey"
             case .activityPeriod: return "Activity Period"
             case .pmAssembly: return "PM Assembly"
-            #if DEBUG
             case .earlyDismissal: return "Early Dismissal (Finals)"
+            #if DEBUG
             case .summer: return "Summer School"
             #endif
             case .noSchool: return "No School"
@@ -48,8 +50,8 @@ struct OverrideEditorView: View {
             case .odyssey: return .bell(family: .odyssey, rotation: nil)
             case .activityPeriod: return .bell(family: .activityPeriod, rotation: nil)
             case .pmAssembly: return .bell(family: .pmAssembly, rotation: nil)
-            #if DEBUG
             case .earlyDismissal: return .bell(family: .earlyDismissal, rotation: rotation)
+            #if DEBUG
             case .summer: return .bell(family: .summer, rotation: nil)
             #endif
             case .noSchool: return .noSchool
@@ -71,6 +73,18 @@ struct OverrideEditorView: View {
 
     private var selectedDay: DayKey { DayKey(date: selectedDate) }
 
+    private var choices: [Choice] {
+        #if DEBUG
+        return Choice.allCases
+        #else
+        // The current selection keeps its row until a date change prefills a
+        // new one, so the picker never holds a selection without a tag.
+        let offersFinals = choice == .earlyDismissal
+            || model.timeline(for: selectedDay).family == .earlyDismissal
+        return Choice.allCases.filter { $0 != .earlyDismissal || offersFinals }
+        #endif
+    }
+
     var body: some View {
         Form {
             Section {
@@ -82,7 +96,7 @@ struct OverrideEditorView: View {
                     if choice == nil {
                         Text("Choose a schedule").tag(nil as Choice?)
                     }
-                    ForEach(Choice.allCases) { option in
+                    ForEach(choices) { option in
                         Text(option.label).tag(Optional(option))
                     }
                 }
@@ -91,7 +105,6 @@ struct OverrideEditorView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                #if DEBUG
                 if choice == .earlyDismissal {
                     Picker("Finals rotation", selection: $rotation) {
                         ForEach(EDRotation.allCases, id: \.self) { rotation in
@@ -100,7 +113,6 @@ struct OverrideEditorView: View {
                     }
                     .pickerStyle(.inline)
                 }
-                #endif
             }
 
             Section {
@@ -146,13 +158,12 @@ struct OverrideEditorView: View {
             case .odyssey: choice = .odyssey
             case .activityPeriod: choice = .activityPeriod
             case .pmAssembly: choice = .pmAssembly
+            case .earlyDismissal: choice = .earlyDismissal
             #if DEBUG
-            case .earlyDismissal:
-                choice = .earlyDismissal
             case .summer: choice = .summer
             #else
-            case .earlyDismissal, .summer:
-                // Require an explicit replacement for schedules that cannot
+            case .summer:
+                // Require an explicit replacement for a schedule that cannot
                 // be selected in this build.
                 choice = nil
             #endif
