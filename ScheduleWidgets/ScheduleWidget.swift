@@ -158,6 +158,7 @@ struct ScheduleWidget: Widget {
         }
         .configurationDisplayName("School Schedule")
         .description("See what's next and how long until the bell.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryCircular, .accessoryRectangular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge,
+                            .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }

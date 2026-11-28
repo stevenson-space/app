@@ -73,9 +73,10 @@ week's) schedule before it arrives.
 
 ## Schedule widgets
 
-Small and medium Home Screen widgets plus circular and rectangular Lock Screen
-widgets show bounded system countdowns, personalized periods, passing, and the next
-school day.
+Small, medium, and large Home Screen widgets plus circular, rectangular, and inline
+Lock Screen widgets show personalized periods, passing, and the next school day.
+All but the inline widget count down with bounded system timers; the inline one,
+beside the Lock Screen date, names the next bell's time.
 They read the app's last successful cache through the App Group; no additional
 networking is required. See [widget behavior and validation](docs/schedule-widgets.md).
 
