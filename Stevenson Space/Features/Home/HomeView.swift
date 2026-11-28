@@ -57,8 +57,8 @@ struct HomeView: View {
                 if timeline.isSchoolDay {
                     if isToday {
                         Section {
-                            // Fill the compact viewport with cards rather than a blank
-                            // footer, while retaining enough scroll range for pinning.
+                            // Keep enough scroll range for the hero to collapse to the
+                            // pill, even on a short day; the cards keep their own height.
                             DayTimelineListView(
                                 timeline: timeline, isLive: true,
                                 minimumHeight: max(viewportHeight - compactHeaderHeight - 24, 0))

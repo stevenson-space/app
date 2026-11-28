@@ -15,7 +15,6 @@ struct ScheduleCardRow<Trailing: View>: View {
     var periodLabel: String? = nil
     /// Home shows a special-event badge even when a block has no period number.
     var showsPeriodBadge = false
-    var minimumHeight: CGFloat = 0
     var dimmed = false
     /// Tint of the "happening now" state; nil for every other card.
     var highlightTint: Color? = nil
@@ -88,7 +87,6 @@ struct ScheduleCardRow<Trailing: View>: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .frame(minHeight: minimumHeight)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(highlightTint.map { AnyShapeStyle($0.opacity(0.16)) }

@@ -9,6 +9,8 @@ struct DayTimelineListView: View {
 
     let timeline: DayTimeline
     let isLive: Bool
+    /// Room the list takes up even when its cards are shorter. Any left over
+    /// stays empty below the cards, which keep their own height.
     var minimumHeight: CGFloat = 0
 
     var body: some View {
@@ -46,8 +48,6 @@ struct DayTimelineListView: View {
                     subtitle: subtitle(for: block, pref: pref),
                     periodLabel: periodLabel(for: block),
                     showsPeriodBadge: true,
-                    minimumHeight: max(0, (minimumHeight - CGFloat(max(blocks.count - 1, 0)) * 8)
-                                       / CGFloat(max(blocks.count, 1))),
                     dimmed: now.map { $0 >= block.end } ?? false,
                     highlightTint: isCurrent ? tint : nil
                 ) {
@@ -68,6 +68,7 @@ struct DayTimelineListView: View {
                 .accessibilityLabel(accessibilitySummary(for: block, now: now, pref: pref))
             }
         }
+        .frame(minHeight: minimumHeight, alignment: .top)
     }
 
     /// Use the bell schedule identity, not list position or customization identity:
