@@ -11,6 +11,10 @@ struct DayTimelineListView: View {
     let isLive: Bool
     var minimumHeight: CGFloat = 0
 
+    /// Summer School has a single block, so stretching it to fill the room would
+    /// make one screen-sized card. It keeps its own height and the rest stays empty.
+    private var stretchesCards: Bool { timeline.family != .summer }
+
     var body: some View {
         if isLive {
             liveList
@@ -35,6 +39,10 @@ struct DayTimelineListView: View {
         let nextUpcomingID = now.flatMap { instant in
             blocks.first { $0.start > instant }?.id
         }
+        let cardHeight = stretchesCards
+            ? max(0, (minimumHeight - CGFloat(max(blocks.count - 1, 0)) * 8)
+                     / CGFloat(max(blocks.count, 1)))
+            : 0
 
         return VStack(spacing: 8) {
             ForEach(blocks) { block in
@@ -46,8 +54,7 @@ struct DayTimelineListView: View {
                     subtitle: subtitle(for: block, pref: pref),
                     periodLabel: periodLabel(for: block),
                     showsPeriodBadge: true,
-                    minimumHeight: max(0, (minimumHeight - CGFloat(max(blocks.count - 1, 0)) * 8)
-                                       / CGFloat(max(blocks.count, 1))),
+                    minimumHeight: cardHeight,
                     dimmed: now.map { $0 >= block.end } ?? false,
                     highlightTint: isCurrent ? tint : nil
                 ) {
@@ -68,6 +75,8 @@ struct DayTimelineListView: View {
                 .accessibilityLabel(accessibilitySummary(for: block, now: now, pref: pref))
             }
         }
+        // Unstretched cards still keep the scroll room the pinned hero needs.
+        .frame(minHeight: stretchesCards ? 0 : minimumHeight, alignment: .top)
     }
 
     /// Use the bell schedule identity, not list position or customization identity:
