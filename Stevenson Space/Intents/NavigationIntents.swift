@@ -50,15 +50,11 @@ struct ShowStudentIDIntent: AppIntent {
 
     @AppDependency private var model: AppModel
 
+    // No dialog: the app opens to the scanner or ID setup, so a dialog would
+    // only cover the barcode, and Shortcuts would offer a pointless Show When Run.
     @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        switch try model.navigation.openStudentIDScanner(model: model) {
-        case .presented:
-            return .result(dialog: "Here is your student ID.")
-        case .opening:
-            return .result(dialog: "Your student ID is opening.")
-        case .needsImport:
-            return .result(dialog: "Import your student ID screenshot in the ID tab first.")
-        }
+    func perform() async throws -> some IntentResult {
+        try model.navigation.openStudentIDScanner()
+        return .result()
     }
 }

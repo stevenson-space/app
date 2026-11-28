@@ -1,7 +1,7 @@
 # Schedule widgets
 
 One iOS 18+ WidgetKit extension supports small, medium, and large Home Screen widgets and
-accessory circular and rectangular Lock Screen widgets. Tap any family to select Home and
+accessory circular, rectangular, and inline Lock Screen widgets. Tap any family to select Home and
 reset its date to today. Live Activities and Dynamic Island are deferred.
 
 ## Data and timing
@@ -32,7 +32,8 @@ that refresh. Next-school-day lookup skips days without bells (including async)
 and searches up to 450 dates, matching the app's search bound. All stepping uses
 calendar dates, including across DST.
 
-`Text(timerInterval:countsDown:)` renders countdowns, bounded to zero. There is no
+`Text(timerInterval:countsDown:)` renders countdowns, bounded to zero (the inline
+family shows bell times instead; see its section). There is no
 widget timer loop, TimelineView, or per-second reload. The app requests reloads
 after configuration/override mutations, successful schedule refreshes, and first
 publication after migration/unlock. Widgets respect system appearance/tint and
@@ -130,6 +131,40 @@ today, after dismissal, weekends, and long breaks. The app and embedded extensio
 build for the iOS Simulator. Resting layouts consistently use the next school
 day's date, schedule label, and first bell.
 
+## Inline Lock Screen layout
+
+The inline family is the one-line slot beside the date above the clock. The
+system keeps only text and one SF Symbol and draws them in its own font, so each
+state lists shorter versions, longest first, in a horizontal `ViewThatFits`:
+
+- During a period, a bell and “AP Biology ends at 9:21”, then “Ends at 9:21”
+  and the time alone.
+- While passing, a walking figure and “2nd Period starts at 9:26”, then
+  “Passing until 9:26” and the time alone.
+- Before school, including the lead-in, “First bell 8:30 AM”; after school and
+  on days off, the next school day's date and first bell
+  (“Mon, Nov 30 · 8:30 AM”), then “Mon 8:30 AM” and “Mon 8:30”.
+- An unknown schedule, missing shared data, or no posted school day says so
+  beside a calendar symbol.
+
+Bell times later today drop AM and PM, like the circular widget, because the
+clock sits right below; VoiceOver still reads the full time and the relative day.
+
+Unlike the other families, the inline slot names the next bell instead of
+counting down. On the Lock Screen it froze both timer styles at the minute they
+were drawn: `Text(timerInterval:)` showed “34:--” in a smaller font and
+`Text(_:style: .timer)` stayed at “34 minutes”. A bell time stays correct
+between timeline entries, and the period-end entries already switch it to the
+next bell. Only width decides which version fits; checking height too let a
+tall symbol rule out every version but the last.
+
+Inline validation (November 26, 2026, iPhone 17 simulator, iOS 27.2): placed on
+the Lock Screen after “Thu 26”, the slot showed “Mon, Nov 30 · 8:30 AM” on the
+real holiday, “3rd Period ends at 11:05” in the Standard · mid class scenario,
+and “Passing until 9:26” in Standard · passing, where the full sentence didn't
+fit. An offscreen render at 110–234 points and 17 and 21 points of text checked
+every state's fallbacks.
+
 ## Validation
 
 ### Debug time travel
@@ -175,10 +210,11 @@ Use these flows for regression checks:
 
 - Upgrade an existing install; verify names, rooms, emoji, 12/24-hour preference,
   overrides, cached calendar, and student ID still work. Open the app once.
-- Add small, medium, large, circular, and rectangular widgets. Test light/dark/tinted appearance,
+- Add small, medium, large, circular, rectangular, and inline widgets. Test light/dark/tinted appearance,
   increased contrast, large text, and VoiceOver. Check long names and absent rooms.
 - Leave the app suspended across a period end, passing, and the next period start;
-  confirm timer text counts down and stops at zero if a transition is delayed.
+  confirm timer text counts down and stops at zero if a transition is delayed,
+  and the inline slot moves on to the next bell's time.
 - Check the real first bell minus 15 minutes, dismissal, and five minutes later.
   Observe a late-arrival or other special day, consecutive free periods, and a
   zero-gap finals/makeup transition when available.

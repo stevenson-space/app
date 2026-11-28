@@ -29,6 +29,8 @@ struct ScheduleWidgetView: View {
         Group {
             if family == .accessoryCircular {
                 CircularScheduleView(entry: entry)
+            } else if family == .accessoryInline {
+                InlineScheduleView(entry: entry)
             } else if let schedule = entry.schedule {
                 if family == .systemLarge {
                     large(schedule)
@@ -597,10 +599,23 @@ private struct WidgetPeriodName: View {
     ScheduleProvider.weekendExample
 }
 
+#Preview("Lock Screen · inline", as: .accessoryInline) {
+    ScheduleWidget()
+} timeline: {
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0))
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true)
+    ScheduleProvider.example(at: HourMinute(hour: 9, minute: 21))
+    ScheduleProvider.example(at: HourMinute(hour: 8, minute: 15))
+    ScheduleProvider.example(at: HourMinute(hour: 7, minute: 0))
+    ScheduleProvider.example(at: HourMinute(hour: 15, minute: 30))
+    ScheduleProvider.weekendExample
+}
+
 // PreviewProvider supports explicit WidgetPreviewContext for layout variants.
 struct ScheduleLayoutPreviews: PreviewProvider {
     static var previews: some View {
-        ForEach([WidgetFamily.systemSmall, .systemMedium, .systemLarge, .accessoryCircular, .accessoryRectangular],
+        ForEach([WidgetFamily.systemSmall, .systemMedium, .systemLarge,
+                 .accessoryCircular, .accessoryRectangular, .accessoryInline],
                 id: \.self) { family in
             ScheduleWidgetView(entry: ScheduleProvider.example(at: HourMinute(hour: 9, minute: 0), longName: true, room: nil))
                 .containerBackground(.background, for: .widget)
@@ -642,7 +657,7 @@ struct ScheduleWidgetBackground: View {
     }
 
     var body: some View {
-        if family == .accessoryRectangular || family == .accessoryCircular {
+        if family == .accessoryRectangular || family == .accessoryCircular || family == .accessoryInline {
             Rectangle().fill(.background)
         } else {
             Self.ground(for: entry).background

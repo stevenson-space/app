@@ -49,7 +49,7 @@ Packages/StudentIDKit/         Student ID logic — no UI.
     StudentIDPhotoStore.swift  The cropped headshot, on disk with complete file protection
   Tests/StudentIDKitTests/     Includes a Vision round-trip on rendered symbols
 Stevenson Space/               SwiftUI app target: Home, Lunch, ID, Settings
-ScheduleWidgets/              Schedule widgets and small/large lunch widgets
+ScheduleWidgets/              Schedule and lunch widgets; Control Center controls
 ```
 
 Two pure functions are the heart of everything; the app and widgets must go through them so all surfaces agree:
@@ -80,9 +80,10 @@ clock at that instant, so any Home state opens directly in the Simulator.
 
 ## Schedule widgets
 
-Small and medium Home Screen widgets plus circular and rectangular Lock Screen
-widgets show bounded system countdowns, personalized periods, passing, and the next
-school day.
+Small, medium, and large Home Screen widgets plus circular, rectangular, and inline
+Lock Screen widgets show personalized periods, passing, and the next school day.
+All but the inline widget count down with bounded system timers; the inline one,
+beside the Lock Screen date, names the next bell's time.
 They read the app's last successful cache through the App Group; no additional
 networking is required. See [widget behavior and validation](docs/schedule-widgets.md).
 
@@ -201,12 +202,16 @@ deadline. Future timestamps cannot suppress a reminder after a clock correction.
   days, breaks…). A purple banner shows whenever the clock is shifted.
 - Pending-notification inspector: Settings → Developer — Notifications.
 
-## Shortcuts and Siri
+## Shortcuts, Siri, and controls
 
 Eight actions open the student ID scanner or a selected tab, and return the
 current class/period, next class, schedule, schedule type, and lunch menu.
 Class results expose names, periods, saved rooms, and times to subsequent
-Shortcuts actions. See [implementation, Apple references, and validation](docs/app-intents.md).
+Shortcuts actions.
+
+Three controls (**Student ID**, **Schedule**, and **Lunch Menu**) open the
+same screens from Control Center, the Lock Screen, or the Action button, with
+no shortcut to build. See [implementation, Apple references, and validation](docs/app-intents.md).
 
 ## Deferred (architecture is ready for them)
 
